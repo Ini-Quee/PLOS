@@ -45,13 +45,19 @@ export function AuthProvider({ children }) {
   }
 
   async function register(email, password, name) {
-    const response = await api.post('/auth/register', {
-      email,
-      password,
-      name,
-    });
-    return response.data;
+  const response = await api.post('/auth/register', {
+    email,
+    password,
+    name,
+  });
+
+  if (response.data.accessToken) {
+    setAccessToken(response.data.accessToken);
+    setUser(response.data.user);
   }
+
+  return response.data;
+}
 
   async function setupMfa() {
     const response = await api.post('/auth/mfa/setup');

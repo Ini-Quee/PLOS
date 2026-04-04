@@ -34,8 +34,8 @@ export default function Register() {
     setLoading(true);
 
     try {
-      await register(form.email, form.password, form.name);
-      navigate('/login');
+     await register(form.email, form.password, form.name);
+navigate('/mfa-setup');
     } catch (err) {
       setError(
         err.response?.data?.error ||

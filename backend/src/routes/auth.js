@@ -67,8 +67,39 @@ router.post(
 
       const user = result.rows[0];
 
+      const accessToken = jwt.sign(
+        { sub: user.id, email: user.email },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_ACCESS_EXPIRY }
+      );
+
+      const refreshToken = crypto.randomBytes(64).toString('hex');
+      const refreshTokenHash = crypto
+        .createHash('sha256')
+        .update(refreshToken)
+        .digest('hex');
+
+      await pool.query(
+        `INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
+         VALUES ($1, $2, $3)`,
+        [
+          user.id,
+          refreshTokenHash,
+          new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        ]
+      );
+
+      res.cookie('refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        path: '/api/auth/refresh',
+      });
+
       res.status(201).json({
         message: 'Account created successfully. Please set up MFA.',
+        accessToken,
         user: {
           id: user.id,
           email: user.email,
