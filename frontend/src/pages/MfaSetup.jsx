@@ -30,7 +30,7 @@ export default function MfaSetup() {
     setLoading(true);
     setError('');
     try {
-      await api.post('/auth/mfa/verify', { token });
+      await api.post('/auth/mfa/verify', { code: token });
       setStep('done');
     } catch (err) {
       setError(err.response?.data?.error || 'Invalid code. Try again.');
