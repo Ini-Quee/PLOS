@@ -1,3 +1,4 @@
+import Journal from './pages/Journal';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/auth';
 import Login from './pages/Login';
@@ -64,12 +65,22 @@ export default function App() {
             }
           />
           <Route
+            path="/journal"
+            element={
+              <ProtectedRoute>
+                <Journal />
+              </ProtectedRoute>
+            }
+          />    
+
+          <Route
             path="/mfa-setup"
             element={
               <ProtectedRoute>
                 <MfaSetup />
               </ProtectedRoute>
             }
+            
           />
         </Routes>
       </BrowserRouter>

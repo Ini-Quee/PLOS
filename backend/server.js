@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+const journalRoutes = require('./src/routes/journal');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -46,6 +47,7 @@ app.use(cookieParser());
 app.use(morgan('combined'));
 
 app.use('/api/auth', authRoutes);
+app.use('/api/journal', journalRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({

@@ -9,8 +9,9 @@ import api, { setAccessToken } from './api';
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+ const [user, setUser] = useState(null);
+const [loading, setLoading] = useState(true);
+const [encryptionPassword, setEncryptionPassword] = useState(null);
 
   useEffect(() => {
     async function restoreSession() {
@@ -39,9 +40,10 @@ export function AuthProvider({ children }) {
       return { requiresMfa: true };
     }
 
-    setAccessToken(response.data.accessToken);
-    setUser(response.data.user);
-    return { success: true };
+   setAccessToken(response.data.accessToken);
+setUser(response.data.user);
+setEncryptionPassword(password);
+return { success: true };
   }
 
   async function register(email, password, name) {
@@ -72,12 +74,14 @@ export function AuthProvider({ children }) {
   }
 
   async function logout() {
-    try {
-      await api.post('/auth/logout');
-    } finally {
-      setAccessToken(null);
-      setUser(null);
-    }
+  try {
+    await api.post('/auth/logout');
+  } finally {
+    setAccessToken(null);
+    setUser(null);
+    setEncryptionPassword(null);
+  }
+
   }
 
   return (
@@ -85,6 +89,7 @@ export function AuthProvider({ children }) {
       value={{
         user,
         loading,
+        encryptionPassword,
         login,
         register,
         setupMfa,

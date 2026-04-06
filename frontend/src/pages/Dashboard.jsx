@@ -46,6 +46,12 @@ export default function Dashboard() {
             >
               Sign Out
             </button>
+            <button
+  onClick={() => navigate('/journal')}
+  className="rounded-xl border border-teal-500 px-4 py-2 text-teal-400 hover:bg-teal-500/10"
+>
+  Open Journal
+</button>   
           </div>
         </div>
 
@@ -61,6 +67,7 @@ export default function Dashboard() {
                 application setup.
               </p>
             </div>
+            
           ))}
         </div>
       </div>
