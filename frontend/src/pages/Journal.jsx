@@ -14,7 +14,7 @@ export default function Journal() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [analysis, setAnalysis] = useState(null);
-  const [mode, setMode] = useState('voice'); // 'voice' or 'text'
+  const [mode, setMode] = useState('voice');
 
   function handleVoiceTranscript(text) {
     setTranscript((prev) => {
@@ -39,20 +39,11 @@ export default function Journal() {
       }
 
       console.log('=== SAVING JOURNAL ENTRY ===');
-      console.log('Transcript length:', transcript.length);
 
-      // Encrypt the transcript
       const encrypted = await encryptText(transcript, encryptionPassword);
-      
-      // Calculate word and character counts
       const wordCount = transcript.trim().split(/\s+/).filter(Boolean).length;
       const characterCount = transcript.length;
 
-      console.log('Word count:', wordCount);
-      console.log('Character count:', characterCount);
-      console.log('Encrypted successfully');
-
-      // Save to backend with plaintext for AI analysis
       const response = await api.post('/journal', {
         encryptedContent: encrypted.ciphertext,
         encryptionIv: encrypted.iv,
@@ -61,32 +52,22 @@ export default function Journal() {
         characterCount,
         durationSeconds: 0,
         recordedAt: new Date().toISOString(),
-        plaintextForAnalysis: transcript, // Send plaintext for AI
+        plaintextForAnalysis: transcript,
       });
 
-      console.log('=== FULL RESPONSE ===');
-      console.log(JSON.stringify(response.data, null, 2));
-
-      console.log('=== ANALYSIS FROM API ===');
-      console.log(JSON.stringify(response.data.analysis, null, 2));
+      console.log('=== RESPONSE RECEIVED ===');
+      console.log('Analysis:', response.data.analysis);
 
       setSuccess(true);
 
-      // Set analysis if it exists
       if (response.data.analysis) {
-        console.log('Setting analysis state with:', response.data.analysis);
         setAnalysis(response.data.analysis);
-      } else {
-        console.log('No analysis in response');
-        setAnalysis(null);
       }
 
-      // Clear transcript after successful save
       setTranscript('');
 
     } catch (err) {
-      console.error('=== SAVE ERROR ===');
-      console.error(err);
+      console.error('=== SAVE ERROR ===', err);
       setError(
         err.response?.data?.error ||
           err.message ||
@@ -97,22 +78,9 @@ export default function Journal() {
     }
   }
 
-  const hasVisibleAnalysis =
-    analysis &&
-    (
-      (analysis.mood && analysis.mood !== 'neutral') ||
-      (analysis.summary && analysis.summary !== '') ||
-      (analysis.tasks && analysis.tasks.length > 0) ||
-      (analysis.meetings && analysis.meetings.length > 0) ||
-      (analysis.goals && analysis.goals.length > 0) ||
-      (analysis.emotions && analysis.emotions.length > 0) ||
-      (analysis.key_themes && analysis.key_themes.length > 0) ||
-      (analysis.people && analysis.people.length > 0) ||
-      (analysis.places && analysis.places.length > 0)
-    );
-
   return (
     <div className="min-h-screen bg-slate-950 text-white">
+      {/* Header */}
       <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
           <button
@@ -156,19 +124,17 @@ export default function Journal() {
           </button>
         </div>
 
-        {/* Main Entry Area */}
+        {/* Entry Area */}
         <div className="space-y-6 rounded-2xl border border-slate-800 bg-slate-900 p-6">
-          {/* Voice Recorder */}
           {mode === 'voice' && (
             <VoiceRecorder onTranscriptReady={handleVoiceTranscript} />
           )}
 
-          {/* Transcript/Text Editor */}
           <div>
             <div className="mb-2 flex items-center justify-between">
               <p className="text-xs text-slate-500">
                 {mode === 'voice'
-                  ? 'Your voice transcript appears here — you can edit it'
+                  ? 'Your voice transcript — you can edit it'
                   : 'Write your thoughts'}
               </p>
               <p className="text-xs text-slate-500">
@@ -191,21 +157,18 @@ export default function Journal() {
             />
           </div>
 
-          {/* Error Message */}
           {error && (
             <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
               {error}
             </div>
           )}
 
-          {/* Success Message */}
           {success && (
             <div className="rounded-xl border border-teal-500/30 bg-teal-500/10 px-4 py-3 text-sm text-teal-300">
-              ✓ Entry saved and encrypted. AI analysis complete.
+              ✓ Entry saved and encrypted
             </div>
           )}
 
-          {/* Save Button */}
           <button
             onClick={handleSave}
             disabled={saving || !transcript.trim()}
@@ -214,191 +177,108 @@ export default function Journal() {
             {saving ? 'Saving...' : 'Save Entry'}
           </button>
 
-          {/* Security Notice */}
           <div className="rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-3">
             <div className="flex items-start gap-3">
               <div className="text-xl">🔒</div>
               <div className="text-xs text-slate-400">
                 <p className="font-medium text-white">Zero-Knowledge Encryption</p>
                 <p className="mt-1">
-                  Your entry is encrypted in your browser before being sent to the server.
-                  Only you can decrypt and read your journal.
+                  Your entry is encrypted in your browser. Only you can read it.
                 </p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* AI Analysis Section */}
+        {/* Quackers Response */}
         {analysis && (
-          <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <h3 className="font-semibold text-white flex items-center gap-2">
-              <span>✨</span>
-              <span>AI Analysis</span>
-            </h3>
+          <div className="space-y-4 rounded-2xl border border-teal-800 bg-gradient-to-br from-teal-950/50 to-slate-900 p-6">
+            {/* Duck Header */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="text-4xl">🦆</div>
+              <div>
+                <h3 className="font-semibold text-white text-lg">Quackers</h3>
+                <p className="text-xs text-teal-300">Your Journal Companion</p>
+              </div>
+            </div>
 
-            {/* Debug Dropdown (for development) */}
-            <details className="rounded-lg bg-slate-800/50 p-3">
-              <summary className="cursor-pointer text-xs text-slate-500 hover:text-slate-400">
-                🔍 Debug: Raw Analysis Data
-              </summary>
-              <pre className="mt-2 max-h-64 overflow-auto rounded bg-slate-950 p-2 text-xs text-slate-400">
-                {JSON.stringify(analysis, null, 2)}
-              </pre>
-            </details>
-
-            {/* Show message if analysis exists but is empty */}
-            {!hasVisibleAnalysis && (
-              <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-300">
-                ℹ️ AI analysis completed but didn't extract specific insights from this entry.
-                This can happen with very short entries or if the content is unclear.
-                Check the debug dropdown above to see the raw data.
+            {/* Reaction */}
+            {analysis.reaction && (
+              <div className="rounded-lg bg-slate-800/50 px-4 py-3">
+                <p className="text-slate-200 leading-relaxed">{analysis.reaction}</p>
               </div>
             )}
 
-            {/* Mood */}
-            {analysis.mood && analysis.mood !== 'neutral' && (
-              <div>
-                <p className="mb-1 text-xs text-slate-500">Detected mood:</p>
-                <span className="inline-block rounded-full bg-teal-900/40 px-3 py-1 text-sm capitalize text-teal-400">
-                  {analysis.mood}
-                </span>
+            {/* Question */}
+            {analysis.question && (
+              <div className="rounded-lg bg-teal-900/20 border border-teal-800/50 px-4 py-3">
+                <p className="text-teal-200 font-medium">{analysis.question}</p>
               </div>
             )}
 
-            {/* Emotions */}
-            {analysis.emotions && analysis.emotions.length > 0 && (
-              <div>
-                <p className="mb-2 text-xs text-slate-500">Emotions detected:</p>
-                <div className="flex flex-wrap gap-2">
-                  {analysis.emotions.map((emotion, i) => (
-                    <span
-                      key={i}
-                      className="rounded-full bg-purple-900/30 px-3 py-1 text-xs capitalize text-purple-400"
-                    >
-                      {emotion}
+            {/* Suggestions */}
+            {analysis.suggestions && analysis.suggestions.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs text-slate-400 font-medium">What would help?</p>
+                {analysis.suggestions.map((suggestion, i) => (
+                  <button
+                    key={i}
+                    className="w-full group flex items-center gap-3 rounded-lg border border-slate-700 bg-slate-800/70 px-4 py-3 text-left hover:border-teal-600 hover:bg-slate-800 transition-all"
+                  >
+                    <span className="text-xl group-hover:scale-110 transition-transform">
+                      {suggestion.icon || '📅'}
                     </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Summary */}
-            {analysis.summary && analysis.summary !== '' && (
-              <div>
-                <p className="mb-1 text-xs text-slate-500">Summary:</p>
-                <p className="text-sm text-slate-300">{analysis.summary}</p>
-              </div>
-            )}
-
-            {/* Key Themes */}
-            {analysis.key_themes && analysis.key_themes.length > 0 && (
-              <div>
-                <p className="mb-2 text-xs text-slate-500">Key themes:</p>
-                <div className="flex flex-wrap gap-2">
-                  {analysis.key_themes.map((theme, i) => (
-                    <span
-                      key={i}
-                      className="rounded-full bg-blue-900/30 px-3 py-1 text-xs text-blue-400"
-                    >
-                      {theme}
+                    <span className="text-sm text-slate-200 flex-1">
+                      {suggestion.text}
                     </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Tasks */}
-            {analysis.tasks && analysis.tasks.length > 0 && (
-              <div>
-                <p className="mb-2 text-xs text-slate-500">Tasks detected:</p>
-                <ul className="space-y-1">
-                  {analysis.tasks.map((task, i) => (
-                    <li
-                      key={i}
-                      className="flex items-start gap-2 text-sm text-slate-300"
-                    >
-                      <span className="mt-0.5 text-teal-400">✓</span>
-                      <span>{task}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Meetings */}
-            {analysis.meetings && analysis.meetings.length > 0 && (
-              <div>
-                <p className="mb-2 text-xs text-slate-500">Meetings detected:</p>
-                <ul className="space-y-2">
-                  {analysis.meetings.map((meeting, i) => (
-                    <li
-                      key={i}
-                      className="rounded-lg bg-slate-800 px-3 py-2 text-sm"
-                    >
-                      <p className="font-medium text-white">
-                        {meeting.title || 'Meeting'}
-                      </p>
-                      <p className="mt-0.5 text-xs text-slate-400">
-                        When: {meeting.when || 'not specified'}
-                        {meeting.with ? ` · With: ${meeting.with}` : ''}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Goals */}
-            {analysis.goals && analysis.goals.length > 0 && (
-              <div>
-                <p className="mb-2 text-xs text-slate-500">Goals mentioned:</p>
-                <ul className="space-y-1">
-                  {analysis.goals.map((goal, i) => (
-                    <li
-                      key={i}
-                      className="flex items-start gap-2 text-sm text-slate-300"
-                    >
-                      <span className="mt-0.5 text-amber-400">🎯</span>
-                      <span>{goal}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* People */}
-            {analysis.people && analysis.people.length > 0 && (
-              <div>
-                <p className="mb-2 text-xs text-slate-500">People mentioned:</p>
-                <div className="flex flex-wrap gap-2">
-                  {analysis.people.map((person, i) => (
-                    <span
-                      key={i}
-                      className="rounded-full bg-green-900/30 px-3 py-1 text-xs text-green-400"
-                    >
-                      👤 {person}
+                    <span className="text-teal-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                      let's do it →
                     </span>
-                  ))}
-                </div>
+                  </button>
+                ))}
               </div>
             )}
 
-            {/* Places */}
-            {analysis.places && analysis.places.length > 0 && (
-              <div>
-                <p className="mb-2 text-xs text-slate-500">Places mentioned:</p>
-                <div className="flex flex-wrap gap-2">
-                  {analysis.places.map((place, i) => (
-                    <span
-                      key={i}
-                      className="rounded-full bg-orange-900/30 px-3 py-1 text-xs text-orange-400"
-                    >
-                      📍 {place}
-                    </span>
-                  ))}
-                </div>
+            {/* Encouragement */}
+            {analysis.encouragement && (
+              <div className="rounded-lg border border-teal-800/50 bg-teal-950/30 px-4 py-3">
+                <p className="text-teal-200 text-center font-medium">
+                  {analysis.encouragement}
+                </p>
               </div>
+            )}
+
+            {/* Detected Items (Collapsible Debug) */}
+            {analysis.detected && (
+              <details className="text-xs">
+                <summary className="cursor-pointer text-slate-500 hover:text-slate-400">
+                  🔍 What Quackers detected
+                </summary>
+                <div className="mt-3 space-y-2 rounded-lg bg-slate-950/50 p-3">
+                  {analysis.detected.tasks && analysis.detected.tasks.length > 0 && (
+                    <div>
+                      <p className="text-slate-400 mb-1">Tasks:</p>
+                      <p className="text-slate-300">{analysis.detected.tasks.join(', ')}</p>
+                    </div>
+                  )}
+                  {analysis.detected.meetings && analysis.detected.meetings.length > 0 && (
+                    <div>
+                      <p className="text-slate-400 mb-1">Meetings:</p>
+                      {analysis.detected.meetings.map((m, i) => (
+                        <p key={i} className="text-slate-300">
+                          {m.title || 'Meeting'} {m.when && `(${m.when})`} {m.with && `with ${m.with}`}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                  {analysis.detected.emotions && analysis.detected.emotions.length > 0 && (
+                    <div>
+                      <p className="text-slate-400 mb-1">Emotions detected:</p>
+                      <p className="text-slate-300">{analysis.detected.emotions.join(', ')}</p>
+                    </div>
+                  )}
+                </div>
+              </details>
             )}
           </div>
         )}
