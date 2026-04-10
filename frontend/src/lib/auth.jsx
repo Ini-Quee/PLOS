@@ -8,10 +8,31 @@ import api, { setAccessToken } from './api';
 
 const AuthContext = createContext(null);
 
+// Session storage key for encryption password
+const ENCRYPTION_PASSWORD_KEY = 'plos_encryption_password';
+
 export function AuthProvider({ children }) {
- const [user, setUser] = useState(null);
-const [loading, setLoading] = useState(true);
-const [encryptionPassword, setEncryptionPassword] = useState(null);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [encryptionPassword, setEncryptionPasswordState] = useState(null);
+
+  // Restore encryption password from sessionStorage on mount
+  useEffect(() => {
+    const storedPassword = sessionStorage.getItem(ENCRYPTION_PASSWORD_KEY);
+    if (storedPassword) {
+      setEncryptionPasswordState(storedPassword);
+    }
+  }, []);
+
+  // Helper to set encryption password (persists to sessionStorage)
+  function setEncryptionPassword(password) {
+    if (password) {
+      sessionStorage.setItem(ENCRYPTION_PASSWORD_KEY, password);
+    } else {
+      sessionStorage.removeItem(ENCRYPTION_PASSWORD_KEY);
+    }
+    setEncryptionPasswordState(password);
+  }
 
   useEffect(() => {
     async function restoreSession() {
@@ -40,26 +61,26 @@ const [encryptionPassword, setEncryptionPassword] = useState(null);
       return { requiresMfa: true };
     }
 
-   setAccessToken(response.data.accessToken);
-setUser(response.data.user);
-setEncryptionPassword(password);
-return { success: true };
+    setAccessToken(response.data.accessToken);
+    setUser(response.data.user);
+    setEncryptionPassword(password);
+    return { success: true };
   }
 
   async function register(email, password, name) {
-  const response = await api.post('/auth/register', {
-    email,
-    password,
-    name,
-  });
+    const response = await api.post('/auth/register', {
+      email,
+      password,
+      name,
+    });
 
-  if (response.data.accessToken) {
-    setAccessToken(response.data.accessToken);
-    setUser(response.data.user);
+    if (response.data.accessToken) {
+      setAccessToken(response.data.accessToken);
+      setUser(response.data.user);
+    }
+
+    return response.data;
   }
-
-  return response.data;
-}
 
   async function setupMfa() {
     const response = await api.post('/auth/mfa/setup');
@@ -74,13 +95,13 @@ return { success: true };
   }
 
   async function logout() {
-  try {
-    await api.post('/auth/logout');
-  } finally {
-    setAccessToken(null);
-    setUser(null);
-    setEncryptionPassword(null);
-  }
+    try {
+      await api.post('/auth/logout');
+    } finally {
+      setAccessToken(null);
+      setUser(null);
+      setEncryptionPassword(null);
+    }
 
   }
 

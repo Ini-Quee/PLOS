@@ -4,6 +4,8 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Journal from './pages/Journal';
+import MfaSetup from './pages/MfaSetup';
+import Settings from './pages/Settings';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -81,10 +83,34 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/journal"
+        element={
+          <ProtectedRoute>
+            <Journal />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/journal/:journalType"
         element={
           <ProtectedRoute>
             <Journal />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mfa-setup"
+        element={
+          <ProtectedRoute>
+            <MfaSetup />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <Settings />
           </ProtectedRoute>
         }
       />

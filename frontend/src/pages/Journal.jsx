@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import api from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { encryptText } from '../lib/encryption';
+import { analyzeJournalEntryWithGemini } from '../lib/gemini';
 import LivingBackground from '../components/LivingBackground';
 import JournalPage from '../components/JournalPage';
 
@@ -16,17 +17,23 @@ const JOURNAL_TITLES = {
 
 export default function Journal() {
   const navigate = useNavigate();
-  const { journalType } = useParams(); // Get journal type from URL
+  const { journalType } = useParams();
   const { encryptionPassword } = useAuth();
   const [saving, setSaving] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState('');
   const [analysis, setAnalysis] = useState(null);
 
   const journalTitle = JOURNAL_TITLES[journalType] || '📖 Journal';
 
-  async function handleSave(text) {
+  async function handleSave(text, durationSeconds = 0) {
     if (!text.trim()) {
       setError('Please write something first!');
+      return;
+    }
+
+    if (!encryptionPassword) {
+      setError('Encryption password not available. Please log in again.');
       return;
     }
 
@@ -34,28 +41,63 @@ export default function Journal() {
     setError('');
 
     try {
+      // Step 1: Encrypt the content client-side
       const encrypted = await encryptText(text, encryptionPassword);
       const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
 
+      // Step 2: Save encrypted entry to backend
       const response = await api.post('/journal', {
         encryptedContent: encrypted.ciphertext,
         encryptionIv: encrypted.iv,
         encryptionSalt: encrypted.salt,
         wordCount,
         characterCount: text.length,
-        durationSeconds: 0,
+        durationSeconds,
         recordedAt: new Date().toISOString(),
-        plaintextForAnalysis: text,
-        journalType, // Save which journal this belongs to
+        journalType,
       });
 
-      if (response.data.analysis) {
-        setAnalysis(response.data.analysis);
+      const entryId = response.data.entry.id;
+
+      // Step 3: Analyze with Gemini (client-side, zero-knowledge)
+      setAnalyzing(true);
+      const aiAnalysis = await analyzeJournalEntryWithGemini(text);
+
+      if (aiAnalysis) {
+        // Step 4: Encrypt the analysis
+        const encryptedAnalysis = await encryptText(
+          JSON.stringify(aiAnalysis),
+          encryptionPassword
+        );
+
+        // Step 5: Save analysis to backend
+        await api.patch(`/journal/entries/${entryId}/analysis`, {
+          aiMood: aiAnalysis.mood,
+          aiSummary: aiAnalysis.summary,
+          aiAnalysis: aiAnalysis,
+          encryptedAnalysis: encryptedAnalysis.ciphertext,
+          analysisIv: encryptedAnalysis.iv,
+          analysisSalt: encryptedAnalysis.salt,
+        });
+
+        // Show analysis to user
+        setAnalysis({
+          reaction: aiAnalysis.summary || "I've read your entry.",
+          question: aiAnalysis.commitments?.length > 0 
+            ? `You mentioned: ${aiAnalysis.commitments[0]}` 
+            : 'How are you feeling about this?',
+        });
+      } else {
+        // AI analysis failed but entry is saved
+        setError('Analysis unavailable. Your entry is saved.');
+        setTimeout(() => setError(''), 3000);
       }
     } catch (err) {
+      console.error('Save error:', err);
       setError(err.response?.data?.error || 'Failed to save entry');
     } finally {
       setSaving(false);
+      setAnalyzing(false);
     }
   }
 
@@ -175,7 +217,7 @@ export default function Journal() {
           </div>
         )}
 
-        {saving && (
+        {(saving || analyzing) && (
           <div style={{
             position: 'fixed',
             bottom: 20,
@@ -188,7 +230,7 @@ export default function Journal() {
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
             fontWeight: 600,
           }}>
-            🦆 Quackers is reading...
+            {analyzing ? '🦆 PLOS is reading your entry...' : '💾 Saving...'}
           </div>
         )}
       </div>

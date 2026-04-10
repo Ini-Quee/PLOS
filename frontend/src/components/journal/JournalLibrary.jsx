@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import JournalEditor from './JournalEditor';
 
 export default function JournalLibrary() {
   const [activeJournal, setActiveJournal] = useState(null);
