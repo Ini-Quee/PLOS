@@ -1,0 +1,302 @@
+/**
+ * LumiOrb Styles
+ * Amber orb animations and effects
+ */
+
+/* Base orb container */
+.lumi-orb {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Inner glowing circle */
+.lumi-orb-inner {
+  border-radius: 50%;
+}
+
+/* Idle state — slow breathing pulse */
+@keyframes lumiPulse {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.02);
+  }
+}
+
+.lumi-orb-idle {
+  animation: lumiPulse 3s ease-in-out infinite;
+}
+
+.lumi-orb-idle .lumi-orb-inner {
+  animation: lumiInnerPulse 3s ease-in-out infinite;
+}
+
+@keyframes lumiInnerPulse {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.05);
+  }
+}
+
+/* Listening state — quicker pulse */
+@keyframes lumiListening {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1.02);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+.lumi-orb-listening {
+  animation: lumiListening 1.5s ease-in-out infinite;
+}
+
+.lumi-orb-listening .lumi-orb-inner {
+  animation: lumiListeningInner 1s ease-in-out infinite;
+}
+
+@keyframes lumiListeningInner {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.1);
+  }
+}
+
+/* Speaking state — bright active glow */
+@keyframes lumiSpeaking {
+  0%, 100% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+.lumi-orb-speaking {
+  animation: lumiSpeaking 0.8s ease-in-out infinite;
+}
+
+.lumi-orb-speaking .lumi-orb-inner {
+  animation: lumiSpeakingInner 0.5s ease-in-out infinite;
+}
+
+@keyframes lumiSpeakingInner {
+  0%, 100% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+/* Sound wave visualizer for listening state */
+.lumi-sound-wave {
+  position: absolute;
+  bottom: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 30px;
+}
+
+.lumi-wave-bar {
+  width: 4px;
+  background: linear-gradient(to top, #F5A623, rgba(245, 166, 35, 0.3));
+  border-radius: 2px;
+  animation: waveBar 0.8s ease-in-out infinite;
+}
+
+@keyframes waveBar {
+  0%, 100% {
+    transform: scaleY(0.3);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+/* Ripple effect for speaking state */
+.lumi-ripple-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.lumi-ripple {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid rgba(245, 166, 35, 0.5);
+  animation: lumiRipple 1.5s ease-out infinite;
+}
+
+@keyframes lumiRipple {
+  0% {
+    width: 100%;
+    height: 100%;
+    opacity: 0.8;
+  }
+  100% {
+    width: 200%;
+    height: 200%;
+    opacity: 0;
+  }
+}
+
+/* Hover effect for clickable orb */
+.lumi-orb[role="button"]:hover {
+  transform: scale(1.1) !important;
+}
+
+.lumi-orb[role="button"]:active {
+  transform: scale(0.95) !important;
+}
+
+/* Different sizes */
+.lumi-orb-small {
+  width: 48px;
+  height: 48px;
+}
+
+.lumi-orb-small .lumi-orb-inner {
+  width: 28px;
+  height: 28px;
+}
+
+.lumi-orb-medium {
+  width: 64px;
+  height: 64px;
+}
+
+.lumi-orb-medium .lumi-orb-inner {
+  width: 38px;
+  height: 38px;
+}
+
+.lumi-orb-large {
+  width: 96px;
+  height: 96px;
+}
+
+.lumi-orb-large .lumi-orb-inner {
+  width: 58px;
+  height: 58px;
+}
+
+.lumi-orb-xl {
+  width: 128px;
+  height: 128px;
+}
+
+.lumi-orb-xl .lumi-orb-inner {
+  width: 76px;
+  height: 76px;
+}
+
+/* Floating animation for persistent orb */
+@keyframes lumiFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.lumi-orb-persistent {
+  animation: lumiFloat 4s ease-in-out infinite;
+}
+
+.lumi-orb-persistent:hover {
+  animation: none;
+}
+
+/* Transition states */
+.lumi-orb-state-transition {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Dark mode adjustments (default) */
+@media (prefers-color-scheme: dark) {
+  .lumi-orb {
+    /* Default styles already optimized for dark */
+  }
+}
+
+/* Accessibility — reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .lumi-orb,
+  .lumi-orb-inner,
+  .lumi-sound-wave,
+  .lumi-wave-bar,
+  .lumi-ripple {
+    animation: none !important;
+  }
+
+  .lumi-sound-wave {
+    opacity: 0;
+  }
+
+  .lumi-ripple-container {
+    display: none;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .lumi-orb {
+    border: 2px solid #F5A623;
+  }
+
+  .lumi-orb-inner {
+    background-color: #F5A623 !important;
+  }
+}
+
+/* Focus styles for keyboard navigation */
+.lumi-orb:focus-visible {
+  outline: 3px solid #F5A623;
+  outline-offset: 4px;
+}
+
+/* Print styles — hide animations */
+@media print {
+  .lumi-orb {
+    background-color: #F5A623 !important;
+    box-shadow: none !important;
+  }
+
+  .lumi-orb-inner {
+    display: none;
+  }
+}

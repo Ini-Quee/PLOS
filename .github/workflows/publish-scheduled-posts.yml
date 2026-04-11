@@ -1,0 +1,38 @@
+# GitHub Actions Workflow: Publish Scheduled Posts
+# Per AGENTS.md Part 6.9 — Runs every 15 minutes to check for due posts
+
+name: Publish Scheduled Posts
+
+on:
+  schedule:
+    # Run every 15 minutes
+    - cron: '*/15 * * * *'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  publish-posts:
+    runs-on: ubuntu-latest
+    name: Check and Publish Due Posts
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run publish script
+        run: node backend/src/scripts/publishScheduledPosts.js
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          WEB_PUSH_PUBLIC_KEY: ${{ secrets.WEB_PUSH_PUBLIC_KEY }}
+          WEB_PUSH_PRIVATE_KEY: ${{ secrets.WEB_PUSH_PRIVATE_KEY }}
+
+      - name: Log completion
+        run: echo "Scheduled posts check completed at $(date)"

@@ -17,14 +17,14 @@ export default function Dashboard() {
         // Get entries to calculate streak
         const response = await api.get('/journal/entries');
         const entries = response.data.entries || [];
-        
+
         // Calculate streak (consecutive days with entries)
         const streakCount = calculateStreak(entries);
         setStreak(streakCount);
-        
+
         // Get last entry date
         if (entries.length > 0) {
-          const sorted = entries.sort((a, b) => 
+          const sorted = entries.sort((a, b) =>
             new Date(b.recorded_at) - new Date(a.recorded_at)
           );
           setLastEntryDate(new Date(sorted[0].recorded_at));
@@ -35,7 +35,7 @@ export default function Dashboard() {
         setLoading(false);
       }
     }
-    
+
     if (user) {
       fetchJournalData();
     }
@@ -43,31 +43,31 @@ export default function Dashboard() {
 
   function calculateStreak(entries) {
     if (!entries || entries.length === 0) return 0;
-    
+
     // Sort by date descending
-    const sorted = entries.sort((a, b) => 
+    const sorted = entries.sort((a, b) =>
       new Date(b.recorded_at) - new Date(a.recorded_at)
     );
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     let streak = 0;
     let currentDate = new Date(today);
-    
+
     // Check if there's an entry for today or yesterday to start streak
     const dates = sorted.map(e => {
       const d = new Date(e.recorded_at);
       d.setHours(0, 0, 0, 0);
       return d.getTime();
     });
-    
+
     // Start from today and go backwards
     while (dates.includes(currentDate.getTime())) {
       streak++;
       currentDate.setDate(currentDate.getDate() - 1);
     }
-    
+
     // If no entry today, check if there's one yesterday to continue streak
     if (streak === 0) {
       const yesterday = new Date(today);
@@ -82,7 +82,7 @@ export default function Dashboard() {
         }
       }
     }
-    
+
     return streak;
   }
 
@@ -99,215 +99,270 @@ export default function Dashboard() {
     day: 'numeric',
   });
 
-  const lastEntryText = lastEntryDate 
+  const lastEntryText = lastEntryDate
     ? lastEntryDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     : 'No entries yet';
 
   return (
-    <div 
+    <div
       style={{
         minHeight: '100vh',
-        backgroundColor: '#0a0f1e',
-        color: '#ffffff',
-        fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+        backgroundColor: '#0D0D0D',
+        color: '#F5F0E8',
+        fontFamily: "'Inter', system-ui, sans-serif",
       }}
     >
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px' }}>
         {/* Header */}
-        <div 
+        <div
           style={{
             display: 'flex',
-            flexDirection: 'column',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            flexWrap: 'wrap',
             gap: '16px',
             marginBottom: '32px',
             padding: '24px',
-            backgroundColor: '#111827',
-            borderRadius: '12px',
-            border: '1px solid #1e293b',
+            backgroundColor: '#1A1A1A',
+            borderRadius: '16px',
+            border: '1px solid #2E2E2E',
           }}
         >
-          <div 
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              flexWrap: 'wrap',
-              gap: '16px',
-            }}
-          >
-            <div>
-              <p style={{ margin: 0, color: '#94a3b8', fontSize: '14px' }}>
-                Good morning, {user?.name || 'User'}.
-              </p>
-              <p style={{ margin: '8px 0 0 0', color: '#475569', fontSize: '14px' }}>
-                {dateString}
-              </p>
-            </div>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button
-                onClick={() => navigate('/settings')}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: 'transparent',
-                  border: '1px solid #1e293b',
-                  borderRadius: '8px',
-                  color: '#94a3b8',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                }}
-              >
-                Settings
-              </button>
-              <button
-                onClick={handleLogout}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#00bfa5',
-                  border: 'none',
-                  borderRadius: '8px',
-                  color: '#0a0f1e',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                }}
-              >
-                Sign Out
-              </button>
-            </div>
+          <div>
+            <p style={{ margin: 0, color: '#A89880', fontSize: '14px', fontFamily: "'Inter', sans-serif" }}>
+              Good morning, {user?.name || 'User'}.
+            </p>
+            <p style={{
+              margin: '8px 0 0 0',
+              color: '#6B5F52',
+              fontSize: '14px',
+              fontFamily: "'DM Serif Display', serif",
+              fontStyle: 'italic'
+            }}>
+              {dateString}
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              onClick={() => navigate('/settings')}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: 'transparent',
+                border: '1px solid #2E2E2E',
+                borderRadius: '12px',
+                color: '#A89880',
+                fontSize: '14px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                fontFamily: "'Inter', sans-serif",
+              }}
+            >
+              Settings
+            </button>
+            <button
+              onClick={handleLogout}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#F5A623',
+                border: 'none',
+                borderRadius: '12px',
+                color: '#0D0D0D',
+                fontSize: '14px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                fontFamily: "'Inter', sans-serif",
+              }}
+            >
+              Sign Out
+            </button>
           </div>
         </div>
 
+        {/* Talk to Lumi Button */}
+        <div style={{ marginBottom: '32px' }}>
+          <button
+            onClick={() => navigate('/talk-to-lumi')}
+            style={{
+              width: '100%',
+              padding: '16px 24px',
+              backgroundColor: '#F5A623',
+              border: 'none',
+              borderRadius: '16px',
+              color: '#0D0D0D',
+              fontSize: '18px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              fontFamily: "'DM Serif Display', serif",
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '12px',
+            }}
+          >
+            <span style={{ fontSize: '24px' }}>✨</span>
+            Talk to Lumi
+            <span style={{ fontSize: '24px' }}>✨</span>
+          </button>
+        </div>
+
         {/* Dashboard Grid */}
-        <div 
+        <div
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
             gap: '24px',
           }}
         >
-          {/* TODAY'S SCHEDULE */}
-          <div 
+          {/* TODAY'S PLAN */}
+          <div
             style={{
-              backgroundColor: '#111827',
-              borderRadius: '12px',
-              border: '1px solid #1e293b',
+              backgroundColor: '#1A1A1A',
+              borderRadius: '16px',
+              border: '1px solid #2E2E2E',
               padding: '24px',
+              transition: 'box-shadow 0.2s',
             }}
+            className="amber-glow-hover"
           >
-            <h2 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 600 }}>
-              TODAY'S SCHEDULE
+            <h2 style={{
+              margin: '0 0 16px 0',
+              fontSize: '18px',
+              fontWeight: 600,
+              fontFamily: "'Inter', sans-serif",
+              color: '#F5F0E8'
+            }}>
+              TODAY'S PLAN
             </h2>
-            <div style={{ borderTop: '1px solid #1e293b', paddingTop: '16px' }}>
+            <div style={{ borderTop: '1px solid #2E2E2E', paddingTop: '16px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ color: '#94a3b8', fontSize: '14px', minWidth: '50px' }}>07:00</span>
-                  <span style={{ color: '#ffffff', fontSize: '14px' }}>Prayer</span>
+                  <span style={{ fontSize: '16px' }}>✅</span>
+                  <span style={{ color: '#A89880', fontSize: '14px', fontFamily: "'Inter', sans-serif" }}>Workout done</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ color: '#94a3b8', fontSize: '14px', minWidth: '50px' }}>08:00</span>
-                  <span style={{ color: '#ffffff', fontSize: '14px' }}>Gym</span>
+                  <span style={{ fontSize: '16px' }}>⏳</span>
+                  <span style={{ color: '#A89880', fontSize: '14px', fontFamily: "'Inter', sans-serif" }}>Meditate</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ color: '#94a3b8', fontSize: '14px', minWidth: '50px' }}>09:00</span>
-                  <span style={{ color: '#ffffff', fontSize: '14px' }}>Deep work</span>
+                  <span style={{ fontSize: '16px' }}>⬜</span>
+                  <span style={{ color: '#A89880', fontSize: '14px', fontFamily: "'Inter', sans-serif" }}>Read 10 pages</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ color: '#94a3b8', fontSize: '14px', minWidth: '50px' }}>12:00</span>
-                  <span style={{ color: '#ffffff', fontSize: '14px' }}>Lunch</span>
+                  <span style={{ fontSize: '16px' }}>⬜</span>
+                  <span style={{ color: '#A89880', fontSize: '14px', fontFamily: "'Inter', sans-serif" }}>5 applications</span>
                 </div>
               </div>
-              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #1e293b' }}>
-                <button
-                  style={{
-                    padding: '8px 0',
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    color: '#00bfa5',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    fontWeight: 500,
-                  }}
-                >
-                  [View Full Schedule]
-                </button>
+              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #2E2E2E' }}>
+          <button
+            style={{
+              padding: '8px 0',
+              backgroundColor: 'transparent',
+              border: 'none',
+              color: '#F5A623',
+              fontSize: '14px',
+              cursor: 'pointer',
+              fontWeight: 500,
+              fontFamily: "'Inter', sans-serif",
+            }}
+          >
+            [Full Schedule]
+          </button>
               </div>
             </div>
           </div>
 
           {/* JOURNAL */}
-          <div 
+          <div
             style={{
-              backgroundColor: '#111827',
-              borderRadius: '12px',
-              border: '1px solid #1e293b',
+              backgroundColor: '#1A1A1A',
+              borderRadius: '16px',
+              border: '1px solid #2E2E2E',
               padding: '24px',
+              transition: 'box-shadow 0.2s',
             }}
+            className="amber-glow-hover"
           >
-            <h2 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 600 }}>
+            <h2 style={{
+              margin: '0 0 16px 0',
+              fontSize: '18px',
+              fontWeight: 600,
+              fontFamily: "'Inter', sans-serif",
+              color: '#F5F0E8'
+            }}>
               JOURNAL
             </h2>
-            <div style={{ borderTop: '1px solid #1e293b', paddingTop: '16px' }}>
+            <div style={{ borderTop: '1px solid #2E2E2E', paddingTop: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
                 <span style={{ fontSize: '20px' }}>🔥</span>
-                <span style={{ color: '#ffffff', fontSize: '16px', fontWeight: 600 }}>
+                <span style={{ color: '#F5F0E8', fontSize: '16px', fontWeight: 600, fontFamily: "'Inter', sans-serif" }}>
                   {loading ? '...' : `${streak} day streak`}
                 </span>
               </div>
-              <p style={{ margin: '0 0 16px 0', color: '#94a3b8', fontSize: '14px' }}>
+              <p style={{ margin: '0 0 16px 0', color: '#A89880', fontSize: '14px', fontFamily: "'Inter', sans-serif" }}>
                 Last entry: {lastEntryText}
               </p>
               <button
                 onClick={() => navigate('/journal')}
                 style={{
                   padding: '10px 16px',
-                  backgroundColor: '#00bfa5',
+                  backgroundColor: '#F5A623',
                   border: 'none',
-                  borderRadius: '8px',
-                  color: '#0a0f1e',
+                  borderRadius: '12px',
+                  color: '#0D0D0D',
                   fontSize: '14px',
                   fontWeight: 600,
                   cursor: 'pointer',
                   width: '100%',
+                  fontFamily: "'Inter', sans-serif",
+                  transition: 'all 0.2s',
                 }}
               >
-                [Start Today's Journal]
+                [Open Journal]
               </button>
             </div>
           </div>
 
           {/* ACTIVE PROJECTS */}
-          <div 
+          <div
             style={{
-              backgroundColor: '#111827',
-              borderRadius: '12px',
-              border: '1px solid #1e293b',
+              backgroundColor: '#1A1A1A',
+              borderRadius: '16px',
+              border: '1px solid #2E2E2E',
               padding: '24px',
+              transition: 'box-shadow 0.2s',
             }}
+            className="amber-glow-hover"
           >
-            <h2 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 600 }}>
+            <h2 style={{
+              margin: '0 0 16px 0',
+              fontSize: '18px',
+              fontWeight: 600,
+              fontFamily: "'Inter', sans-serif",
+              color: '#F5F0E8'
+            }}>
               ACTIVE PROJECTS
             </h2>
-            <div style={{ borderTop: '1px solid #1e293b', paddingTop: '16px' }}>
+            <div style={{ borderTop: '1px solid #2E2E2E', paddingTop: '16px' }}>
               <div style={{ marginBottom: '12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ color: '#ffffff', fontSize: '14px' }}>PLOS App</span>
-                  <span style={{ color: '#00bfa5', fontSize: '14px' }}>80%</span>
+                  <span style={{ color: '#F5F0E8', fontSize: '14px', fontFamily: "'Inter', sans-serif" }}>PLOS</span>
+                  <span style={{ color: '#F5A623', fontSize: '14px', fontFamily: "'Inter', sans-serif" }}>80%</span>
                 </div>
-                <div 
+                <div
                   style={{
                     height: '8px',
-                    backgroundColor: '#1e293b',
+                    backgroundColor: '#2E2E2E',
                     borderRadius: '4px',
                     overflow: 'hidden',
                   }}
                 >
-                  <div 
+                  <div
                     style={{
                       width: '80%',
                       height: '100%',
-                      backgroundColor: '#00bfa5',
+                      backgroundColor: '#F5A623',
                       borderRadius: '4px',
                     }}
                   />
@@ -315,158 +370,188 @@ export default function Dashboard() {
               </div>
               <div style={{ marginBottom: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ color: '#ffffff', fontSize: '14px' }}>AWS Cert</span>
-                  <span style={{ color: '#00bfa5', fontSize: '14px' }}>40%</span>
+                  <span style={{ color: '#F5F0E8', fontSize: '14px', fontFamily: "'Inter', sans-serif" }}>AZ-500</span>
+                  <span style={{ color: '#F5A623', fontSize: '14px', fontFamily: "'Inter', sans-serif" }}>40%</span>
                 </div>
-                <div 
+                <div
                   style={{
                     height: '8px',
-                    backgroundColor: '#1e293b',
+                    backgroundColor: '#2E2E2E',
                     borderRadius: '4px',
                     overflow: 'hidden',
                   }}
                 >
-                  <div 
+                  <div
                     style={{
                       width: '40%',
                       height: '100%',
-                      backgroundColor: '#00bfa5',
+                      backgroundColor: '#F5A623',
                       borderRadius: '4px',
                     }}
                   />
                 </div>
               </div>
-              <button
-                style={{
-                  padding: '8px 0',
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  color: '#00bfa5',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  fontWeight: 500,
-                }}
-              >
-                [View Projects]
-              </button>
+          <button
+            style={{
+              padding: '8px 0',
+              backgroundColor: 'transparent',
+              border: 'none',
+              color: '#F5A623',
+              fontSize: '14px',
+              cursor: 'pointer',
+              fontWeight: 500,
+              fontFamily: "'Inter', sans-serif",
+            }}
+          >
+            [All Projects]
+          </button>
             </div>
           </div>
 
           {/* THIS WEEK'S GOALS */}
-          <div 
+          <div
             style={{
-              backgroundColor: '#111827',
-              borderRadius: '12px',
-              border: '1px solid #1e293b',
+              backgroundColor: '#1A1A1A',
+              borderRadius: '16px',
+              border: '1px solid #2E2E2E',
               padding: '24px',
+              transition: 'box-shadow 0.2s',
             }}
+            className="amber-glow-hover"
           >
-            <h2 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 600 }}>
+            <h2 style={{
+              margin: '0 0 16px 0',
+              fontSize: '18px',
+              fontWeight: 600,
+              fontFamily: "'Inter', sans-serif",
+              color: '#F5F0E8'
+            }}>
               THIS WEEK'S GOALS
             </h2>
-            <div style={{ borderTop: '1px solid #1e293b', paddingTop: '16px' }}>
+            <div style={{ borderTop: '1px solid #2E2E2E', paddingTop: '16px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ color: '#94a3b8', fontSize: '16px' }}>□</span>
-                  <span style={{ color: '#ffffff', fontSize: '14px' }}>Finish journal feature</span>
+                  <span style={{ color: '#6B5F52', fontSize: '16px' }}>☐</span>
+                  <span style={{ color: '#F5F0E8', fontSize: '14px', fontFamily: "'Inter', sans-serif" }}>Finish journal feature</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ color: '#94a3b8', fontSize: '16px' }}>□</span>
-                  <span style={{ color: '#ffffff', fontSize: '14px' }}>Post 3x on LinkedIn</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ color: '#94a3b8', fontSize: '16px' }}>□</span>
-                  <span style={{ color: '#ffffff', fontSize: '14px' }}>Read 30 mins daily</span>
+                  <span style={{ color: '#6B5F52', fontSize: '16px' }}>☐</span>
+                  <span style={{ color: '#F5F0E8', fontSize: '14px', fontFamily: "'Inter', sans-serif" }}>Post 3x on LinkedIn</span>
                 </div>
               </div>
-              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #1e293b' }}>
-                <button
-                  style={{
-                    padding: '8px 0',
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    color: '#00bfa5',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    fontWeight: 500,
-                  }}
-                >
-                  [View All Goals]
-                </button>
+              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #2E2E2E' }}>
+          <button
+            style={{
+              padding: '8px 0',
+              backgroundColor: 'transparent',
+              border: 'none',
+              color: '#F5A623',
+              fontSize: '14px',
+              cursor: 'pointer',
+              fontWeight: 500,
+              fontFamily: "'Inter', sans-serif",
+            }}
+          >
+            [All Goals]
+          </button>
               </div>
             </div>
           </div>
 
-          {/* UPCOMING POSTS */}
-          <div 
+          {/* TODAY'S AFFIRMATION - Full Width */}
+          <div
             style={{
-              backgroundColor: '#111827',
-              borderRadius: '12px',
-              border: '1px solid #1e293b',
+              backgroundColor: '#1A1A1A',
+              borderRadius: '16px',
+              border: '1px solid #2E2E2E',
               padding: '24px',
               gridColumn: '1 / -1',
+              textAlign: 'center',
+              transition: 'box-shadow 0.2s',
             }}
+            className="amber-glow-hover"
           >
-            <h2 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 600 }}>
+            <h2 style={{
+              margin: '0 0 16px 0',
+              fontSize: '14px',
+              fontWeight: 600,
+              fontFamily: "'Inter', sans-serif",
+              color: '#A89880',
+              textTransform: 'uppercase',
+              letterSpacing: '1px'
+            }}>
+              TODAY'S AFFIRMATION
+            </h2>
+            <p style={{
+              margin: 0,
+              fontSize: '24px',
+              fontFamily: "'DM Serif Display', serif",
+              fontStyle: 'italic',
+              color: '#F5F0E8'
+            }}>
+              "I am disciplined enough to build the life I want."
+            </p>
+          </div>
+
+          {/* UPCOMING POSTS - Full Width */}
+          <div
+            style={{
+              backgroundColor: '#1A1A1A',
+              borderRadius: '16px',
+              border: '1px solid #2E2E2E',
+              padding: '24px',
+              gridColumn: '1 / -1',
+              transition: 'box-shadow 0.2s',
+            }}
+            className="amber-glow-hover"
+          >
+            <h2 style={{
+              margin: '0 0 16px 0',
+              fontSize: '18px',
+              fontWeight: 600,
+              fontFamily: "'Inter', sans-serif",
+              color: '#F5F0E8'
+            }}>
               UPCOMING POSTS
             </h2>
-            <div style={{ borderTop: '1px solid #1e293b', paddingTop: '16px' }}>
+            <div style={{ borderTop: '1px solid #2E2E2E', paddingTop: '16px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div 
+                <div
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '16px',
                     padding: '12px',
-                    backgroundColor: '#1a2235',
-                    borderRadius: '8px',
+                    backgroundColor: '#242424',
+                    borderRadius: '12px',
                   }}
                 >
-                  <span style={{ color: '#00bfa5', fontSize: '14px', fontWeight: 500 }}>
+                  <span style={{ color: '#F5A623', fontSize: '14px', fontWeight: 500, fontFamily: "'Inter', sans-serif" }}>
                     LinkedIn
                   </span>
-                  <span style={{ color: '#475569', fontSize: '14px' }}>•</span>
-                  <span style={{ color: '#94a3b8', fontSize: '14px' }}>Today 09:00</span>
-                  <span style={{ color: '#475569', fontSize: '14px' }}>•</span>
-                  <span style={{ color: '#ffffff', fontSize: '14px' }}>
+                  <span style={{ color: '#6B5F52', fontSize: '14px' }}>•</span>
+                  <span style={{ color: '#A89880', fontSize: '14px', fontFamily: "'Inter', sans-serif" }}>Today 09:00</span>
+                  <span style={{ color: '#6B5F52', fontSize: '14px' }}>•</span>
+                  <span style={{ color: '#F5F0E8', fontSize: '14px', fontFamily: "'Inter', sans-serif" }}>
                     "Building PLOS in public"
                   </span>
                 </div>
-                <div 
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '16px',
-                    padding: '12px',
-                    backgroundColor: '#1a2235',
-                    borderRadius: '8px',
-                  }}
-                >
-                  <span style={{ color: '#00bfa5', fontSize: '14px', fontWeight: 500 }}>
-                    X
-                  </span>
-                  <span style={{ color: '#475569', fontSize: '14px' }}>•</span>
-                  <span style={{ color: '#94a3b8', fontSize: '14px' }}>Tomorrow 10:00</span>
-                  <span style={{ color: '#475569', fontSize: '14px' }}>•</span>
-                  <span style={{ color: '#ffffff', fontSize: '14px' }}>
-                    "Security tip: JWT rotation"
-                  </span>
-                </div>
               </div>
-              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #1e293b' }}>
-                <button
-                  style={{
-                    padding: '8px 0',
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    color: '#00bfa5',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    fontWeight: 500,
-                  }}
-                >
-                  [Go to Content Planner]
-                </button>
+              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #2E2E2E' }}>
+          <button
+            style={{
+              padding: '8px 0',
+              backgroundColor: 'transparent',
+              border: 'none',
+              color: '#F5A623',
+              fontSize: '14px',
+              cursor: 'pointer',
+              fontWeight: 500,
+              fontFamily: "'Inter', sans-serif",
+            }}
+          >
+            [Content Planner]
+          </button>
               </div>
             </div>
           </div>

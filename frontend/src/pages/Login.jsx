@@ -49,22 +49,81 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-4">
-      <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8 shadow-xl">
-        <h1 className="text-3xl font-bold mb-2">PLOS</h1>
-        <p className="text-slate-400 mb-6">
-          Sign in to your account
-        </p>
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#0D0D0D',
+      color: '#F5F0E8',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '16px',
+      fontFamily: "'Inter', system-ui, sans-serif",
+    }}>
+      <div style={{
+        width: '100%',
+        maxWidth: '400px',
+        borderRadius: '16px',
+        border: '1px solid #2E2E2E',
+        backgroundColor: '#1A1A1A',
+        padding: '32px',
+      }}>
+        {/* Logo/Brand */}
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <div style={{
+            width: '64px',
+            height: '64px',
+            borderRadius: '50%',
+            backgroundColor: 'rgba(245, 166, 35, 0.12)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 16px',
+            boxShadow: '0 0 24px rgba(245, 166, 35, 0.25)',
+          }}>
+            <span style={{ fontSize: '32px' }}>✨</span>
+          </div>
+          <h1 style={{
+            fontSize: '32px',
+            fontWeight: 700,
+            margin: '0 0 8px 0',
+            fontFamily: "'DM Serif Display', serif",
+            color: '#F5F0E8',
+          }}>
+            PLOS
+          </h1>
+          <p style={{
+            fontSize: '14px',
+            color: '#A89880',
+            margin: 0,
+            fontFamily: "'Inter', sans-serif",
+          }}>
+            Your daily life companion
+          </p>
+        </div>
 
         {error && (
-          <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+          <div style={{
+            marginBottom: '16px',
+            padding: '12px 16px',
+            borderRadius: '12px',
+            border: '1px solid rgba(224, 82, 82, 0.3)',
+            backgroundColor: 'rgba(224, 82, 82, 0.1)',
+            color: '#E05252',
+            fontSize: '14px',
+          }}>
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
-            <label className="mb-1 block text-sm text-slate-300">
+            <label style={{
+              display: 'block',
+              marginBottom: '8px',
+              fontSize: '14px',
+              color: '#A89880',
+              fontFamily: "'Inter', sans-serif",
+            }}>
               Email
             </label>
             <input
@@ -73,12 +132,37 @@ export default function Login() {
               value={form.email}
               onChange={handleChange}
               required
-              className="w-full rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 outline-none focus:border-teal-400"
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                borderRadius: '12px',
+                border: '1px solid #2E2E2E',
+                backgroundColor: '#242424',
+                color: '#F5F0E8',
+                fontSize: '14px',
+                fontFamily: "'Inter', sans-serif",
+                outline: 'none',
+                transition: 'border-color 0.2s, box-shadow 0.2s',
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#F5A623';
+                e.target.style.boxShadow = '0 0 0 2px rgba(245, 166, 35, 0.2)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#2E2E2E';
+                e.target.style.boxShadow = 'none';
+              }}
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm text-slate-300">
+            <label style={{
+              display: 'block',
+              marginBottom: '8px',
+              fontSize: '14px',
+              color: '#A89880',
+              fontFamily: "'Inter', sans-serif",
+            }}>
               Password
             </label>
             <input
@@ -87,13 +171,38 @@ export default function Login() {
               value={form.password}
               onChange={handleChange}
               required
-              className="w-full rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 outline-none focus:border-teal-400"
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                borderRadius: '12px',
+                border: '1px solid #2E2E2E',
+                backgroundColor: '#242424',
+                color: '#F5F0E8',
+                fontSize: '14px',
+                fontFamily: "'Inter', sans-serif",
+                outline: 'none',
+                transition: 'border-color 0.2s, box-shadow 0.2s',
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#F5A623';
+                e.target.style.boxShadow = '0 0 0 2px rgba(245, 166, 35, 0.2)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#2E2E2E';
+                e.target.style.boxShadow = 'none';
+              }}
             />
           </div>
 
           {requiresMfa && (
             <div>
-              <label className="mb-1 block text-sm text-slate-300">
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontSize: '14px',
+                color: '#A89880',
+                fontFamily: "'Inter', sans-serif",
+              }}>
                 MFA Code
               </label>
               <input
@@ -103,7 +212,29 @@ export default function Login() {
                 onChange={handleChange}
                 maxLength={6}
                 required
-                className="w-full rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 outline-none focus:border-teal-400"
+                placeholder="000000"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  borderRadius: '12px',
+                  border: '1px solid #2E2E2E',
+                  backgroundColor: '#242424',
+                  color: '#F5F0E8',
+                  fontSize: '14px',
+                  fontFamily: "'Inter', sans-serif",
+                  textAlign: 'center',
+                  letterSpacing: '8px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s, box-shadow 0.2s',
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#F5A623';
+                  e.target.style.boxShadow = '0 0 0 2px rgba(245, 166, 35, 0.2)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#2E2E2E';
+                  e.target.style.boxShadow = 'none';
+                }}
               />
             </div>
           )}
@@ -111,7 +242,31 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl bg-teal-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-teal-400 disabled:opacity-60"
+            style={{
+              width: '100%',
+              padding: '14px',
+              borderRadius: '12px',
+              border: 'none',
+              backgroundColor: '#F5A623',
+              color: '#0D0D0D',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.6 : 1,
+              fontFamily: "'Inter', sans-serif",
+              transition: 'all 0.2s',
+              marginTop: '8px',
+            }}
+            onMouseEnter={(e) => {
+              if (!loading) {
+                e.target.style.backgroundColor = '#E09415';
+                e.target.style.transform = 'translateY(-1px)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = '#F5A623';
+              e.target.style.transform = 'translateY(0)';
+            }}
           >
             {loading
               ? 'Signing in...'
@@ -121,9 +276,22 @@ export default function Login() {
           </button>
         </form>
 
-        <p className="mt-6 text-sm text-slate-400">
+        <p style={{
+          marginTop: '24px',
+          textAlign: 'center',
+          fontSize: '14px',
+          color: '#A89880',
+          fontFamily: "'Inter', sans-serif",
+        }}>
           Don&apos;t have an account?{' '}
-          <Link to="/register" className="text-teal-400 hover:text-teal-300">
+          <Link
+            to="/register"
+            style={{
+              color: '#F5A623',
+              textDecoration: 'none',
+              fontWeight: 500,
+            }}
+          >
             Create one
           </Link>
         </p>

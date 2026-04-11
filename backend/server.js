@@ -1,6 +1,5 @@
 require('dotenv').config();
 
-const journalRoutes = require('./src/routes/journal');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -9,6 +8,14 @@ const cookieParser = require('cookie-parser');
 
 const { runMigrations } = require('./src/db/connection');
 const authRoutes = require('./src/routes/auth');
+const journalRoutes = require('./src/routes/journal');
+const scheduleRoutes = require('./src/routes/schedule');
+const projectsRoutes = require('./src/routes/projects');
+const booksRoutes = require('./src/routes/books');
+const jobsRoutes = require('./src/routes/jobs');
+const contentRoutes = require('./src/routes/content');
+const goalsRoutes = require('./src/routes/goals');
+const contactsRoutes = require('./src/routes/contacts');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -48,6 +55,13 @@ app.use(morgan('combined'));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/journal', journalRoutes);
+app.use('/api/schedule', scheduleRoutes);
+app.use('/api/projects', projectsRoutes);
+app.use('/api/books', booksRoutes);
+app.use('/api/jobs', jobsRoutes);
+app.use('/api/content', contentRoutes);
+app.use('/api/goals', goalsRoutes);
+app.use('/api/contacts', contactsRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({

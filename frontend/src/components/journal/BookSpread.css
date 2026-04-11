@@ -1,0 +1,453 @@
+/**
+ * BookSpread Styles
+ * Open book journal interface with warm paper aesthetic
+ */
+
+/* Container */
+.book-spread-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+/* Floating Toolbar */
+.journal-toolbar {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+  background: rgba(26, 26, 26, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  border: 1px solid #2E2E2E;
+  z-index: 100;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.toolbar-select {
+  padding: 8px 12px;
+  background-color: #242424;
+  border: 1px solid #2E2E2E;
+  border-radius: 8px;
+  color: #F5F0E8;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.toolbar-select:focus {
+  border-color: #F5A623;
+}
+
+.toolbar-select option {
+  background-color: #1A1A1A;
+  color: #F5F0E8;
+}
+
+.toolbar-colors {
+  display: flex;
+  gap: 8px;
+}
+
+.toolbar-color-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toolbar-color-btn:hover {
+  transform: scale(1.1);
+}
+
+.toolbar-color-btn.active {
+  border-color: #F5A623;
+  box-shadow: 0 0 0 2px rgba(245, 166, 35, 0.3);
+}
+
+/* Book Spread Layout */
+.book-spread {
+  display: flex;
+  perspective: 1500px;
+  margin-top: 60px;
+  position: relative;
+}
+
+/* Individual Pages */
+.book-page {
+  width: 420px;
+  min-height: 560px;
+  background: #F5F0E8;
+  position: relative;
+  box-shadow:
+    inset 0 0 60px rgba(0, 0, 0, 0.03),
+    0 4px 20px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+/* Left Page */
+.left-page {
+  border-radius: 4px 0 0 4px;
+  transform-origin: right center;
+  padding: 40px 30px 40px 40px;
+}
+
+/* Right Page */
+.right-page {
+  border-radius: 0 4px 4px 0;
+  transform-origin: left center;
+  padding: 40px 40px 40px 30px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Paper Texture */
+.paper-texture {
+  position: absolute;
+  inset: 0;
+  background-image:
+    /* Subtle linen texture */
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.005) 2px,
+      rgba(0, 0, 0, 0.005) 4px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.005) 2px,
+      rgba(0, 0, 0, 0.005) 4px
+    );
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* Paper Lines (Notebook effect on right page) */
+.right-page::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 40px;
+  right: 0;
+  bottom: 0;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 31px,
+    rgba(0, 0, 0, 0.05) 31px,
+    rgba(0, 0, 0, 0.05) 32px
+  );
+  pointer-events: none;
+}
+
+/* Left Page Header (Date) */
+.page-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.day-name {
+  font-family: 'Caveat', cursive;
+  font-size: 48px;
+  font-weight: 700;
+  color: #1A1A1A;
+  line-height: 1.1;
+  margin-bottom: 8px;
+}
+
+.full-date {
+  font-family: 'Caveat', cursive;
+  font-size: 24px;
+  color: #6B5F52;
+  font-weight: 500;
+}
+
+.mood-icon {
+  font-size: 48px;
+  margin-top: 24px;
+  display: inline-block;
+  cursor: default;
+}
+
+/* Journal Type Label */
+.journal-type-label {
+  font-family: 'DM Serif Display', serif;
+  font-size: 18px;
+  color: #A89880;
+  text-align: center;
+  margin-top: 60px;
+  font-style: italic;
+}
+
+/* Page Decoration */
+.page-decoration {
+  position: absolute;
+  bottom: 40px;
+  left: 40px;
+  right: 30px;
+}
+
+.decoration-line {
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.1), transparent);
+}
+
+/* Book Spine */
+.book-spine {
+  width: 24px;
+  background: linear-gradient(
+    to right,
+    #C4B8A8,
+    #8B7355 20%,
+    #A89880 40%,
+    #6B5F52 60%,
+    #8B7355 80%,
+    #C4B8A8
+  );
+  position: relative;
+  box-shadow:
+    inset 2px 0 4px rgba(255, 255, 255, 0.2),
+    inset -2px 0 4px rgba(0, 0, 0, 0.2);
+}
+
+.spine-shadow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0.15),
+    transparent 30%,
+    transparent 70%,
+    rgba(0, 0, 0, 0.15)
+  );
+}
+
+/* Voice Recorder on Right Page */
+.voice-recorder-container {
+  margin-bottom: 20px;
+  z-index: 1;
+}
+
+/* Writing Area */
+.writing-area {
+  flex: 1;
+  width: 100%;
+  min-height: 400px;
+  padding: 0 0 0 40px;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  line-height: 32px;
+  z-index: 1;
+  position: relative;
+}
+
+.writing-area::placeholder {
+  color: #A89880;
+  opacity: 0.7;
+  font-style: italic;
+}
+
+/* Word Count */
+.word-count {
+  text-align: right;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: #A89880;
+  margin-top: 16px;
+  padding-left: 40px;
+}
+
+/* Save Button */
+.save-entry-btn {
+  margin-top: 32px;
+  padding: 14px 48px;
+  background-color: #F5A623;
+  border: none;
+  border-radius: 12px;
+  color: #0D0D0D;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(245, 166, 35, 0.3);
+}
+
+.save-entry-btn:hover:not(.disabled) {
+  background-color: #E09415;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(245, 166, 35, 0.4);
+}
+
+.save-entry-btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive Design */
+@media (max-width: 900px) {
+  .book-spread {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .book-page {
+    width: 100%;
+    max-width: 500px;
+    min-height: auto;
+  }
+
+  .left-page {
+    border-radius: 4px 4px 0 0;
+    padding: 30px;
+  }
+
+  .right-page {
+    border-radius: 0 0 4px 4px;
+    padding: 30px;
+  }
+
+  .book-spine {
+    width: 100%;
+    height: 12px;
+    background: linear-gradient(
+      to bottom,
+      #C4B8A8,
+      #8B7355 20%,
+      #A89880 40%,
+      #6B5F52 60%,
+      #8B7355 80%,
+      #C4B8A8
+    );
+  }
+
+  .spine-shadow {
+    background: linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.15),
+      transparent 30%,
+      transparent 70%,
+      rgba(0, 0, 0, 0.15)
+    );
+  }
+
+  .writing-area {
+    padding-left: 0;
+    min-height: 300px;
+  }
+
+  .right-page::before {
+    left: 0;
+  }
+
+  .word-count {
+    padding-left: 0;
+  }
+
+  .journal-toolbar {
+    position: relative;
+    top: auto;
+    left: auto;
+    transform: none;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .day-name {
+    font-size: 36px;
+  }
+
+  .full-date {
+    font-size: 18px;
+  }
+
+  .book-page {
+    padding: 20px;
+  }
+
+  .journal-toolbar {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .toolbar-select {
+    font-size: 12px;
+    padding: 6px 8px;
+  }
+
+  .toolbar-color-btn {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .journal-toolbar,
+  .voice-recorder-container,
+  .save-entry-btn {
+    display: none;
+  }
+
+  .book-spread-container {
+    padding: 0;
+  }
+
+  .book-page {
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+
+  .book-spine {
+    background: #666;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .book-page {
+    background: #fff;
+    border: 2px solid #000;
+  }
+
+  .writing-area {
+    color: #000;
+  }
+
+  .day-name,
+  .full-date {
+    color: #000;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .book-page,
+  .save-entry-btn,
+  .toolbar-color-btn {
+    transition: none;
+  }
+}

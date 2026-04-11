@@ -5,14 +5,14 @@ import { useAuth } from '../lib/auth';
 import { encryptText } from '../lib/encryption';
 import { analyzeJournalEntryWithGemini } from '../lib/gemini';
 import LivingBackground from '../components/LivingBackground';
-import JournalPage from '../components/JournalPage';
+import BookSpread from '../components/journal/BookSpread';
 
-const JOURNAL_TITLES = {
-  daily: '📖 Daily Diary',
-  dreams: '🌙 Dream Log',
-  gratitude: '🌿 Gratitude',
-  ideas: '💡 Ideas',
-  goals: '🎯 Goals',
+const JOURNAL_TYPES = {
+  daily: { title: '📖 Daily Diary', mood: 'calm' },
+  dreams: { title: '🌙 Dream Log', mood: 'thoughtful' },
+  gratitude: { title: '🌿 Gratitude', mood: 'grateful' },
+  ideas: { title: '💡 Ideas', mood: 'excited' },
+  goals: { title: '🎯 Goals', mood: 'excited' },
 };
 
 export default function Journal() {
@@ -23,8 +23,9 @@ export default function Journal() {
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState('');
   const [analysis, setAnalysis] = useState(null);
+  const [content, setContent] = useState('');
 
-  const journalTitle = JOURNAL_TITLES[journalType] || '📖 Journal';
+  const journalConfig = JOURNAL_TYPES[journalType] || { title: '📖 Journal', mood: 'calm' };
 
   async function handleSave(text, durationSeconds = 0) {
     if (!text.trim()) {
@@ -83,8 +84,8 @@ export default function Journal() {
         // Show analysis to user
         setAnalysis({
           reaction: aiAnalysis.summary || "I've read your entry.",
-          question: aiAnalysis.commitments?.length > 0 
-            ? `You mentioned: ${aiAnalysis.commitments[0]}` 
+          question: aiAnalysis.commitments?.length > 0
+            ? `You mentioned: ${aiAnalysis.commitments[0]}`
             : 'How are you feeling about this?',
         });
       } else {
@@ -111,11 +112,11 @@ export default function Journal() {
           position: 'fixed',
           top: 20,
           left: 20,
-          background: 'rgba(255, 255, 255, 0.1)',
+          background: 'rgba(26, 26, 26, 0.9)',
           backdropFilter: 'blur(10px)',
           padding: '12px 24px',
           borderRadius: 12,
-          border: '1px solid rgba(255, 255, 255, 0.2)',
+          border: '1px solid #2E2E2E',
           zIndex: 100,
           display: 'flex',
           alignItems: 'center',
@@ -126,53 +127,111 @@ export default function Journal() {
             style={{
               background: 'transparent',
               border: 'none',
-              color: 'white',
+              color: '#A89880',
               fontSize: 14,
               cursor: 'pointer',
-              fontWeight: 600,
+              fontWeight: 500,
+              fontFamily: "'Inter', sans-serif",
+              transition: 'color 0.2s',
             }}
+            onMouseEnter={(e) => e.target.style.color = '#F5F0E8'}
+            onMouseLeave={(e) => e.target.style.color = '#A89880'}
           >
             ← Back
           </button>
-          <span style={{ color: 'white', fontSize: 16, fontWeight: 600 }}>
-            {journalTitle}
+          <span style={{
+            color: '#F5F0E8',
+            fontSize: 16,
+            fontWeight: 600,
+            fontFamily: "'DM Serif Display', serif",
+          }}>
+            {journalConfig.title}
           </span>
         </nav>
 
-        {!analysis ? (
-          <JournalPage isWriting={true} onSave={handleSave} />
-        ) : (
+          {!analysis ? (
+            <BookSpread
+              journalType={journalType || 'daily'}
+              content={content}
+              onContentChange={setContent}
+              onSave={handleSave}
+              isSaving={saving}
+            />
+          ) : (
           <div style={{ padding: '40px 20px' }}>
             <div style={{
               maxWidth: 650,
               margin: '0 auto',
-              background: 'rgba(255, 255, 255, 0.95)',
-              backdropFilter: 'blur(10px)',
+              background: '#1A1A1A',
+              border: '1px solid #2E2E2E',
               padding: 40,
               borderRadius: 20,
-              boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-                <span style={{ fontSize: 48 }}>🦆</span>
+              {/* Lumi Response Header */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                marginBottom: 24,
+                paddingBottom: 24,
+                borderBottom: '1px solid #2E2E2E',
+              }}>
+                <div style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(245, 166, 35, 0.12)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 0 24px rgba(245, 166, 35, 0.25)',
+                }}>
+                  <span style={{ fontSize: 24 }}>✨</span>
+                </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>Quackers</h3>
-                  <p style={{ margin: 0, fontSize: 13, color: '#666' }}>Your Journal Companion</p>
+                  <h3 style={{
+                    margin: 0,
+                    fontSize: 20,
+                    fontWeight: 700,
+                    fontFamily: "'DM Serif Display', serif",
+                    color: '#F5F0E8',
+                  }}>Lumi</h3>
+                  <p style={{
+                    margin: 0,
+                    fontSize: 13,
+                    color: '#A89880',
+                    fontFamily: "'Inter', sans-serif",
+                  }}>Your Journal Companion</p>
                 </div>
               </div>
 
-              <p style={{ fontSize: 18, lineHeight: 1.7, marginBottom: 20 }}>
+              <p style={{
+                fontSize: 18,
+                lineHeight: 1.7,
+                marginBottom: 20,
+                color: '#F5F0E8',
+                fontFamily: "'Inter', sans-serif",
+              }}>
                 {analysis.reaction || "I've read your entry. Here's what I noticed..."}
               </p>
 
               {analysis.question && (
                 <div style={{
-                  background: '#F0FDF4',
+                  background: 'rgba(245, 166, 35, 0.08)',
                   padding: 20,
                   borderRadius: 12,
-                  borderLeft: '4px solid #10B981',
+                  borderLeft: '4px solid #F5A623',
                   marginBottom: 24,
                 }}>
-                  <p style={{ margin: 0, fontWeight: 600, color: '#065F46' }}>
+                  <p style={{
+                    margin: 0,
+                    fontWeight: 600,
+                    color: '#F5A623',
+                    fontFamily: "'DM Serif Display', serif",
+                    fontStyle: 'italic',
+                    fontSize: 16,
+                  }}>
                     {analysis.question}
                   </p>
                 </div>
@@ -186,13 +245,23 @@ export default function Journal() {
                 style={{
                   width: '100%',
                   padding: 14,
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  color: 'white',
+                  background: '#F5A623',
+                  color: '#0D0D0D',
                   border: 'none',
                   borderRadius: 12,
                   fontWeight: 600,
                   fontSize: 16,
                   cursor: 'pointer',
+                  fontFamily: "'Inter', sans-serif",
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = '#E09415';
+                  e.target.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = '#F5A623';
+                  e.target.style.transform = 'translateY(0)';
                 }}
               >
                 Write Another Entry
@@ -207,11 +276,13 @@ export default function Journal() {
             bottom: 20,
             left: '50%',
             transform: 'translateX(-50%)',
-            background: '#FEE2E2',
-            color: '#991B1B',
+            background: 'rgba(224, 82, 82, 0.1)',
+            color: '#E05252',
             padding: '12px 24px',
             borderRadius: 12,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            border: '1px solid rgba(224, 82, 82, 0.3)',
+            fontFamily: "'Inter', sans-serif",
+            fontSize: 14,
           }}>
             {error}
           </div>
@@ -223,14 +294,20 @@ export default function Journal() {
             bottom: 20,
             left: '50%',
             transform: 'translateX(-50%)',
-            background: 'rgba(255, 255, 255, 0.95)',
-            color: '#333',
+            background: 'rgba(26, 26, 26, 0.95)',
+            color: '#F5F0E8',
             padding: '12px 24px',
             borderRadius: 12,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            border: '1px solid #2E2E2E',
             fontWeight: 600,
+            fontFamily: "'Inter', sans-serif",
+            fontSize: 14,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
           }}>
-            {analyzing ? '🦆 PLOS is reading your entry...' : '💾 Saving...'}
+            <span style={{ fontSize: 16 }}>{analyzing ? '✨' : '💾'}</span>
+            {analyzing ? 'Lumi is reading your entry...' : 'Saving...'}
           </div>
         )}
       </div>
