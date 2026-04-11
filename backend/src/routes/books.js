@@ -4,9 +4,9 @@
  */
 const express = require('express');
 const router = express.Router();
-const authenticate = require('../middleware/authenticate');
-const auditLog = require('../middleware/auditLog');
-const validateInput = require('../middleware/validateInput');
+const { authenticate } = require('../middleware/authenticate');
+const { auditLog } = require('../middleware/auditLog');
+const { validateInput } = require('../middleware/validateInput');
 const { body, param } = require('express-validator');
 const db = require('../db/connection');
 

@@ -47,22 +47,50 @@ ALTER TABLE schedules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE schedule_completions ENABLE ROW LEVEL SECURITY;
 
 -- Users can only see their own schedules
-CREATE POLICY schedules_user_isolation ON schedules
-  FOR ALL USING (user_id = current_setting('app.current_user_id')::UUID);
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname = 'public' 
+        AND tablename = 'schedules' 
+        AND policyname = 'schedules_user_isolation'
+    ) THEN
+        CREATE POLICY schedules_user_isolation ON schedules
+        FOR ALL USING (user_id = current_setting('app.current_user_id')::UUID);
+    END IF;
+END $$;
 
 -- Users can only see their own completions
-CREATE POLICY completions_user_isolation ON schedule_completions
-  FOR ALL USING (user_id = current_setting('app.current_user_id')::UUID);
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE schemaname = 'public' 
+        AND tablename = 'schedule_completions' 
+        AND policyname = 'completions_user_isolation'
+    ) THEN
+        CREATE POLICY completions_user_isolation ON schedule_completions
+        FOR ALL USING (user_id = current_setting('app.current_user_id')::UUID);
+    END IF;
+END $$;
 
 -- Update trigger for updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
+    NEW.updated_at = NOW();
+    RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER update_schedules_updated_at
-  BEFORE UPDATE ON schedules
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger 
+        WHERE tgname = 'update_schedules_updated_at'
+    ) THEN
+        CREATE TRIGGER update_schedules_updated_at
+        BEFORE UPDATE ON schedules
+        FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;
