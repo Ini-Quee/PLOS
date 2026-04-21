@@ -1,34 +1,68 @@
 import axios from 'axios';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: `${API_URL}/api`,
   withCredentials: true,
+  timeout: 15000,
 });
 
 let accessToken = null;
 
 export function setAccessToken(token) {
   accessToken = token;
+  // Also store in localStorage for persistence across refreshes
+  if (token) {
+    localStorage.setItem('accessToken', token);
+  } else {
+    localStorage.removeItem('accessToken');
+  }
 }
 
 export function getAccessToken() {
-  return accessToken;
+  // Return from memory or fallback to localStorage
+  return accessToken || localStorage.getItem('accessToken');
 }
 
-api.interceptors.request.use((config) => {
-  if (accessToken) {
-    config.headers.Authorization = 'Bearer ' + accessToken;
+// Initialize token from localStorage on module load
+const storedToken = localStorage.getItem('accessToken');
+if (storedToken) {
+  accessToken = storedToken;
+}
+
+api.interceptors.request.use(
+  (config) => {
+    const token = getAccessToken();
+    if (token) {
+      config.headers.Authorization = 'Bearer ' + token;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
-  return config;
-});
+);
 
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
+    // Handle network errors
+    if (!error.response) {
+      console.error('Network error - API unreachable:', error.message);
+      return Promise.reject({
+        response: {
+          data: {
+            error: 'Unable to connect to server. Please check your connection.',
+          },
+        },
+      });
+    }
+
+    // Handle 401 with expired token
     if (
-      error.response &&
       error.response.status === 401 &&
       error.response.data &&
       error.response.data.code === 'TOKEN_EXPIRED' &&
@@ -38,9 +72,9 @@ api.interceptors.response.use(
 
       try {
         const refreshResponse = await axios.post(
-          '/api/auth/refresh',
+          `${API_URL}/api/auth/refresh`,
           {},
-          { withCredentials: true }
+          { withCredentials: true, timeout: 10000 }
         );
         const newToken = refreshResponse.data.accessToken;
         setAccessToken(newToken);
@@ -51,6 +85,12 @@ api.interceptors.response.use(
         window.location.href = '/login';
         return Promise.reject(refreshError);
       }
+    }
+
+    // Handle other 401 errors (not expired token)
+    if (error.response.status === 401 && !originalRequest._retry) {
+      setAccessToken(null);
+      window.location.href = '/login';
     }
 
     return Promise.reject(error);

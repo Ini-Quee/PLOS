@@ -9,7 +9,7 @@ const { authenticate } = require('../middleware/authenticate');
 const { auditLog } = require('../middleware/auditLog');
 const { validateInput } = require('../middleware/validateInput');
 const { query, body, param } = require('express-validator');
-const db = require('../db/connection');
+const { pool } = require('../db/connection');
 
 /**
  * GET /api/schedule
@@ -21,7 +21,7 @@ router.get(
   auditLog('view_schedules'),
   async (req, res) => {
     try {
-      const schedules = await db.query(
+      const schedules = await pool.query(
         `SELECT * FROM schedules
          WHERE user_id = $1 AND is_active = true
          ORDER BY start_time ASC`,
@@ -50,7 +50,7 @@ router.get(
       const dayOfWeek = new Date().getDay();
 
       // Get schedules that apply to today
-      const schedules = await db.query(
+      const schedules = await pool.query(
         `SELECT s.*,
           CASE WHEN sc.id IS NOT NULL THEN true ELSE false END as completed,
           sc.completed_at,
@@ -121,7 +121,7 @@ router.post(
         target_date,
       } = req.body;
 
-      const schedule = await db.query(
+      const schedule = await pool.query(
         `INSERT INTO schedules
          (user_id, title, description, start_time, duration_minutes,
           repeat_pattern, repeat_days, category, colour, is_high_priority, target_date)
@@ -179,7 +179,7 @@ router.put(
       } = req.body;
 
       // Verify ownership
-      const existing = await db.query(
+      const existing = await pool.query(
         'SELECT * FROM schedules WHERE id = $1 AND user_id = $2',
         [id, req.user.id]
       );
@@ -188,7 +188,7 @@ router.put(
         return res.status(404).json({ error: 'Schedule not found' });
       }
 
-      const schedule = await db.query(
+      const schedule = await pool.query(
         `UPDATE schedules SET
          title = $1, description = $2, start_time = $3, duration_minutes = $4,
          repeat_pattern = $5, repeat_days = $6, category = $7, colour = $8,
@@ -232,7 +232,7 @@ router.delete(
     try {
       const { id } = req.params;
 
-      const result = await db.query(
+      const result = await pool.query(
         `UPDATE schedules SET is_active = false, updated_at = NOW()
          WHERE id = $1 AND user_id = $2
          RETURNING id`,
@@ -270,7 +270,7 @@ router.post(
       const today = new Date().toISOString().split('T')[0];
 
       // Verify schedule exists and belongs to user
-      const schedule = await db.query(
+      const schedule = await pool.query(
         'SELECT * FROM schedules WHERE id = $1 AND user_id = $2',
         [id, req.user.id]
       );
@@ -280,7 +280,7 @@ router.post(
       }
 
       // Mark as complete
-      await db.query(
+      await pool.query(
         `INSERT INTO schedule_completions
          (schedule_id, user_id, completion_date, notes)
          VALUES ($1, $2, $3, $4)
@@ -318,7 +318,7 @@ router.delete(
       const { id } = req.params;
       const today = new Date().toISOString().split('T')[0];
 
-      await db.query(
+      await pool.query(
         `DELETE FROM schedule_completions
          WHERE schedule_id = $1 AND user_id = $2 AND completion_date = $3`,
         [id, req.user.id, today]
@@ -370,7 +370,7 @@ async function calculateStreak(scheduleId, userId) {
   today.setHours(0, 0, 0, 0);
 
   // Get completion dates for the last 365 days
-  const completions = await db.query(
+  const completions = await pool.query(
     `SELECT completion_date FROM schedule_completions
      WHERE schedule_id = $1 AND user_id = $2
        AND completion_date >= $3

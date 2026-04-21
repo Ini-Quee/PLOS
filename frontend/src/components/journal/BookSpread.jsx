@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import VoiceRecorder from '../VoiceRecorder';
 import './BookSpread.css';
 
@@ -22,11 +22,18 @@ export default function BookSpread({
   const [fontFamily, setFontFamily] = useState('Caveat');
   const [fontSize, setFontSize] = useState('medium');
   const [penColor, setPenColor] = useState('#1A1A1A');
+  const [componentError, setComponentError] = useState(null);
+  const [isReady, setIsReady] = useState(false);
 
   // Sync with parent content
   useEffect(() => {
     setLocalContent(content);
   }, [content]);
+
+  // Mark component as ready after mount
+  useEffect(() => {
+    setIsReady(true);
+  }, []);
 
   // Font options
   const fontOptions = [
@@ -54,15 +61,20 @@ export default function BookSpread({
   ];
 
   // Format date for display
-  const formatDate = (date) => {
-    const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
-    const fullDate = date.toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    });
-    return { dayName, fullDate };
-  };
+  const formatDate = useCallback((date) => {
+    try {
+      const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+      const fullDate = date.toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      });
+      return { dayName, fullDate };
+    } catch (err) {
+      console.error('Date formatting error:', err);
+      return { dayName: 'Today', fullDate: '' };
+    }
+  }, []);
 
   const { dayName, fullDate } = formatDate(date);
 
@@ -80,35 +92,50 @@ export default function BookSpread({
   };
 
   // Handle voice transcript
-  const handleTranscriptReady = (transcript, duration) => {
-    const newContent = localContent
-      ? localContent + ' ' + transcript
-      : transcript;
-    setLocalContent(newContent);
-    setRecordingDuration(duration);
-    if (onTranscriptReady) {
-      onTranscriptReady(transcript, duration);
+  const handleTranscriptReady = useCallback((transcript, duration) => {
+    try {
+      const newContent = localContent
+        ? localContent + ' ' + transcript
+        : transcript;
+      setLocalContent(newContent);
+      setRecordingDuration(duration);
+      if (onTranscriptReady) {
+        onTranscriptReady(transcript, duration);
+      }
+      if (onContentChange) {
+        onContentChange(newContent);
+      }
+    } catch (err) {
+      console.error('Error handling transcript:', err);
+      setComponentError('Failed to process voice input');
     }
-    if (onContentChange) {
-      onContentChange(newContent);
-    }
-  };
+  }, [localContent, onTranscriptReady, onContentChange]);
 
   // Handle text change
-  const handleTextChange = (e) => {
-    const newContent = e.target.value;
-    setLocalContent(newContent);
-    if (onContentChange) {
-      onContentChange(newContent);
+  const handleTextChange = useCallback((e) => {
+    try {
+      const newContent = e.target.value;
+      setLocalContent(newContent);
+      if (onContentChange) {
+        onContentChange(newContent);
+      }
+    } catch (err) {
+      console.error('Error handling text change:', err);
+      setComponentError('Failed to update text');
     }
-  };
+  }, [onContentChange]);
 
   // Handle save
-  const handleSave = () => {
-    if (onSave && localContent.trim()) {
-      onSave(localContent, recordingDuration);
+  const handleSave = useCallback(() => {
+    try {
+      if (onSave && localContent.trim()) {
+        onSave(localContent, recordingDuration);
+      }
+    } catch (err) {
+      console.error('Error saving entry:', err);
+      setComponentError('Failed to save entry');
     }
-  };
+  }, [onSave, localContent, recordingDuration]);
 
   // Get current size
   const currentSize = sizeOptions.find((s) => s.value === fontSize)?.size || '20px';
@@ -121,6 +148,97 @@ export default function BookSpread({
     ideas: '💡 Ideas',
     goals: '🎯 Goals',
   };
+
+  // Show error state if component failed
+  if (componentError) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '24px',
+          fontFamily: "'Inter', sans-serif",
+        }}
+      >
+        <div
+          style={{
+            textAlign: 'center',
+            padding: '40px',
+            backgroundColor: '#1A1A1A',
+            borderRadius: '16px',
+            border: '1px solid #2E2E2E',
+          }}
+        >
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>📝</div>
+          <h3
+            style={{
+              color: '#F5F0E8',
+              fontSize: '18px',
+              marginBottom: '8px',
+            }}
+          >
+            Journal Error
+          </h3>
+          <p
+            style={{
+              color: '#6B5F52',
+              fontSize: '14px',
+              marginBottom: '16px',
+            }}
+          >
+            {componentError}
+          </p>
+          <button
+            onClick={() => setComponentError(null)}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#F5A623',
+              border: 'none',
+              borderRadius: '12px',
+              color: '#0D0D0D',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading state while component initializes
+  if (!isReady) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <div
+          style={{
+            width: '48px',
+            height: '48px',
+            border: '3px solid rgba(245, 166, 35, 0.2)',
+            borderTopColor: '#F5A623',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+          }}
+        />
+        <style>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
 
   return (
     <div className="book-spread-container">
@@ -148,6 +266,7 @@ export default function BookSpread({
               className={`toolbar-color-btn ${penColor === pen.value ? 'active' : ''}`}
               style={{ backgroundColor: pen.color }}
               title={pen.label}
+              aria-label={`Select ${pen.label} pen color`}
             />
           ))}
         </div>
@@ -220,6 +339,8 @@ export default function BookSpread({
               color: penColor,
             }}
             autoFocus
+            spellCheck={false}
+            autoComplete="off"
           />
 
           {/* Word count */}
@@ -234,6 +355,7 @@ export default function BookSpread({
         onClick={handleSave}
         disabled={!localContent.trim() || isSaving}
         className={`save-entry-btn ${!localContent.trim() || isSaving ? 'disabled' : ''}`}
+        aria-label="Save journal entry"
       >
         {isSaving ? '💾 Saving...' : '✨ Save Entry'}
       </button>

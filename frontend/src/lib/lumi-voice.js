@@ -4,11 +4,11 @@
  * Free, no external services required
  */
 
-// Default voice settings
+// Default voice settings - IMPROVED: warmer, clearer
 const DEFAULT_SETTINGS = {
-  rate: 0.95,      // Slightly slower — warmer, easier to understand
-  pitch: 1.05,     // Slightly warmer
-  volume: 1.0,     // Full volume
+  rate: 0.9,  // Slightly slower = clearer
+  pitch: 1.1, // Slightly higher = warmer
+  volume: 1.0, // Full volume
 };
 
 // Available voices cache
@@ -70,14 +70,15 @@ export function getBestVoice(preferredVoiceName = null) {
     if (preferred) return preferred;
   }
 
-  // Priority order for Lumi's voice
+  // Priority order for Lumi's voice - prioritize female voices
   const preferredVoices = [
     'Google UK English Female',
-    'Microsoft Zira',
     'Samantha',
+    'Microsoft Zira',
+    'Microsoft Zira Desktop',
+    'Victoria',
     'Google US English',
     'Alex',
-    'Victoria',
   ];
 
   for (const name of preferredVoices) {
@@ -175,6 +176,62 @@ export function speak(text, options = {}) {
 
     currentUtterance = utterance;
     synth.speak(utterance);
+  });
+}
+
+/**
+ * Speak response with status tracking
+ * This is the main function to use when Lumi responds to user
+ * @param {string} text — The text to speak
+ * @param {Object} callbacks — Callbacks for status tracking
+ * @returns {Promise}
+ */
+export function speakResponse(text, callbacks = {}) {
+  return new Promise((resolve, reject) => {
+    if (!isSpeechSynthesisAvailable()) {
+      // Just show text if speech not available
+      if (callbacks.onStart) callbacks.onStart();
+      if (callbacks.onEnd) callbacks.onEnd();
+      resolve();
+      return;
+    }
+
+    // Cancel any current speech
+    stop();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    const voice = getBestVoice();
+    
+    if (voice) {
+      utterance.voice = voice;
+    }
+
+    utterance.rate = DEFAULT_SETTINGS.rate;
+    utterance.pitch = DEFAULT_SETTINGS.pitch;
+    utterance.volume = DEFAULT_SETTINGS.volume;
+
+    utterance.onstart = () => {
+      isSpeaking = true;
+      if (callbacks.onStart) callbacks.onStart();
+    };
+
+    utterance.onend = () => {
+      isSpeaking = false;
+      currentUtterance = null;
+      if (callbacks.onEnd) callbacks.onEnd();
+      resolve();
+    };
+
+    utterance.onerror = (event) => {
+      isSpeaking = false;
+      currentUtterance = null;
+      if (callbacks.onError) callbacks.onError(event);
+      // Don't reject on error - just continue
+      resolve();
+    };
+
+    currentUtterance = utterance;
+    window.speechSynthesis.speak(utterance);
   });
 }
 
@@ -300,6 +357,7 @@ export function generateAccountabilityMessage(taskTitle, missedCount) {
 
 export default {
   speak,
+  speakResponse,
   stop,
   pause,
   resume,

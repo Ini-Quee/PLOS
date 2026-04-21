@@ -1,25 +1,188 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../lib/api';
+import { useAuth } from '../lib/auth';
 
 export default function MfaSetup() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user: authUser, setupMfa, verifyMfa } = useAuth();
+  
+  // Get user from navigation state or fall back to auth context
+  const userFromState = location.state?.user;
+  const fromRegistration = location.state?.fromRegistration || false;
+  const user = userFromState || authUser;
+  
   const [step, setStep] = useState('start');
   const [qrCode, setQrCode] = useState('');
   const [secret, setSecret] = useState('');
   const [token, setToken] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  // Check if user is authenticated on mount
+  useEffect(() => {
+    // If user came from registration, they're already authenticated
+    // If they came directly, check if they're logged in
+    if (!user && !fromRegistration) {
+      // Check if we have a token
+      const token = localStorage.getItem('plos_access_token');
+      if (!token) {
+        setCheckingAuth(false);
+        return;
+      }
+      
+      // Try to fetch current user
+      api.get('/auth/me')
+        .then((res) => {
+          if (res.data.user?.mfaEnabled) {
+            // User already has MFA enabled
+            setStep('already-enabled');
+          }
+        })
+        .catch(() => {
+          // Not authenticated
+        })
+        .finally(() => {
+          setCheckingAuth(false);
+        });
+    } else {
+      setCheckingAuth(false);
+      
+      // Check if user already has MFA enabled
+      if (user?.mfaEnabled) {
+        setStep('already-enabled');
+      }
+    }
+  }, [user, fromRegistration]);
+
+  // Show loading while checking auth
+  if (checkingAuth) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: '#0D0D0D',
+        color: '#F5F0E8',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: "'Inter', system-ui, sans-serif",
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            border: '3px solid rgba(245, 166, 35, 0.2)',
+            borderTopColor: '#F5A623',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 16px',
+          }} />
+          <p style={{ color: '#A89880', fontSize: '14px' }}>Loading...</p>
+          <style>{`
+            @keyframes spin {
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>
+      </div>
+    );
+  }
+
+  // If no user and not from registration, show error
+  if (!user && !fromRegistration) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: '#0D0D0D',
+        color: '#F5F0E8',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '16px',
+        fontFamily: "'Inter', system-ui, sans-serif",
+      }}>
+        <div style={{
+          width: '100%',
+          maxWidth: '400px',
+          borderRadius: '16px',
+          border: '1px solid #2E2E2E',
+          backgroundColor: '#1A1A1A',
+          padding: '32px',
+          textAlign: 'center',
+        }}>
+          <div style={{
+            width: '64px',
+            height: '64px',
+            borderRadius: '50%',
+            backgroundColor: 'rgba(224, 82, 82, 0.12)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 16px',
+          }}>
+            <span style={{ fontSize: '32px' }}>🔒</span>
+          </div>
+          <h1 style={{
+            fontSize: '24px',
+            fontWeight: 700,
+            margin: '0 0 12px 0',
+            fontFamily: "'DM Serif Display', serif",
+            color: '#F5F0E8',
+          }}>
+            Registration Required
+          </h1>
+          <p style={{
+            fontSize: '14px',
+            color: '#A89880',
+            margin: '0 0 24px 0',
+            fontFamily: "'Inter', sans-serif",
+            lineHeight: 1.5,
+          }}>
+            Please complete registration first before setting up MFA.
+          </p>
+          <button
+            onClick={() => navigate('/register')}
+            style={{
+              width: '100%',
+              padding: '14px',
+              borderRadius: '12px',
+              border: 'none',
+              backgroundColor: '#F5A623',
+              color: '#0D0D0D',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: "'Inter', sans-serif",
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = '#E09415';
+              e.target.style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = '#F5A623';
+              e.target.style.transform = 'translateY(0)';
+            }}
+          >
+            Go to Register
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   async function handleSetup() {
     setLoading(true);
     setError('');
     try {
-      const res = await api.post('/auth/mfa/setup');
-      setQrCode(res.data.qrCode);
-      setSecret(res.data.secret);
+      const res = await setupMfa();
+      setQrCode(res.qrCode);
+      setSecret(res.secret);
       setStep('scan');
     } catch (err) {
+      console.error('MFA setup error:', err);
       setError(err.response?.data?.error || 'Failed to start MFA setup');
     } finally {
       setLoading(false);
@@ -30,9 +193,10 @@ export default function MfaSetup() {
     setLoading(true);
     setError('');
     try {
-      await api.post('/auth/mfa/verify', { code: token });
+      await verifyMfa(token);
       setStep('done');
     } catch (err) {
+      console.error('MFA verify error:', err);
       setError(err.response?.data?.error || 'Invalid code. Try again.');
     } finally {
       setLoading(false);
@@ -60,7 +224,7 @@ export default function MfaSetup() {
       }}>
         {/* Back Button */}
         <button
-          onClick={() => navigate('/dashboard')}
+          onClick={() => fromRegistration ? navigate('/login') : navigate('/dashboard')}
           style={{
             marginBottom: '24px',
             backgroundColor: 'transparent',
@@ -75,7 +239,7 @@ export default function MfaSetup() {
             padding: 0,
           }}
         >
-          ← Back to Dashboard
+          ← {fromRegistration ? 'Back to Login' : 'Back to Dashboard'}
         </button>
 
         {/* Header */}
@@ -125,6 +289,68 @@ export default function MfaSetup() {
             fontSize: '14px',
           }}>
             {error}
+          </div>
+        )}
+
+        {/* Step: Already Enabled */}
+        {step === 'already-enabled' && (
+          <div style={{ textAlign: 'center' }}>
+            <div style={{
+              width: '80px',
+              height: '80px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(76, 175, 125, 0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 24px',
+            }}>
+              <span style={{ fontSize: '40px' }}>✅</span>
+            </div>
+            <h2 style={{
+              fontSize: '22px',
+              fontWeight: 700,
+              margin: '0 0 12px 0',
+              fontFamily: "'DM Serif Display', serif",
+              color: '#4CAF7D',
+            }}>
+              MFA Already Enabled
+            </h2>
+            <p style={{
+              fontSize: '14px',
+              color: '#A89880',
+              margin: '0 0 24px 0',
+              fontFamily: "'Inter', sans-serif",
+              lineHeight: 1.5,
+            }}>
+              Your account is already protected with multi-factor authentication.
+            </p>
+            <button
+              onClick={() => navigate('/dashboard')}
+              style={{
+                width: '100%',
+                padding: '14px',
+                borderRadius: '12px',
+                border: 'none',
+                backgroundColor: '#F5A623',
+                color: '#0D0D0D',
+                fontSize: '14px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: "'Inter', sans-serif",
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = '#E09415';
+                e.target.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = '#F5A623';
+                e.target.style.transform = 'translateY(0)';
+              }}
+            >
+              Go to Dashboard
+            </button>
           </div>
         )}
 
@@ -377,7 +603,19 @@ export default function MfaSetup() {
               </p>
             </div>
             <button
-              onClick={() => navigate('/dashboard')}
+              onClick={() => {
+                // If coming from registration, go to login
+                // Otherwise go to dashboard
+                if (fromRegistration) {
+                  navigate('/login', { 
+                    state: { 
+                      message: 'Account created successfully! Please log in with your MFA code.' 
+                    } 
+                  });
+                } else {
+                  navigate('/dashboard');
+                }
+              }}
               style={{
                 width: '100%',
                 padding: '14px',
@@ -400,7 +638,7 @@ export default function MfaSetup() {
                 e.target.style.transform = 'translateY(0)';
               }}
             >
-              Back to Dashboard
+              {fromRegistration ? 'Go to Login' : 'Back to Dashboard'}
             </button>
           </div>
         )}

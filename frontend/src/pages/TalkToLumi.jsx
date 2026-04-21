@@ -4,42 +4,66 @@ import { useAuth } from '../lib/auth';
 import LumiOrb from '../components/lumi/LumiOrb';
 import * as lumiVoice from '../lib/lumi-voice';
 import * as lumiListen from '../lib/lumi-listen';
+import { sendToLumi } from '../lib/gemini';
 import api from '../lib/api';
 import LivingBackground from '../components/LivingBackground';
 
 /**
- * TalkToLumi — Full-screen voice interface
- * The primary interface for talking with Lumi
- * User speaks, Lumi listens and responds with voice + text
+ * TalkToLumi — Full-screen AI conversation interface
+ * The primary interface for talking with Lumi using real Gemini AI
  */
 export default function TalkToLumi() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [lumiState, setLumiState] = useState('idle'); // idle | listening | speaking
+  
+  // AI Name - user can customize this
+  const [aiName] = useState(() => {
+    return localStorage.getItem('lumi_name') || 'Lumi';
+  });
+  
+  // Core state
+  const [lumiState, setLumiState] = useState('idle'); // idle | listening | processing | speaking
   const [transcript, setTranscript] = useState('');
   const [lumiMessage, setLumiMessage] = useState('');
   const [tasks, setTasks] = useState([]);
+  const [recentJournal, setRecentJournal] = useState('');
   const [hasGreeted, setHasGreeted] = useState(false);
   const [showTextInput, setShowTextInput] = useState(false);
   const [textInput, setTextInput] = useState('');
   const [error, setError] = useState('');
-
-  // Refs for managing speech state
+  const [isMuted, setIsMuted] = useState(false);
+  
+  // Conversation history for AI context
+  const [conversationHistory, setConversationHistory] = useState(() => {
+    try {
+      const stored = sessionStorage.getItem('lumi_conversation');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+  
+  // UI state
+  const [showHistory, setShowHistory] = useState(true);
+  const chatContainerRef = useRef(null);
   const isSpeakingRef = useRef(false);
   const recognitionActiveRef = useRef(false);
+  const processingRef = useRef(false);
 
   // Initialize on mount
   useEffect(() => {
-    // Initialize voice and listen modules
     lumiVoice.initLumiVoice();
     lumiListen.initLumiListen();
-
+    
     // Fetch today's tasks
     fetchTodayTasks();
-
+    
+    // Fetch recent journal
+    fetchRecentJournal();
+    
     // Morning greeting after a short delay
     const greetingTimer = setTimeout(() => {
-      if (!hasGreeted) {
+      if (!hasGreeted && conversationHistory.length === 0) {
         doMorningGreeting();
       }
     }, 1000);
@@ -51,60 +75,83 @@ export default function TalkToLumi() {
     };
   }, []);
 
+  // Auto-scroll to bottom of chat
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [conversationHistory, lumiMessage]);
+
+  // Persist conversation to sessionStorage
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('lumi_conversation', JSON.stringify(conversationHistory));
+    } catch (e) {
+      console.error('Failed to save conversation:', e);
+    }
+  }, [conversationHistory]);
+
   // Fetch today's tasks from API
   const fetchTodayTasks = async () => {
     try {
-      // TODO: Replace with actual schedule API when built
-      // For now, use placeholder tasks
-      const today = new Date();
-      const hour = today.getHours();
-
-      const placeholderTasks = [
-        { title: 'Workout', time: '6:30 AM', completed: false },
-        { title: 'Meditate', time: '7:30 AM', completed: false },
-        { title: 'Read 10 pages', time: '8:00 AM', completed: false },
-        { title: 'Job applications', time: '9:00 AM', completed: false },
-      ];
-
-      // Filter tasks based on time of day
-      const remainingTasks = placeholderTasks.filter((task) => {
-        const taskHour = parseInt(task.time.split(':')[0]);
-        const isAM = task.time.includes('AM');
-        if (isAM) {
-          return taskHour > hour || (taskHour === hour && today.getMinutes() < 30);
-        }
-        return false;
-      });
-
-      setTasks(remainingTasks.length > 0 ? remainingTasks : placeholderTasks);
+      const response = await api.get('/schedule/today');
+      const schedules = response.data.schedules || [];
+      setTasks(schedules.slice(0, 5)); // Get top 5 tasks
     } catch (err) {
       console.error('Failed to fetch tasks:', err);
+      setTasks([]);
     }
   };
 
-  // Morning greeting
-  const doMorningGreeting = async () => {
-    if (isSpeakingRef.current) return;
+  // Fetch recent journal entry
+  const fetchRecentJournal = async () => {
+    try {
+      const response = await api.get('/journal/entries?limit=1');
+      const entries = response.data.entries || [];
+      if (entries.length > 0) {
+        setRecentJournal(`Last entry on ${new Date(entries[0].recorded_at).toLocaleDateString()}`);
+      }
+    } catch (err) {
+      console.error('Failed to fetch journal:', err);
+      setRecentJournal('');
+    }
+  };
 
-    const greeting = lumiVoice.generateMorningGreeting(user?.name || 'there', tasks);
+  // Morning greeting with AI
+  const doMorningGreeting = async () => {
+    if (isSpeakingRef.current || processingRef.current) return;
+
+    const currentHour = new Date().getHours();
+    let greetingType = 'Good morning';
+    if (currentHour >= 12 && currentHour < 17) greetingType = 'Good afternoon';
+    else if (currentHour >= 17) greetingType = 'Good evening';
+
+    const greeting = `${greetingType} ${user?.name || 'there'}! I'm ${aiName}, your personal AI companion. I'm here to help you plan your day, stay on track with your habits, or just chat about whatever's on your mind. What's on your mind today?`;
 
     setLumiState('speaking');
     setLumiMessage(greeting);
     isSpeakingRef.current = true;
 
     try {
-      await lumiVoice.speak(greeting, {
-        onEnd: () => {
-          isSpeakingRef.current = false;
-          setLumiState('idle');
-          setHasGreeted(true);
-        },
-        onError: () => {
-          isSpeakingRef.current = false;
-          setLumiState('idle');
-          setHasGreeted(true);
-        },
-      });
+      if (!isMuted) {
+        await lumiVoice.speakResponse(greeting, {
+          onStart: () => setLumiState('speaking'),
+          onEnd: () => {
+            isSpeakingRef.current = false;
+            setLumiState('idle');
+            setHasGreeted(true);
+          },
+          onError: () => {
+            isSpeakingRef.current = false;
+            setLumiState('idle');
+            setHasGreeted(true);
+          },
+        });
+      } else {
+        isSpeakingRef.current = false;
+        setLumiState('idle');
+        setHasGreeted(true);
+      }
     } catch (err) {
       isSpeakingRef.current = false;
       setLumiState('idle');
@@ -112,9 +159,9 @@ export default function TalkToLumi() {
     }
   };
 
-  // Start listening
+  // Start listening with improved recording
   const startListening = useCallback(async () => {
-    if (isSpeakingRef.current || recognitionActiveRef.current) return;
+    if (isSpeakingRef.current || recognitionActiveRef.current || processingRef.current) return;
 
     // Check if speech recognition is available
     if (!lumiListen.isSpeechRecognitionAvailable()) {
@@ -134,24 +181,29 @@ export default function TalkToLumi() {
           onStart: () => {
             setLumiState('listening');
           },
-          onResult: ({ final, interim, fullText }) => {
+          onResult: ({ fullText }) => {
             setTranscript(fullText);
           },
           onEnd: ({ transcript: finalTranscript }) => {
             recognitionActiveRef.current = false;
+            if (finalTranscript.trim()) {
+              handleUserMessage(finalTranscript.trim());
+            } else {
+              setLumiState('idle');
+            }
+          },
+          onNoSpeech: () => {
+            recognitionActiveRef.current = false;
             setLumiState('idle');
-
+          },
+          onMaxDurationReached: (finalTranscript) => {
+            recognitionActiveRef.current = false;
             if (finalTranscript.trim()) {
               handleUserMessage(finalTranscript.trim());
             }
           },
-          onNoSpeech: () => {
-            // No speech detected — go back to idle
-            recognitionActiveRef.current = false;
-            setLumiState('idle');
-          },
         },
-        { continuous: false }
+        { continuous: true }
       );
     } catch (err) {
       recognitionActiveRef.current = false;
@@ -159,110 +211,105 @@ export default function TalkToLumi() {
       setShowTextInput(true);
       setError(err.message || 'Could not start listening. Use text input.');
     }
-  }, [tasks]);
+  }, []);
 
-  // Handle user message (from voice or text)
+  // Handle user message with REAL AI
   const handleUserMessage = async (message) => {
-    setTranscript(message);
+    if (processingRef.current) return;
+    
+    processingRef.current = true;
+    setTranscript('');
+    setLumiState('processing');
+    setLumiMessage('');
+    setError('');
 
-    // Parse voice command
-    const command = lumiListen.parseVoiceCommand(message);
-
-    // Generate response based on command
-    let response = '';
-
-    switch (command.type) {
-      case 'task_complete':
-        response = lumiVoice.generateTaskCelebration(command.task);
-        break;
-
-      case 'task_skip':
-        response = `Okay, skipping ${command.task}. No shame — adjust and move forward.`;
-        break;
-
-      case 'reminder':
-        response = `Got it. I'll remind you: ${command.reminder}.`;
-        break;
-
-      case 'schedule_add':
-        response = `Added ${command.event} to your schedule for ${command.datetime}.`;
-        break;
-
-      case 'query_next':
-        if (tasks.length > 0) {
-          const nextTask = tasks[0];
-          response = `Next up: ${nextTask.title}${nextTask.time ? ` at ${nextTask.time}` : ''}. Ready?`;
-        } else {
-          response = "You've completed everything planned for today. What's next?";
-        }
-        break;
-
-      case 'query_progress':
-        response = `You've got ${tasks.length} things planned today. You're doing great.`;
-        break;
-
-      case 'open_journal':
-        response = "Opening your journal. Let's capture what's on your mind.";
-        setTimeout(() => navigate('/journal'), 2000);
-        break;
-
-      case 'read_affirmations':
-        response = "Here's your daily affirmation: I am disciplined enough to build the life I want.";
-        break;
-
-      case 'suggest_book':
-        response = "Based on your reading history, I suggest 'Atomic Habits' by James Clear. It's perfect for your current focus on building systems.";
-        break;
-
-      case 'emotion':
-        response = `I hear that you're feeling ${command.emotion}. Want to talk about it in your journal?`;
-        break;
-
-      case 'message':
-      default:
-        response = generateConversationalResponse(message);
-    }
-
-    // Speak the response
-    setLumiState('speaking');
-    setLumiMessage(response);
-    isSpeakingRef.current = true;
+    // Add user message to history immediately
+    const userMessageObj = { role: 'user', content: message, timestamp: new Date().toISOString() };
+    
+    // Keep only last 18 messages (9 exchanges) for context
+    setConversationHistory(prev => {
+      const newHistory = [...prev.slice(-18), userMessageObj];
+      return newHistory;
+    });
 
     try {
-      await lumiVoice.speak(response, {
-        onEnd: () => {
-          isSpeakingRef.current = false;
-          setLumiState('idle');
-        },
-        onError: () => {
-          isSpeakingRef.current = false;
-          setLumiState('idle');
-        },
+      // Call REAL Gemini AI
+      const currentTime = new Date().toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit' 
       });
-    } catch (err) {
-      isSpeakingRef.current = false;
-      setLumiState('idle');
-    }
-  };
+      
+      const aiResponse = await sendToLumi({
+        userMessage: message,
+        conversationHistory: conversationHistory.slice(-18),
+        userName: user?.name || 'there',
+        userRole: '',
+        aiName: aiName,
+        todaysPlan: tasks,
+        recentJournal: recentJournal,
+        currentTime: currentTime,
+      });
 
-  // Generate conversational response for unhandled messages
-  const generateConversationalResponse = (message) => {
-    const responses = [
-      "I hear you. Tell me more.",
-      "Got it. What else is on your mind?",
-      "Thanks for sharing. How can I help with that?",
-      "I understand. What would you like to focus on next?",
-    ];
-    return responses[Math.floor(Math.random() * responses.length)];
+      // Add AI response to history
+      const aiMessageObj = { role: 'model', content: aiResponse, timestamp: new Date().toISOString() };
+      setConversationHistory(prev => [...prev, aiMessageObj]);
+
+      // Update current message and speak
+      setLumiMessage(aiResponse);
+      setLumiState('speaking');
+      isSpeakingRef.current = true;
+
+      if (!isMuted) {
+        await lumiVoice.speakResponse(aiResponse, {
+          onStart: () => setLumiState('speaking'),
+          onEnd: () => {
+            isSpeakingRef.current = false;
+            processingRef.current = false;
+            setLumiState('idle');
+          },
+          onError: () => {
+            isSpeakingRef.current = false;
+            processingRef.current = false;
+            setLumiState('idle');
+          },
+        });
+      } else {
+        // If muted, just show text
+        isSpeakingRef.current = false;
+        processingRef.current = false;
+        setLumiState('idle');
+      }
+
+    } catch (err) {
+      console.error('AI response error:', err);
+      const errorResponse = `Hey ${user?.name || 'there'}, I'm having a bit of trouble thinking right now. Could you try again?`;
+      setLumiMessage(errorResponse);
+      setLumiState('speaking');
+      
+      if (!isMuted) {
+        await lumiVoice.speakResponse(errorResponse, {
+          onEnd: () => {
+            isSpeakingRef.current = false;
+            processingRef.current = false;
+            setLumiState('idle');
+          },
+        });
+      } else {
+        isSpeakingRef.current = false;
+        processingRef.current = false;
+        setLumiState('idle');
+      }
+    }
   };
 
   // Handle text input submission
   const handleTextSubmit = (e) => {
     e.preventDefault();
-    if (!textInput.trim()) return;
+    if (!textInput.trim() || processingRef.current) return;
 
     const message = textInput.trim();
     setTextInput('');
+    setShowTextInput(false);
     handleUserMessage(message);
   };
 
@@ -273,6 +320,41 @@ export default function TalkToLumi() {
     isSpeakingRef.current = false;
     recognitionActiveRef.current = false;
     setLumiState('idle');
+  };
+
+  // Clear conversation
+  const handleClearConversation = () => {
+    if (window.confirm(`Start fresh with ${aiName}?`)) {
+      setConversationHistory([]);
+      sessionStorage.removeItem('lumi_conversation');
+      setLumiMessage('');
+    }
+  };
+
+  // Get status text based on state
+  const getStatusText = () => {
+    switch (lumiState) {
+      case 'listening':
+        return `🔴 Listening... tap to stop`;
+      case 'processing':
+        return `⏳ ${aiName} is thinking...`;
+      case 'speaking':
+        return `🔊 ${aiName} is speaking...`;
+      default:
+        return `Tap to talk to ${aiName}`;
+    }
+  };
+
+  // Format timestamp
+  const formatTime = (timestamp) => {
+    try {
+      return new Date(timestamp).toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+      });
+    } catch {
+      return '';
+    }
   };
 
   return (
@@ -288,188 +370,367 @@ export default function TalkToLumi() {
           minHeight: '100vh',
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '40px 20px',
+          padding: '20px',
+          fontFamily: "'Inter', system-ui, sans-serif",
         }}
       >
-        {/* Back button */}
-        <button
-          onClick={() => navigate('/dashboard')}
-          style={{
-            position: 'fixed',
-            top: 20,
-            left: 20,
-            background: 'rgba(26, 26, 26, 0.9)',
-            backdropFilter: 'blur(10px)',
-            padding: '12px 24px',
-            borderRadius: 12,
-            border: '1px solid #2E2E2E',
-            color: '#A89880',
-            fontSize: 14,
-            cursor: 'pointer',
-            fontWeight: 500,
-            fontFamily: "'Inter', sans-serif",
-            transition: 'color 0.2s',
-            zIndex: 100,
-          }}
-          onMouseEnter={(e) => (e.target.style.color = '#F5F0E8')}
-          onMouseLeave={(e) => (e.target.style.color = '#A89880')}
-        >
-          ← Back
-        </button>
-
-        {/* Lumi Orb */}
-        <div style={{ marginBottom: 40 }}>
-          <LumiOrb
-            state={lumiState}
-            size="xl"
-            onClick={lumiState === 'idle' ? startListening : handleStop}
-          />
-        </div>
-
-        {/* Status indicator */}
-        <div
-          style={{
-            marginBottom: 32,
-            textAlign: 'center',
-          }}
-        >
-          <p
+        {/* Header */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '20px',
+        }}>
+          <button
+            onClick={() => navigate('/dashboard')}
             style={{
-              margin: 0,
-              fontSize: 14,
-              color: '#A89880',
-              fontFamily: "'Inter', sans-serif",
-              textTransform: 'uppercase',
-              letterSpacing: '2px',
-            }}
-          >
-            {lumiState === 'idle' && 'Tap Lumi to speak'}
-            {lumiState === 'listening' && 'Listening...'}
-            {lumiState === 'speaking' && 'Lumi is speaking'}
-          </p>
-        </div>
-
-        {/* Lumi's message */}
-        {lumiMessage && (
-          <div
-            style={{
-              maxWidth: 600,
-              marginBottom: 32,
-              padding: '24px 32px',
               background: 'rgba(26, 26, 26, 0.9)',
               backdropFilter: 'blur(10px)',
-              borderRadius: 16,
+              padding: '12px 24px',
+              borderRadius: 12,
               border: '1px solid #2E2E2E',
+              color: '#A89880',
+              fontSize: 14,
+              cursor: 'pointer',
+              fontWeight: 500,
+              fontFamily: "'Inter', sans-serif",
+              transition: 'color 0.2s',
+            }}
+            onMouseEnter={(e) => (e.target.style.color = '#F5F0E8')}
+            onMouseLeave={(e) => (e.target.style.color = '#A89880')}
+          >
+            ← Back
+          </button>
+
+          <div style={{ display: 'flex', gap: '12px' }}>
+            {/* Mute button */}
+            <button
+              onClick={() => setIsMuted(!isMuted)}
+              style={{
+                background: 'rgba(26, 26, 26, 0.9)',
+                backdropFilter: 'blur(10px)',
+                padding: '12px 16px',
+                borderRadius: 12,
+                border: '1px solid #2E2E2E',
+                color: isMuted ? '#E05252' : '#A89880',
+                fontSize: 14,
+                cursor: 'pointer',
+                fontWeight: 500,
+                fontFamily: "'Inter', sans-serif",
+              }}
+              title={isMuted ? 'Unmute' : 'Mute'}
+            >
+              {isMuted ? '🔇' : '🔊'}
+            </button>
+
+            {/* Clear conversation button */}
+            <button
+              onClick={handleClearConversation}
+              style={{
+                background: 'rgba(26, 26, 26, 0.9)',
+                backdropFilter: 'blur(10px)',
+                padding: '12px 16px',
+                borderRadius: 12,
+                border: '1px solid #2E2E2E',
+                color: '#A89880',
+                fontSize: 14,
+                cursor: 'pointer',
+                fontWeight: 500,
+                fontFamily: "'Inter', sans-serif",
+              }}
+            >
+              Clear chat
+            </button>
+
+            {/* Toggle history */}
+            <button
+              onClick={() => setShowHistory(!showHistory)}
+              style={{
+                background: 'rgba(26, 26, 26, 0.9)',
+                backdropFilter: 'blur(10px)',
+                padding: '12px 16px',
+                borderRadius: 12,
+                border: '1px solid #2E2E2E',
+                color: showHistory ? '#F5A623' : '#A89880',
+                fontSize: 14,
+                cursor: 'pointer',
+                fontWeight: 500,
+                fontFamily: "'Inter', sans-serif",
+              }}
+            >
+              {showHistory ? '📖' : '💬'}
+            </button>
+          </div>
+        </div>
+
+        {/* Main chat area */}
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          maxWidth: '800px',
+          margin: '0 auto',
+          width: '100%',
+        }}>
+          {/* Conversation history */}
+          {showHistory && conversationHistory.length > 0 && (
+            <div
+              ref={chatContainerRef}
+              style={{
+                flex: 1,
+                overflowY: 'auto',
+                marginBottom: '20px',
+                padding: '16px',
+                background: 'rgba(26, 26, 26, 0.6)',
+                borderRadius: 16,
+                border: '1px solid #2E2E2E',
+                maxHeight: '40vh',
+              }}
+            >
+              {conversationHistory.slice(-10).map((msg, index) => (
+                <div
+                  key={index}
+                  style={{
+                    marginBottom: '16px',
+                    display: 'flex',
+                    flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
+                    alignItems: 'flex-start',
+                    gap: '12px',
+                  }}
+                >
+                  {/* Avatar */}
+                  <div style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: '50%',
+                    background: msg.role === 'user' ? '#F5A623' : 'rgba(245, 166, 35, 0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    color: msg.role === 'user' ? '#0D0D0D' : '#F5A623',
+                    flexShrink: 0,
+                  }}>
+                    {msg.role === 'user' ? (user?.name?.[0] || 'Y') : aiName[0]}
+                  </div>
+
+                  {/* Message bubble */}
+                  <div style={{
+                    maxWidth: '70%',
+                    padding: '12px 16px',
+                    borderRadius: 16,
+                    background: msg.role === 'user' ? '#F5A623' : '#1C1C27',
+                    color: msg.role === 'user' ? '#0D0D0D' : '#F5F0E8',
+                    fontSize: 14,
+                    fontFamily: "'Inter', sans-serif",
+                    lineHeight: 1.5,
+                  }}>
+                    {msg.content}
+                    <div style={{
+                      marginTop: '4px',
+                      fontSize: '10px',
+                      opacity: 0.6,
+                      textAlign: msg.role === 'user' ? 'right' : 'left',
+                    }}>
+                      {formatTime(msg.timestamp)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Current message from Lumi */}
+          {lumiMessage && (
+            <div
+              style={{
+                marginBottom: '20px',
+                padding: '24px 32px',
+                background: 'rgba(26, 26, 26, 0.9)',
+                backdropFilter: 'blur(10px)',
+                borderRadius: 16,
+                border: '1px solid #2E2E2E',
+                textAlign: 'center',
+              }}
+            >
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 20,
+                  fontFamily: "'DM Serif Display', serif",
+                  fontStyle: 'italic',
+                  color: '#F5F0E8',
+                  lineHeight: 1.6,
+                }}
+              >
+                {lumiMessage}
+              </p>
+              {!isMuted && lumiState === 'speaking' && (
+                <div style={{
+                  marginTop: '12px',
+                  fontSize: '12px',
+                  color: '#6B5F52',
+                }}>
+                  🔊 Speaking...
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* User transcript while recording */}
+          {transcript && lumiState === 'listening' && (
+            <div
+              style={{
+                marginBottom: '20px',
+                padding: '16px 24px',
+                background: 'rgba(245, 166, 35, 0.08)',
+                borderRadius: 12,
+                borderLeft: '4px solid #F5A623',
+              }}
+            >
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 16,
+                  color: '#F5F0E8',
+                  fontFamily: "'Inter', sans-serif",
+                  lineHeight: 1.5,
+                }}
+              >
+                {transcript}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Bottom control area */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          padding: '20px',
+        }}>
+          {/* Status text */}
+          <div
+            style={{
+              marginBottom: '24px',
               textAlign: 'center',
             }}
           >
             <p
               style={{
                 margin: 0,
-                fontSize: 20,
-                fontFamily: "'DM Serif Display', serif",
-                fontStyle: 'italic',
-                color: '#F5F0E8',
-                lineHeight: 1.6,
-              }}
-            >
-              {lumiMessage}
-            </p>
-          </div>
-        )}
-
-        {/* User transcript */}
-        {transcript && (
-          <div
-            style={{
-              maxWidth: 500,
-              marginBottom: 32,
-              padding: '16px 24px',
-              background: 'rgba(245, 166, 35, 0.08)',
-              borderRadius: 12,
-              borderLeft: '4px solid #F5A623',
-            }}
-          >
-            <p
-              style={{
-                margin: 0,
-                fontSize: 16,
-                color: '#F5F0E8',
-                fontFamily: "'Inter', sans-serif",
-                lineHeight: 1.5,
-              }}
-            >
-              {transcript}
-            </p>
-          </div>
-        )}
-
-        {/* Text input fallback */}
-        {(showTextInput || !lumiListen.isSpeechRecognitionAvailable()) && (
-          <form
-            onSubmit={handleTextSubmit}
-            style={{
-              maxWidth: 500,
-              width: '100%',
-              display: 'flex',
-              gap: 12,
-            }}
-          >
-            <input
-              type="text"
-              value={textInput}
-              onChange={(e) => setTextInput(e.target.value)}
-              placeholder="Type your message..."
-              style={{
-                flex: 1,
-                padding: '14px 18px',
-                backgroundColor: '#1A1A1A',
-                border: '1px solid #2E2E2E',
-                borderRadius: 12,
-                color: '#F5F0E8',
-                fontSize: 16,
-                fontFamily: "'Inter', sans-serif",
-                outline: 'none',
-                transition: 'border-color 0.2s',
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = '#F5A623';
-                e.target.style.boxShadow = '0 0 0 2px rgba(245, 166, 35, 0.2)';
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = '#2E2E2E';
-                e.target.style.boxShadow = 'none';
-              }}
-            />
-            <button
-              type="submit"
-              style={{
-                padding: '14px 24px',
-                backgroundColor: '#F5A623',
-                border: 'none',
-                borderRadius: 12,
-                color: '#0D0D0D',
                 fontSize: 14,
-                fontWeight: 600,
-                cursor: 'pointer',
+                color: lumiState === 'listening' ? '#E05252' : '#A89880',
                 fontFamily: "'Inter', sans-serif",
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = '#E09415';
-                e.target.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = '#F5A623';
-                e.target.style.transform = 'translateY(0)';
+                fontWeight: 500,
               }}
             >
-              Send
+              {getStatusText()}
+            </p>
+          </div>
+
+          {/* Lumi Orb / Recording button */}
+          <div style={{ marginBottom: '24px' }}>
+            <LumiOrb
+              state={lumiState}
+              size="xl"
+              onClick={lumiState === 'idle' ? startListening : handleStop}
+            />
+          </div>
+
+          {/* Text input fallback */}
+          {(showTextInput || !lumiListen.isSpeechRecognitionAvailable()) && (
+            <form
+              onSubmit={handleTextSubmit}
+              style={{
+                width: '100%',
+                maxWidth: 500,
+                display: 'flex',
+                gap: 12,
+              }}
+            >
+              <input
+                type="text"
+                value={textInput}
+                onChange={(e) => setTextInput(e.target.value)}
+                placeholder="Type your message..."
+                disabled={processingRef.current}
+                style={{
+                  flex: 1,
+                  padding: '14px 18px',
+                  backgroundColor: '#1A1A1A',
+                  border: '1px solid #2E2E2E',
+                  borderRadius: 12,
+                  color: '#F5F0E8',
+                  fontSize: 16,
+                  fontFamily: "'Inter', sans-serif",
+                  outline: 'none',
+                  transition: 'border-color 0.2s',
+                  opacity: processingRef.current ? 0.6 : 1,
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#F5A623';
+                  e.target.style.boxShadow = '0 0 0 2px rgba(245, 166, 35, 0.2)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#2E2E2E';
+                  e.target.style.boxShadow = 'none';
+                }}
+              />
+              <button
+                type="submit"
+                disabled={processingRef.current || !textInput.trim()}
+                style={{
+                  padding: '14px 24px',
+                  backgroundColor: '#F5A623',
+                  border: 'none',
+                  borderRadius: 12,
+                  color: '#0D0D0D',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: processingRef.current ? 'not-allowed' : 'pointer',
+fontFamily: "'Inter', sans-serif",
+                  transition: 'all 0.2s',
+                  opacity: processingRef.current || !textInput.trim() ? 0.6 : 1,
+                }}
+                onMouseEnter={(e) => {
+                  if (!processingRef.current && textInput.trim()) {
+                    e.target.style.backgroundColor = '#E09415';
+                    e.target.style.transform = 'translateY(-1px)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = '#F5A623';
+                  e.target.style.transform = 'translateY(0)';
+                }}
+              >
+                Send
+              </button>
+            </form>
+          )}
+
+          {/* Toggle text input button */}
+          {!showTextInput && lumiListen.isSpeechRecognitionAvailable() && (
+            <button
+              onClick={() => setShowTextInput(!showTextInput)}
+              style={{
+                marginTop: '16px',
+                padding: '8px 16px',
+                backgroundColor: 'transparent',
+                border: '1px solid #2E2E2E',
+                borderRadius: 8,
+                color: '#6B5F52',
+                fontSize: 12,
+                cursor: 'pointer',
+                fontFamily: "'Inter', sans-serif',
+              }}
+            >
+              {showTextInput ? 'Hide text input' : 'Use text input instead'}
             </button>
-          </form>
-        )}
+          )}
+        </div>
 
         {/* Error message */}
         {error && (

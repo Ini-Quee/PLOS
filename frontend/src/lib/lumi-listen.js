@@ -20,6 +20,10 @@ let recognition = null;
 let isListening = false;
 let currentLanguage = 'en-US';
 
+// Recording configuration
+const MAX_RECORDING_DURATION = 5 * 60 * 1000; // 5 minutes max
+const SILENCE_TIMEOUT = 4000; // 4 seconds of silence before auto-stop
+
 /**
  * Start listening for speech
  * @param {Object} callbacks — Event callbacks
@@ -39,8 +43,8 @@ export function startListening(callbacks = {}, options = {}) {
     try {
       recognition = new SpeechRecognition();
 
-      // Configure recognition
-      recognition.continuous = options.continuous ?? true;
+      // Configure recognition - IMPROVED: continuous mode with longer timeout
+      recognition.continuous = true; // Keep listening until manually stopped
       recognition.interimResults = options.interimResults ?? true;
       recognition.lang = options.language ?? currentLanguage;
       recognition.maxAlternatives = options.maxAlternatives ?? 1;
@@ -48,12 +52,59 @@ export function startListening(callbacks = {}, options = {}) {
       // Track accumulated transcript
       let finalTranscript = '';
       let interimTranscript = '';
+      let silenceTimer = null;
+      let maxDurationTimer = null;
+      let lastSpeechTime = Date.now();
+
+      // Clear any existing timers
+      const clearTimers = () => {
+        if (silenceTimer) {
+          clearTimeout(silenceTimer);
+          silenceTimer = null;
+        }
+        if (maxDurationTimer) {
+          clearTimeout(maxDurationTimer);
+          maxDurationTimer = null;
+        }
+      };
+
+      // Reset silence timer when speech is detected
+      const resetSilenceTimer = () => {
+        lastSpeechTime = Date.now();
+        if (silenceTimer) {
+          clearTimeout(silenceTimer);
+        }
+        silenceTimer = setTimeout(() => {
+          // 4 seconds of silence - stop recording
+          if (isListening && finalTranscript.trim()) {
+            stopListening();
+            if (callbacks.onSilenceTimeout) {
+              callbacks.onSilenceTimeout(finalTranscript.trim());
+            }
+          }
+        }, SILENCE_TIMEOUT);
+      };
 
       // Event handlers
       recognition.onstart = () => {
         isListening = true;
         finalTranscript = '';
         interimTranscript = '';
+        lastSpeechTime = Date.now();
+        
+        // Start silence detection timer
+        resetSilenceTimer();
+        
+        // Set maximum duration timer (5 minutes safety limit)
+        maxDurationTimer = setTimeout(() => {
+          if (isListening) {
+            stopListening();
+            if (callbacks.onMaxDurationReached) {
+              callbacks.onMaxDurationReached(finalTranscript.trim());
+            }
+          }
+        }, MAX_RECORDING_DURATION);
+        
         if (callbacks.onStart) callbacks.onStart();
         resolve();
       };
@@ -71,6 +122,11 @@ export function startListening(callbacks = {}, options = {}) {
           }
         }
 
+        // Reset silence timer on any speech
+        if (interimTranscript || finalTranscript) {
+          resetSilenceTimer();
+        }
+
         if (callbacks.onResult) {
           callbacks.onResult({
             final: finalTranscript.trim(),
@@ -85,35 +141,50 @@ export function startListening(callbacks = {}, options = {}) {
 
         // Handle specific errors
         if (error === 'no-speech') {
-          // No speech detected — not a critical error
+          // No speech detected — not a critical error during recording
           if (callbacks.onNoSpeech) callbacks.onNoSpeech();
           return;
         }
 
         if (error === 'audio-capture') {
+          clearTimers();
           reject(new Error('No microphone found or microphone is not working'));
           return;
         }
 
         if (error === 'not-allowed') {
+          clearTimers();
           reject(new Error('Microphone permission denied'));
           return;
         }
 
         if (error === 'network') {
+          clearTimers();
           reject(new Error('Network error — check your connection'));
           return;
         }
 
         if (error === 'aborted') {
           // Recognition was aborted — not an error
+          clearTimers();
           return;
         }
 
+        // For other errors, try to continue if we have content
+        if (error === 'network' || error === 'no-speech') {
+          // Try to recover - don't reject immediately
+          if (finalTranscript.trim()) {
+            // We have content, continue recording
+            return;
+          }
+        }
+
+        clearTimers();
         reject(new Error(`Speech recognition error: ${error}`));
       };
 
       recognition.onend = () => {
+        clearTimers();
         isListening = false;
 
         // If we have a final transcript, send it
@@ -124,24 +195,11 @@ export function startListening(callbacks = {}, options = {}) {
         } else if (callbacks.onEnd) {
           callbacks.onEnd({ transcript: '' });
         }
-
-        // Auto-restart if continuous mode
-        if (options.continuous && !options.manualStop) {
-          // Small delay before restarting
-          setTimeout(() => {
-            if (isListening) {
-              try {
-                recognition.start();
-              } catch (e) {
-                // Ignore restart errors
-              }
-            }
-          }, 100);
-        }
       };
 
       recognition.start();
     } catch (error) {
+      clearTimers();
       reject(error);
     }
   });
@@ -232,173 +290,6 @@ export async function requestMicrophonePermission() {
 }
 
 /**
- * Simple listen for a single utterance
- * @param {number} timeout — Max time to listen in ms
- * @returns {Promise<string>} — Resolves with transcript
- */
-export function listenOnce(timeout = 10000) {
-  return new Promise((resolve, reject) => {
-    if (!isSpeechRecognitionAvailable()) {
-      reject(new Error('Speech recognition not available'));
-      return;
-    }
-
-    let transcript = '';
-    let timeoutId = null;
-
-    const callbacks = {
-      onResult: ({ fullText }) => {
-        transcript = fullText;
-      },
-      onEnd: ({ transcript: finalTranscript }) => {
-        clearTimeout(timeoutId);
-        stopListening();
-        resolve(finalTranscript || transcript);
-      },
-    };
-
-    startListening(callbacks, { continuous: false })
-      .then(() => {
-        timeoutId = setTimeout(() => {
-          stopListening();
-          resolve(transcript);
-        }, timeout);
-      })
-      .catch(reject);
-  });
-}
-
-/**
- * Voice command parser
- * Extracts commands from natural speech
- * @param {string} transcript — Raw speech transcript
- * @returns {Object} — Parsed command
- */
-export function parseVoiceCommand(transcript) {
-  const text = transcript.toLowerCase().trim();
-
-  // Task completion patterns
-  const donePatterns = [
-    /i(?:'m| am)? done (?:with )?(.+)/i,
-    /i (?:just )?finished (.+)/i,
-    /completed (.+)/i,
-    /done with (.+)/i,
-  ];
-
-  for (const pattern of donePatterns) {
-    const match = text.match(pattern);
-    if (match) {
-      return {
-        type: 'task_complete',
-        task: match[1].trim(),
-        raw: transcript,
-      };
-    }
-  }
-
-  // Skip task patterns
-  const skipPatterns = [
-    /skip (.+)/i,
-    /i(?:'m| am)? (?:gonna |going to )?skip (.+)/i,
-    /pass on (.+)/i,
-    /not (?:doing |gonna do )?(.+) (?:today|now)/i,
-  ];
-
-  for (const pattern of skipPatterns) {
-    const match = text.match(pattern);
-    if (match) {
-      return {
-        type: 'task_skip',
-        task: match[1].trim(),
-        raw: transcript,
-      };
-    }
-  }
-
-  // Reminder patterns
-  const reminderPatterns = [
-    /remind me (?:tomorrow |later |to )?(.+)/i,
-    /remind me (?:that )?(.+) tomorrow/i,
-    /set a reminder (?:for )?(.+)/i,
-  ];
-
-  for (const pattern of reminderPatterns) {
-    const match = text.match(pattern);
-    if (match) {
-      return {
-        type: 'reminder',
-        reminder: match[1].trim(),
-        raw: transcript,
-      };
-    }
-  }
-
-  // Schedule patterns
-  const schedulePatterns = [
-    /add (.+?) to my schedule(?: on)? (.+)/i,
-    /schedule (.+?) for (.+)/i,
-    /i have (.+?) (?:at|on) (.+)/i,
-  ];
-
-  for (const pattern of schedulePatterns) {
-    const match = text.match(pattern);
-    if (match) {
-      return {
-        type: 'schedule_add',
-        event: match[1].trim(),
-        datetime: match[2].trim(),
-        raw: transcript,
-      };
-    }
-  }
-
-  // Query patterns
-  if (/what(?:'s| is) next/i.test(text)) {
-    return { type: 'query_next', raw: transcript };
-  }
-
-  if (/how am i doing/i.test(text)) {
-    return { type: 'query_progress', raw: transcript };
-  }
-
-  if (/what(?:'s| is) (?:on |my )?schedule/i.test(text)) {
-    return { type: 'query_schedule', raw: transcript };
-  }
-
-  // Journal patterns
-  if (/i want to (?:write |create )?(?:a )?journal/i.test(text) || /open (?:my )?journal/i.test(text)) {
-    return { type: 'open_journal', raw: transcript };
-  }
-
-  // Affirmation patterns
-  if (/read (?:me )?my affirmations/i.test(text)) {
-    return { type: 'read_affirmations', raw: transcript };
-  }
-
-  // Book suggestion patterns
-  if (/what (?:book|should i read)/i.test(text)) {
-    return { type: 'suggest_book', raw: transcript };
-  }
-
-  // Emotion patterns
-  const emotionMatch = text.match(/i feel (\w+)/i);
-  if (emotionMatch) {
-    return {
-      type: 'emotion',
-      emotion: emotionMatch[1],
-      raw: transcript,
-    };
-  }
-
-  // Default — just a message
-  return {
-    type: 'message',
-    message: transcript,
-    raw: transcript,
-  };
-}
-
-/**
  * Initialize Lumi Listen
  * Call this when the app initializes
  */
@@ -420,7 +311,5 @@ export default {
   setLanguage,
   getSupportedLanguages,
   requestMicrophonePermission,
-  listenOnce,
-  parseVoiceCommand,
   initLumiListen,
 };
