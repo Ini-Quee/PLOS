@@ -9,7 +9,7 @@ const { authenticate } = require('../middleware/authenticate');
 const { auditLog } = require('../middleware/auditLog');
 const { validateInput } = require('../middleware/validateInput');
 const { body, param, query } = require('express-validator');
-const db = require('../db/connection');
+const { pool } = require('../db/connection');
 
 /**
  * GET /api/content/posts
@@ -47,8 +47,9 @@ router.get(
 
       sql += ` ORDER BY scheduled_for ASC`;
 
-      const posts = await db.query(sql, params);
-      res.json({ posts });
+    const result = await pool.query(sql, params);
+    const posts = result.rows;
+    res.json({ posts });
     } catch (err) {
       console.error('Error fetching posts:', err);
       res.status(500).json({ error: 'Failed to fetch posts' });
@@ -68,17 +69,18 @@ router.get(
       const now = new Date();
       const fifteenMinutesAgo = new Date(now - 15 * 60 * 1000);
 
-      const posts = await db.query(
-        `SELECT * FROM scheduled_posts
-         WHERE user_id = $1
-         AND status = 'scheduled'
-         AND scheduled_for <= $2
-         AND scheduled_for >= $3
-         ORDER BY scheduled_for ASC`,
-        [req.user.id, now, fifteenMinutesAgo]
-      );
+    const result = await pool.query(
+      `SELECT * FROM scheduled_posts
+      WHERE user_id = $1
+      AND status = 'scheduled'
+      AND scheduled_for <= $2
+      AND scheduled_for >= $3
+      ORDER BY scheduled_for ASC`,
+      [req.user.id, now, fifteenMinutesAgo]
+    );
+    const posts = result.rows;
 
-      res.json({ posts });
+    res.json({ posts });
     } catch (err) {
       console.error('Error fetching due posts:', err);
       res.status(500).json({ error: 'Failed to fetch due posts' });
@@ -103,15 +105,16 @@ router.post(
     try {
       const { platform, content, scheduled_for, is_memorial } = req.body;
 
-      const post = await db.query(
-        `INSERT INTO scheduled_posts
-         (user_id, platform, content, scheduled_for, is_memorial)
-         VALUES ($1, $2, $3, $4, $5)
-         RETURNING *`,
-        [req.user.id, platform, content, scheduled_for, is_memorial || false]
-      );
+    const result = await pool.query(
+      `INSERT INTO scheduled_posts
+      (user_id, platform, content, scheduled_for, is_memorial)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *`,
+      [req.user.id, platform, content, scheduled_for, is_memorial || false]
+    );
+    const post = result.rows;
 
-      res.status(201).json({ post: post[0] });
+    res.status(201).json({ post: post[0] });
     } catch (err) {
       console.error('Error creating post:', err);
       res.status(500).json({ error: 'Failed to create post' });
@@ -137,23 +140,24 @@ router.put(
       const { id } = req.params;
       const { platform, content, scheduled_for, is_memorial } = req.body;
 
-      const post = await db.query(
-        `UPDATE scheduled_posts SET
-         platform = COALESCE($1, platform),
-         content = COALESCE($2, content),
-         scheduled_for = COALESCE($3, scheduled_for),
-         is_memorial = COALESCE($4, is_memorial),
-         updated_at = NOW()
-         WHERE id = $5 AND user_id = $6
-         RETURNING *`,
-        [platform, content, scheduled_for, is_memorial, id, req.user.id]
-      );
+    const result = await pool.query(
+      `UPDATE scheduled_posts SET
+      platform = COALESCE($1, platform),
+      content = COALESCE($2, content),
+      scheduled_for = COALESCE($3, scheduled_for),
+      is_memorial = COALESCE($4, is_memorial),
+      updated_at = NOW()
+      WHERE id = $5 AND user_id = $6
+      RETURNING *`,
+      [platform, content, scheduled_for, is_memorial, id, req.user.id]
+    );
+    const post = result.rows;
 
-      if (post.length === 0) {
-        return res.status(404).json({ error: 'Post not found' });
-      }
+    if (post.length === 0) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
 
-      res.json({ post: post[0] });
+    res.json({ post: post[0] });
     } catch (err) {
       console.error('Error updating post:', err);
       res.status(500).json({ error: 'Failed to update post' });
@@ -175,24 +179,25 @@ router.post(
       const { id } = req.params;
       const { likes, comments, reposts } = req.body;
 
-      const post = await db.query(
-        `UPDATE scheduled_posts SET
-         status = 'posted',
-         posted_at = NOW(),
-         likes = COALESCE($1, likes),
-         comments = COALESCE($2, comments),
-         reposts = COALESCE($3, reposts),
-         updated_at = NOW()
-         WHERE id = $4 AND user_id = $5
-         RETURNING *`,
-        [likes, comments, reposts, id, req.user.id]
-      );
+    const result = await pool.query(
+      `UPDATE scheduled_posts SET
+      status = 'posted',
+      posted_at = NOW(),
+      likes = COALESCE($1, likes),
+      comments = COALESCE($2, comments),
+      reposts = COALESCE($3, reposts),
+      updated_at = NOW()
+      WHERE id = $4 AND user_id = $5
+      RETURNING *`,
+      [likes, comments, reposts, id, req.user.id]
+    );
+    const post = result.rows;
 
-      if (post.length === 0) {
-        return res.status(404).json({ error: 'Post not found' });
-      }
+    if (post.length === 0) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
 
-      res.json({ post: post[0] });
+    res.json({ post: post[0] });
     } catch (err) {
       console.error('Error marking post:', err);
       res.status(500).json({ error: 'Failed to mark post' });
@@ -213,16 +218,16 @@ router.delete(
     try {
       const { id } = req.params;
 
-      const result = await db.query(
-        `UPDATE scheduled_posts SET status = 'cancelled', updated_at = NOW()
-         WHERE id = $1 AND user_id = $2
-         RETURNING id`,
-        [id, req.user.id]
-      );
+    const result = await pool.query(
+      `UPDATE scheduled_posts SET status = 'cancelled', updated_at = NOW()
+      WHERE id = $1 AND user_id = $2
+      RETURNING id`,
+      [id, req.user.id]
+    );
 
-      if (result.length === 0) {
-        return res.status(404).json({ error: 'Post not found' });
-      }
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
 
       res.json({ success: true });
     } catch (err) {
@@ -244,14 +249,15 @@ router.get(
   auditLog('view_templates'),
   async (req, res) => {
     try {
-      const templates = await db.query(
-        `SELECT * FROM post_templates
-         WHERE user_id = $1
-         ORDER BY created_at DESC`,
-        [req.user.id]
-      );
+    const result = await pool.query(
+      `SELECT * FROM post_templates
+      WHERE user_id = $1
+      ORDER BY created_at DESC`,
+      [req.user.id]
+    );
+    const templates = result.rows;
 
-      res.json({ templates });
+    res.json({ templates });
     } catch (err) {
       console.error('Error fetching templates:', err);
       res.status(500).json({ error: 'Failed to fetch templates' });
@@ -275,15 +281,16 @@ router.post(
     try {
       const { name, platform, content } = req.body;
 
-      const template = await db.query(
-        `INSERT INTO post_templates
-         (user_id, name, platform, content)
-         VALUES ($1, $2, $3, $4)
-         RETURNING *`,
-        [req.user.id, name, platform, content]
-      );
+    const result = await pool.query(
+      `INSERT INTO post_templates
+      (user_id, name, platform, content)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *`,
+      [req.user.id, name, platform, content]
+    );
+    const template = result.rows;
 
-      res.status(201).json({ template: template[0] });
+    res.status(201).json({ template: template[0] });
     } catch (err) {
       console.error('Error creating template:', err);
       res.status(500).json({ error: 'Failed to create template' });

@@ -724,7 +724,7 @@ fontFamily: "'Inter', sans-serif",
                 color: '#6B5F52',
                 fontSize: 12,
                 cursor: 'pointer',
-                fontFamily: "'Inter', sans-serif',
+                fontFamily: "'Inter', sans-serif ",
               }}
             >
               {showTextInput ? 'Hide text input' : 'Use text input instead'}

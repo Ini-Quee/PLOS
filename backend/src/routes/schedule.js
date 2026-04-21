@@ -49,36 +49,38 @@ router.get(
       const today = new Date().toISOString().split('T')[0];
       const dayOfWeek = new Date().getDay();
 
-      // Get schedules that apply to today
-      const schedules = await pool.query(
-        `SELECT s.*,
-          CASE WHEN sc.id IS NOT NULL THEN true ELSE false END as completed,
-          sc.completed_at,
-          sc.notes as completion_notes
-         FROM schedules s
-         LEFT JOIN schedule_completions sc ON s.id = sc.schedule_id
-           AND sc.completion_date = $2
-         WHERE s.user_id = $1
-           AND s.is_active = true
-           AND (
-             -- One-time events for today
-             (s.repeat_pattern = 'none' AND s.target_date = $2)
-             -- Daily repeating
-             OR s.repeat_pattern = 'daily'
-             -- Weekdays (Mon-Fri)
-             OR (s.repeat_pattern = 'weekdays' AND $3 BETWEEN 1 AND 5)
-             -- Weekly
-             OR (s.repeat_pattern = 'weekly' AND $3 = ANY(s.repeat_days))
-             -- Custom days
-             OR (s.repeat_pattern = 'custom' AND $3 = ANY(s.repeat_days))
-           )
-         ORDER BY s.start_time ASC`,
-        [req.user.id, today, dayOfWeek]
-      );
+// Get schedules that apply to today
+    const result = await pool.query(
+      `SELECT s.*,
+      CASE WHEN sc.id IS NOT NULL THEN true ELSE false END as completed,
+      sc.completed_at,
+      sc.notes as completion_notes
+      FROM schedules s
+      LEFT JOIN schedule_completions sc ON s.id = sc.schedule_id
+      AND sc.completion_date = $2
+      WHERE s.user_id = $1
+      AND s.is_active = true
+      AND (
+      -- One-time events for today
+      (s.repeat_pattern = 'none' AND s.target_date = $2)
+      -- Daily repeating
+      OR s.repeat_pattern = 'daily'
+      -- Weekdays (Mon-Fri)
+      OR (s.repeat_pattern = 'weekdays' AND $3 BETWEEN 1 AND 5)
+      -- Weekly
+      OR (s.repeat_pattern = 'weekly' AND $3 = ANY(s.repeat_days))
+      -- Custom days
+      OR (s.repeat_pattern = 'custom' AND $3 = ANY(s.repeat_days))
+      )
+      ORDER BY s.start_time ASC`,
+      [req.user.id, today, dayOfWeek]
+    );
 
-      // Calculate streaks for each schedule
-      const schedulesWithStreaks = await Promise.all(
-        schedules.map(async (schedule) => {
+    const schedules = result.rows;
+
+    // Calculate streaks for each schedule
+    const schedulesWithStreaks = await Promise.all(
+      schedules.map(async (schedule) => {
           const streak = await calculateStreak(schedule.id, req.user.id);
           return { ...schedule, streak };
         })
@@ -121,28 +123,28 @@ router.post(
         target_date,
       } = req.body;
 
-      const schedule = await pool.query(
-        `INSERT INTO schedules
-         (user_id, title, description, start_time, duration_minutes,
-          repeat_pattern, repeat_days, category, colour, is_high_priority, target_date)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-         RETURNING *`,
-        [
-          req.user.id,
-          title,
-          description,
-          start_time,
-          duration_minutes || 60,
-          repeat_pattern || 'none',
-          repeat_days || null,
-          category || 'personal',
-          colour || '#F5A623',
-          is_high_priority || false,
-          target_date || null,
-        ]
-      );
+const result = await pool.query(
+      `INSERT INTO schedules
+      (user_id, title, description, start_time, duration_minutes,
+      repeat_pattern, repeat_days, category, colour, is_high_priority, target_date)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      RETURNING *`,
+      [
+        req.user.id,
+        title,
+        description,
+        start_time,
+        duration_minutes || 60,
+        repeat_pattern || 'none',
+        repeat_days || null,
+        category || 'personal',
+        colour || '#F5A623',
+        is_high_priority || false,
+        target_date || null,
+      ]
+    );
 
-      res.status(201).json({ schedule: schedule[0] });
+    res.status(201).json({ schedule: result.rows[0] });
     } catch (err) {
       console.error('Error creating schedule:', err);
       res.status(500).json({ error: 'Failed to create schedule' });
@@ -178,17 +180,17 @@ router.put(
         is_active,
       } = req.body;
 
-      // Verify ownership
-      const existing = await pool.query(
-        'SELECT * FROM schedules WHERE id = $1 AND user_id = $2',
-        [id, req.user.id]
-      );
+// Verify ownership
+    const existing = await pool.query(
+      'SELECT * FROM schedules WHERE id = $1 AND user_id = $2',
+      [id, req.user.id]
+    );
 
-      if (existing.length === 0) {
-        return res.status(404).json({ error: 'Schedule not found' });
-      }
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: 'Schedule not found' });
+    }
 
-      const schedule = await pool.query(
+    const result = await pool.query(
         `UPDATE schedules SET
          title = $1, description = $2, start_time = $3, duration_minutes = $4,
          repeat_pattern = $5, repeat_days = $6, category = $7, colour = $8,
@@ -211,7 +213,7 @@ router.put(
         ]
       );
 
-      res.json({ schedule: schedule[0] });
+      res.json({ schedule: result.rows[0] });
     } catch (err) {
       console.error('Error updating schedule:', err);
       res.status(500).json({ error: 'Failed to update schedule' });
@@ -239,11 +241,11 @@ router.delete(
         [id, req.user.id]
       );
 
-      if (result.length === 0) {
-        return res.status(404).json({ error: 'Schedule not found' });
-      }
+if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Schedule not found' });
+    }
 
-      res.json({ success: true });
+    res.json({ success: true });
     } catch (err) {
       console.error('Error deleting schedule:', err);
       res.status(500).json({ error: 'Failed to delete schedule' });
@@ -269,15 +271,15 @@ router.post(
       const { notes } = req.body;
       const today = new Date().toISOString().split('T')[0];
 
-      // Verify schedule exists and belongs to user
-      const schedule = await pool.query(
-        'SELECT * FROM schedules WHERE id = $1 AND user_id = $2',
-        [id, req.user.id]
-      );
+// Verify schedule exists and belongs to user
+    const scheduleResult = await pool.query(
+      'SELECT * FROM schedules WHERE id = $1 AND user_id = $2',
+      [id, req.user.id]
+    );
 
-      if (schedule.length === 0) {
-        return res.status(404).json({ error: 'Schedule not found' });
-      }
+    if (scheduleResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Schedule not found' });
+    }
 
       // Mark as complete
       await pool.query(
@@ -369,35 +371,37 @@ async function calculateStreak(scheduleId, userId) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // Get completion dates for the last 365 days
-  const completions = await pool.query(
-    `SELECT completion_date FROM schedule_completions
-     WHERE schedule_id = $1 AND user_id = $2
-       AND completion_date >= $3
-     ORDER BY completion_date DESC`,
-    [scheduleId, userId, new Date(today - 365 * 24 * 60 * 60 * 1000)]
-  );
+// Get completion dates for the last 365 days
+    const completionsResult = await pool.query(
+      `SELECT completion_date FROM schedule_completions
+      WHERE schedule_id = $1 AND user_id = $2
+      AND completion_date >= $3
+      ORDER BY completion_date DESC`,
+      [scheduleId, userId, new Date(today - 365 * 24 * 60 * 60 * 1000)]
+    );
 
-  if (completions.length === 0) return 0;
+    const completions = completionsResult.rows;
 
-  let streak = 0;
-  let checkDate = new Date(today);
+    if (completions.length === 0) return 0;
 
-  // Check if completed today or yesterday
-  const latestCompletion = new Date(completions[0].completion_date);
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
+    let streak = 0;
+    let checkDate = new Date(today);
 
-  if (latestCompletion.getTime() !== today.getTime() &&
+    // Check if completed today or yesterday
+    const latestCompletion = new Date(completions[0].completion_date);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (latestCompletion.getTime() !== today.getTime() &&
       latestCompletion.getTime() !== yesterday.getTime()) {
-    // Not completed today or yesterday, streak broken
-    return 0;
-  }
+      // Not completed today or yesterday, streak broken
+      return 0;
+    }
 
-  // Count consecutive days
-  const completionDates = new Set(
-    completions.map(c => c.completion_date.toISOString().split('T')[0])
-  );
+    // Count consecutive days
+    const completionDates = new Set(
+      completions.map(c => c.completion_date.toISOString().split('T')[0])
+    );
 
   while (true) {
     const dateString = checkDate.toISOString().split('T')[0];

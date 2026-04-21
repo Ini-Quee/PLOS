@@ -9,7 +9,7 @@ const { authenticate } = require('../middleware/authenticate');
 const { auditLog } = require('../middleware/auditLog');
 const { validateInput } = require('../middleware/validateInput');
 const { body, param } = require('express-validator');
-const db = require('../db/connection');
+const { pool } = require('../db/connection');
 
 /**
  * GET /api/goals
@@ -24,26 +24,27 @@ router.get(
       const { year } = req.query;
       const targetYear = year || new Date().getFullYear();
 
-      const goals = await db.query(
-        `SELECT * FROM year_goals
-         WHERE user_id = $1 AND year = $2
-         ORDER BY
-           quarter ASC NULLS LAST,
-           month ASC NULLS LAST,
-           week ASC NULLS LAST,
-           display_order ASC`,
-        [req.user.id, targetYear]
-      );
+    const result = await pool.query(
+      `SELECT * FROM year_goals
+      WHERE user_id = $1 AND year = $2
+      ORDER BY
+      quarter ASC NULLS LAST,
+      month ASC NULLS LAST,
+      week ASC NULLS LAST,
+      display_order ASC`,
+      [req.user.id, targetYear]
+    );
+    const goals = result.rows;
 
-      // Group by level
-      const grouped = {
-        year: goals.filter((g) => !g.quarter && !g.month && !g.week),
-        quarters: {},
-        months: {},
-        weeks: {},
-      };
+    // Group by level
+    const grouped = {
+      year: goals.filter((g) => !g.quarter && !g.month && !g.week),
+      quarters: {},
+      months: {},
+      weeks: {},
+    };
 
-      goals.forEach((goal) => {
+    goals.forEach((goal) => {
         if (goal.quarter && !goal.month) {
           if (!grouped.quarters[goal.quarter]) grouped.quarters[goal.quarter] = [];
           grouped.quarters[goal.quarter].push(goal);
@@ -77,23 +78,24 @@ router.post(
     try {
       const { title, description, year, quarter, month, week } = req.body;
 
-      const goal = await db.query(
-        `INSERT INTO year_goals
-         (user_id, title, description, year, quarter, month, week)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         RETURNING *`,
-        [
-          req.user.id,
-          title,
-          description,
-          year || new Date().getFullYear(),
-          quarter || null,
-          month || null,
-          week || null,
-        ]
-      );
+    const result = await pool.query(
+      `INSERT INTO year_goals
+      (user_id, title, description, year, quarter, month, week)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING *`,
+      [
+        req.user.id,
+        title,
+        description,
+        year || new Date().getFullYear(),
+        quarter || null,
+        month || null,
+        week || null,
+      ]
+    );
+    const goal = result.rows;
 
-      res.status(201).json({ goal: goal[0] });
+    res.status(201).json({ goal: goal[0] });
     } catch (err) {
       console.error('Error creating goal:', err);
       res.status(500).json({ error: 'Failed to create goal' });
@@ -114,19 +116,20 @@ router.post(
     try {
       const { id } = req.params;
 
-      const goal = await db.query(
-        `UPDATE year_goals SET
-         is_complete = true, completed_at = NOW(), updated_at = NOW()
-         WHERE id = $1 AND user_id = $2
-         RETURNING *`,
-        [id, req.user.id]
-      );
+    const result = await pool.query(
+      `UPDATE year_goals SET
+      is_complete = true, completed_at = NOW(), updated_at = NOW()
+      WHERE id = $1 AND user_id = $2
+      RETURNING *`,
+      [id, req.user.id]
+    );
+    const goal = result.rows;
 
-      if (goal.length === 0) {
-        return res.status(404).json({ error: 'Goal not found' });
-      }
+    if (goal.length === 0) {
+      return res.status(404).json({ error: 'Goal not found' });
+    }
 
-      res.json({ goal: goal[0] });
+    res.json({ goal: goal[0] });
     } catch (err) {
       console.error('Error completing goal:', err);
       res.status(500).json({ error: 'Failed to complete goal' });
@@ -147,14 +150,14 @@ router.delete(
     try {
       const { id } = req.params;
 
-      const result = await db.query(
-        'DELETE FROM year_goals WHERE id = $1 AND user_id = $2 RETURNING id',
-        [id, req.user.id]
-      );
+    const result = await pool.query(
+      'DELETE FROM year_goals WHERE id = $1 AND user_id = $2 RETURNING id',
+      [id, req.user.id]
+    );
 
-      if (result.length === 0) {
-        return res.status(404).json({ error: 'Goal not found' });
-      }
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Goal not found' });
+    }
 
       res.json({ success: true });
     } catch (err) {
@@ -178,13 +181,14 @@ router.get(
     try {
       const today = new Date().toISOString().split('T')[0];
 
-      const intention = await db.query(
-        `SELECT * FROM daily_intentions
-         WHERE user_id = $1 AND intention_date = $2`,
-        [req.user.id, today]
-      );
+    const result = await pool.query(
+      `SELECT * FROM daily_intentions
+      WHERE user_id = $1 AND intention_date = $2`,
+      [req.user.id, today]
+    );
+    const intention = result.rows;
 
-      res.json({ intention: intention[0] || null });
+    res.json({ intention: intention[0] || null });
     } catch (err) {
       console.error('Error fetching intention:', err);
       res.status(500).json({ error: 'Failed to fetch intention' });
@@ -206,17 +210,17 @@ router.post(
       const { intention } = req.body;
       const today = new Date().toISOString().split('T')[0];
 
-      const result = await db.query(
-        `INSERT INTO daily_intentions
-         (user_id, intention_date, intention)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (user_id, intention_date)
-         DO UPDATE SET intention = $3, updated_at = NOW()
-         RETURNING *`,
-        [req.user.id, today, intention]
-      );
+    const result = await pool.query(
+      `INSERT INTO daily_intentions
+      (user_id, intention_date, intention)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (user_id, intention_date)
+      DO UPDATE SET intention = $3, updated_at = NOW()
+      RETURNING *`,
+      [req.user.id, today, intention]
+    );
 
-      res.json({ intention: result[0] });
+    res.json({ intention: result.rows[0] });
     } catch (err) {
       console.error('Error setting intention:', err);
       res.status(500).json({ error: 'Failed to set intention' });
@@ -236,15 +240,15 @@ router.post(
     try {
       const today = new Date().toISOString().split('T')[0];
 
-      const result = await db.query(
-        `UPDATE daily_intentions SET
-         is_spoken = true, spoken_at = NOW()
-         WHERE user_id = $1 AND intention_date = $2
-         RETURNING *`,
-        [req.user.id, today]
-      );
+    const result = await pool.query(
+      `UPDATE daily_intentions SET
+      is_spoken = true, spoken_at = NOW()
+      WHERE user_id = $1 AND intention_date = $2
+      RETURNING *`,
+      [req.user.id, today]
+    );
 
-      res.json({ intention: result[0] || null });
+    res.json({ intention: result.rows[0] || null });
     } catch (err) {
       console.error('Error marking intention spoken:', err);
       res.status(500).json({ error: 'Failed to mark intention spoken' });
