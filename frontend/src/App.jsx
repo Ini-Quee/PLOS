@@ -1,5 +1,7 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import { AuthProvider, useAuth } from './lib/auth';
+import { pageTransitions } from './styles/motion';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -15,6 +17,8 @@ import Contacts from './pages/Contacts';
 import MfaSetup from './pages/MfaSetup';
 import Settings from './pages/Settings';
 import TalkToLumi from './pages/TalkToLumi';
+import ColorPreview from './pages/ColorPreview';
+import DesignSystemPreview from './pages/DesignSystemPreview';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -64,139 +68,197 @@ function PublicRoute({ children }) {
   return children;
 }
 
-function AppRoutes() {
+function AnimatedRoute({ children }) {
   return (
-    <Routes>
-      <Route
-        path="/login"
-        element={
-          <PublicRoute>
-            <Login />
-          </PublicRoute>
-        }
-      />
-      <Route
-        path="/register"
-        element={
-          <PublicRoute>
-            <Register />
-          </PublicRoute>
-        }
-      />
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/journal"
-        element={
-          <ProtectedRoute>
-            <Journal />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/journal/:journalType"
-        element={
-          <ProtectedRoute>
-            <Journal />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/mfa-setup"
-        element={
-          <ProtectedRoute>
-            <MfaSetup />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/settings"
-        element={
-          <ProtectedRoute>
-            <Settings />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/schedule"
-        element={
-          <ProtectedRoute>
-            <Schedule />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/calendar"
-        element={
-          <ProtectedRoute>
-            <Calendar />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/projects"
-        element={
-          <ProtectedRoute>
-            <Projects />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/books"
-        element={
-          <ProtectedRoute>
-            <Books />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/job-tracker"
-        element={
-          <ProtectedRoute>
-            <Jobs />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/content-planner"
-        element={
-          <ProtectedRoute>
-            <ContentPlanner />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/year-plan"
-        element={
-          <ProtectedRoute>
-            <YearPlan />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/contacts"
-        element={
-          <ProtectedRoute>
-            <Contacts />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/talk-to-lumi"
-        element={
-          <ProtectedRoute>
-            <TalkToLumi />
-          </ProtectedRoute>
-        }
-      />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
-    </Routes>
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      transition={{ type: 'tween', ease: [0.25, 0.1, 0.25, 1], duration: 0.4 }}
+      style={{ width: '100%', height: '100%' }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function AppRoutes() {
+  const location = useLocation();
+  
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        <Route
+          path="/login"
+          element={
+            <PublicRoute>
+              <AnimatedRoute>
+                <Login />
+              </AnimatedRoute>
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <PublicRoute>
+              <AnimatedRoute>
+                <Register />
+              </AnimatedRoute>
+            </PublicRoute>
+          }
+        />
+<Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <AnimatedRoute>
+                  <Dashboard />
+                </AnimatedRoute>
+              </ProtectedRoute>
+            }
+          />
+        <Route
+          path="/journal"
+          element={
+            <ProtectedRoute>
+              <AnimatedRoute>
+                <Journal />
+              </AnimatedRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/journal/:journalType"
+          element={
+            <ProtectedRoute>
+              <AnimatedRoute>
+                <Journal />
+              </AnimatedRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/mfa-setup"
+          element={
+            <ProtectedRoute>
+              <AnimatedRoute>
+                <MfaSetup />
+              </AnimatedRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <AnimatedRoute>
+                <Settings />
+              </AnimatedRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/schedule"
+          element={
+            <ProtectedRoute>
+              <AnimatedRoute>
+                <Schedule />
+              </AnimatedRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/calendar"
+          element={
+            <ProtectedRoute>
+              <AnimatedRoute>
+                <Calendar />
+              </AnimatedRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/projects"
+          element={
+            <ProtectedRoute>
+              <AnimatedRoute>
+                <Projects />
+              </AnimatedRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/books"
+          element={
+            <ProtectedRoute>
+              <AnimatedRoute>
+                <Books />
+              </AnimatedRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/job-tracker"
+          element={
+            <ProtectedRoute>
+              <AnimatedRoute>
+                <Jobs />
+              </AnimatedRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/content-planner"
+          element={
+            <ProtectedRoute>
+              <AnimatedRoute>
+                <ContentPlanner />
+              </AnimatedRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/year-plan"
+          element={
+            <ProtectedRoute>
+              <AnimatedRoute>
+                <YearPlan />
+              </AnimatedRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/contacts"
+          element={
+            <ProtectedRoute>
+              <AnimatedRoute>
+                <Contacts />
+              </AnimatedRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/talk-to-lumi"
+          element={
+            <ProtectedRoute>
+              <AnimatedRoute>
+                <TalkToLumi />
+              </AnimatedRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/color-preview"
+          element={<AnimatedRoute><ColorPreview /></AnimatedRoute>}
+        />
+        <Route
+          path="/design-system"
+          element={<AnimatedRoute><DesignSystemPreview /></AnimatedRoute>}
+        />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </AnimatePresence>
   );
 }
 

@@ -1,0 +1,136 @@
+.plos-card {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Card variants */
+.plos-card--default {
+  background: #1C1C27;
+  border: 1px solid #2D2D3A;
+}
+
+.plos-card--elevated {
+  background: #13131A;
+  border: 1px solid #2D2D3A;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.plos-card--glass {
+  background: rgba(28, 28, 39, 0.5);
+  border: 1px solid #2D2D3A;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Hover states */
+.plos-card:hover {
+  border-color: rgba(245, 166, 35, 0.2);
+}
+
+/* Shine effect */
+.card-shine {
+  pointer-events: none;
+}
+
+/* Top gradient line */
+.card-top-line {
+  pointer-events: none;
+}
+
+/* Accent line */
+.card-accent-line {
+  border-radius: 2px 0 0 2px;
+}
+
+/* Hover glow for accent */
+@keyframes cardGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(245, 166, 35, 0);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(245, 166, 35, 0.1);
+  }
+}
+
+.plos-card:hover {
+  animation: cardGlow 2s ease-in-out infinite;
+}
+
+/* Pressed state */
+.plos-card:active {
+  transform: scale(0.98);
+}
+
+/* Focus visible */
+.plos-card:focus-visible {
+  outline: 2px solid #F5A623;
+  outline-offset: 2px;
+}
+
+/* Card header */
+.plos-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+/* Card title */
+.plos-card__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #FFFFFF;
+  margin: 0;
+}
+
+/* Card content */
+.plos-card__content {
+  color: #9CA3AF;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Card footer */
+.plos-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #2D2D3A;
+}
+
+/* Loading skeleton */
+@keyframes skeleton {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.plos-card--loading .card-content {
+  background: linear-gradient(
+    90deg,
+    #1C1C27 25%,
+    #2D2D3A 50%,
+    #1C1C27 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton 1.5s ease-in-out infinite;
+}
+
+/* Card grid */
+.plos-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .plos-card-grid {
+    grid-template-columns: 1fr;
+  }
+}

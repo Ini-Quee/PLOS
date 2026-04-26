@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../lib/auth';
 import LumiOrb from '../components/lumi/LumiOrb';
 import * as lumiVoice from '../lib/lumi-voice';
@@ -7,6 +8,9 @@ import * as lumiListen from '../lib/lumi-listen';
 import { sendToLumi } from '../lib/gemini';
 import api from '../lib/api';
 import LivingBackground from '../components/LivingBackground';
+import { Colors, ModuleColors, getColorWithOpacity } from '../lib/colors';
+import { Typography, FontWeights, Spacing, BorderRadius, FontFamilies, getTypography } from '../lib/typography';
+import { transitions, animations, micAnimations } from '../styles/motion';
 
 /**
  * TalkToLumi — Full-screen AI conversation interface
@@ -370,8 +374,8 @@ export default function TalkToLumi() {
           minHeight: '100vh',
           display: 'flex',
           flexDirection: 'column',
-          padding: '20px',
-          fontFamily: "'Inter', system-ui, sans-serif",
+          padding: Spacing.lg,
+          fontFamily: FontFamilies.body,
         }}
       >
         {/* Header */}
@@ -379,44 +383,44 @@ export default function TalkToLumi() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: '20px',
+          marginBottom: Spacing.lg,
         }}>
           <button
             onClick={() => navigate('/dashboard')}
             style={{
-              background: 'rgba(26, 26, 26, 0.9)',
+              background: Colors.surface,
               backdropFilter: 'blur(10px)',
-              padding: '12px 24px',
-              borderRadius: 12,
-              border: '1px solid #2E2E2E',
-              color: '#A89880',
-              fontSize: 14,
+              padding: `${Spacing.md}px ${Spacing.lg}px`,
+              borderRadius: BorderRadius.md,
+              border: `1px solid ${Colors.border}`,
+              color: Colors.textSecondary,
+              fontSize: Typography.body.fontSize,
               cursor: 'pointer',
-              fontWeight: 500,
-              fontFamily: "'Inter', sans-serif",
+              fontWeight: FontWeights.medium,
+              fontFamily: FontFamilies.body,
               transition: 'color 0.2s',
             }}
-            onMouseEnter={(e) => (e.target.style.color = '#F5F0E8')}
-            onMouseLeave={(e) => (e.target.style.color = '#A89880')}
-          >
+        onMouseEnter={(e) => (e.target.style.color = Colors.textPrimary)}
+        onMouseLeave={(e) => (e.target.style.color = Colors.textSecondary)}
+      >
             ← Back
           </button>
 
-          <div style={{ display: 'flex', gap: '12px' }}>
+          <div style={{ display: 'flex', gap: Spacing.md }}>
             {/* Mute button */}
             <button
               onClick={() => setIsMuted(!isMuted)}
               style={{
-                background: 'rgba(26, 26, 26, 0.9)',
+                background: Colors.surface,
                 backdropFilter: 'blur(10px)',
-                padding: '12px 16px',
-                borderRadius: 12,
-                border: '1px solid #2E2E2E',
-                color: isMuted ? '#E05252' : '#A89880',
-                fontSize: 14,
+                padding: `${Spacing.md}px`,
+                borderRadius: BorderRadius.md,
+                border: `1px solid ${Colors.border}`,
+                color: isMuted ? Colors.error : Colors.textSecondary,
+                fontSize: Typography.body.fontSize,
                 cursor: 'pointer',
-                fontWeight: 500,
-                fontFamily: "'Inter', sans-serif",
+                fontWeight: FontWeights.medium,
+                fontFamily: FontFamilies.body,
               }}
               title={isMuted ? 'Unmute' : 'Mute'}
             >
@@ -427,16 +431,16 @@ export default function TalkToLumi() {
             <button
               onClick={handleClearConversation}
               style={{
-                background: 'rgba(26, 26, 26, 0.9)',
+                background: Colors.surface,
                 backdropFilter: 'blur(10px)',
-                padding: '12px 16px',
-                borderRadius: 12,
-                border: '1px solid #2E2E2E',
-                color: '#A89880',
-                fontSize: 14,
+                padding: `${Spacing.md}px`,
+                borderRadius: BorderRadius.md,
+                border: `1px solid ${Colors.border}`,
+                color: Colors.textSecondary,
+                fontSize: Typography.body.fontSize,
                 cursor: 'pointer',
-                fontWeight: 500,
-                fontFamily: "'Inter', sans-serif",
+                fontWeight: FontWeights.medium,
+                fontFamily: FontFamilies.body,
               }}
             >
               Clear chat
@@ -446,16 +450,16 @@ export default function TalkToLumi() {
             <button
               onClick={() => setShowHistory(!showHistory)}
               style={{
-                background: 'rgba(26, 26, 26, 0.9)',
+                background: Colors.surface,
                 backdropFilter: 'blur(10px)',
-                padding: '12px 16px',
-                borderRadius: 12,
-                border: '1px solid #2E2E2E',
-                color: showHistory ? '#F5A623' : '#A89880',
-                fontSize: 14,
+                padding: `${Spacing.md}px`,
+                borderRadius: BorderRadius.md,
+                border: `1px solid ${Colors.border}`,
+                color: showHistory ? ModuleColors.lumi : Colors.textSecondary,
+                fontSize: Typography.body.fontSize,
                 cursor: 'pointer',
-                fontWeight: 500,
-                fontFamily: "'Inter', sans-serif",
+                fontWeight: FontWeights.medium,
+                fontFamily: FontFamilies.body,
               }}
             >
               {showHistory ? '📖' : '💬'}
@@ -463,173 +467,277 @@ export default function TalkToLumi() {
           </div>
         </div>
 
-        {/* Main chat area */}
-        <div style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          maxWidth: '800px',
-          margin: '0 auto',
-          width: '100%',
-        }}>
-          {/* Conversation history */}
+      {/* Main chat area */}
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        maxWidth: '800px',
+        margin: '0 auto',
+        width: '100%',
+      }}>
+        {/* Animated background gradient */}
+        <motion.div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            pointerEvents: 'none',
+            zIndex: 0,
+          }}
+          animate={{
+            background: [
+              `radial-gradient(circle at 20% 50%, ${getColorWithOpacity(Colors.purple, 0.15)} 0%, transparent 50%)`,
+              `radial-gradient(circle at 80% 50%, ${getColorWithOpacity(Colors.blue, 0.15)} 0%, transparent 50%)`,
+              `radial-gradient(circle at 20% 50%, ${getColorWithOpacity(Colors.purple, 0.15)} 0%, transparent 50%)`,
+            ],
+          }}
+          transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
+        />
+
+        {/* Conversation history with AnimatePresence */}
+        <AnimatePresence>
           {showHistory && conversationHistory.length > 0 && (
-            <div
+            <motion.div
               ref={chatContainerRef}
               style={{
                 flex: 1,
                 overflowY: 'auto',
-                marginBottom: '20px',
-                padding: '16px',
-                background: 'rgba(26, 26, 26, 0.6)',
-                borderRadius: 16,
-                border: '1px solid #2E2E2E',
+                marginBottom: Spacing.lg,
+                padding: Spacing.base,
+                background: getColorWithOpacity(Colors.background, 0.6),
+                borderRadius: BorderRadius.md,
+                border: `1px solid ${Colors.border}`,
                 maxHeight: '40vh',
               }}
+              variants={animations.staggerContainer}
+              initial="initial"
+              animate="animate"
+              exit={{ opacity: 0, y: -20 }}
+              layout
             >
               {conversationHistory.slice(-10).map((msg, index) => (
-                <div
+                <motion.div
                   key={index}
+                  variants={animations.staggerItem}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  layout
+                  transition={{ delay: index * 0.05 }}
                   style={{
-                    marginBottom: '16px',
+                    marginBottom: Spacing.base,
                     display: 'flex',
                     flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
                     alignItems: 'flex-start',
-                    gap: '12px',
+                    gap: Spacing.md,
                   }}
                 >
-                  {/* Avatar */}
-                  <div style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: '50%',
-                    background: msg.role === 'user' ? '#F5A623' : 'rgba(245, 166, 35, 0.2)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    color: msg.role === 'user' ? '#0D0D0D' : '#F5A623',
-                    flexShrink: 0,
-                  }}>
+                  {/* Animated Avatar */}
+                  <motion.div 
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: '50%',
+                      background: msg.role === 'user' ? ModuleColors.lumi : getColorWithOpacity(ModuleColors.lumi, 0.2),
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: Typography.body.fontSize,
+                      fontWeight: FontWeights.semibold,
+                      color: msg.role === 'user' ? Colors.background : ModuleColors.lumi,
+                      flexShrink: 0,
+                    }}
+                    whileHover={{ scale: 1.1 }}
+                    transition={transitions.snap}
+                  >
                     {msg.role === 'user' ? (user?.name?.[0] || 'Y') : aiName[0]}
-                  </div>
+                  </motion.div>
 
-                  {/* Message bubble */}
-                  <div style={{
-                    maxWidth: '70%',
-                    padding: '12px 16px',
-                    borderRadius: 16,
-                    background: msg.role === 'user' ? '#F5A623' : '#1C1C27',
-                    color: msg.role === 'user' ? '#0D0D0D' : '#F5F0E8',
-                    fontSize: 14,
-                    fontFamily: "'Inter', sans-serif",
-                    lineHeight: 1.5,
-                  }}>
+                  {/* Animated Message bubble */}
+                  <motion.div 
+                    style={{
+                      maxWidth: '70%',
+                      padding: Spacing.md,
+                      borderRadius: BorderRadius.md,
+                      background: msg.role === 'user' ? ModuleColors.lumi : Colors.card,
+                      color: msg.role === 'user' ? Colors.background : Colors.textPrimary,
+                      fontSize: Typography.body.fontSize,
+                      fontFamily: FontFamilies.body,
+                      lineHeight: Typography.body.lineHeight / Typography.body.fontSize,
+                    }}
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={transitions.spring}
+                  >
                     {msg.content}
                     <div style={{
-                      marginTop: '4px',
-                      fontSize: '10px',
+                      marginTop: Spacing.xs,
+                      fontSize: Typography.micro.fontSize,
                       opacity: 0.6,
                       textAlign: msg.role === 'user' ? 'right' : 'left',
                     }}>
                       {formatTime(msg.timestamp)}
                     </div>
-                  </div>
-                </div>
+                  </motion.div>
+                </motion.div>
               ))}
-            </div>
+              
+              {/* Typing indicator */}
+              <AnimatePresence>
+                {lumiState === 'processing' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: Spacing.xs,
+                      padding: Spacing.md,
+                      color: Colors.textMuted,
+                      fontSize: Typography.caption.fontSize,
+                    }}
+                  >
+                    <motion.span
+                      animate={{ y: [0, -5, 0] }}
+                      transition={{ duration: 0.6, repeat: Infinity, delay: 0 }}
+                    >
+                      •
+                    </motion.span>
+                    <motion.span
+                      animate={{ y: [0, -5, 0] }}
+                      transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }}
+                    >
+                      •
+                    </motion.span>
+                    <motion.span
+                      animate={{ y: [0, -5, 0] }}
+                      transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }}
+                    >
+                      •
+                    </motion.span>
+                    <span style={{ marginLeft: Spacing.sm }}>{aiName} is thinking...</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
           )}
+        </AnimatePresence>
 
-          {/* Current message from Lumi */}
+        {/* Current message from Lumi with animation */}
+        <AnimatePresence>
           {lumiMessage && (
-            <div
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              transition={transitions.smooth}
               style={{
-                marginBottom: '20px',
-                padding: '24px 32px',
-                background: 'rgba(26, 26, 26, 0.9)',
+                marginBottom: Spacing.lg,
+                padding: `${Spacing.xl}px ${Spacing.xxl}px`,
+                background: getColorWithOpacity(Colors.surface, 0.9),
                 backdropFilter: 'blur(10px)',
-                borderRadius: 16,
-                border: '1px solid #2E2E2E',
+                borderRadius: BorderRadius.md,
+                border: `1px solid ${Colors.border}`,
                 textAlign: 'center',
               }}
             >
-              <p
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.1 }}
                 style={{
                   margin: 0,
-                  fontSize: 20,
-                  fontFamily: "'DM Serif Display', serif",
+                  fontSize: Typography.title.fontSize,
+                  fontFamily: FontFamilies.display,
                   fontStyle: 'italic',
-                  color: '#F5F0E8',
-                  lineHeight: 1.6,
+                  color: Colors.textPrimary,
+                  lineHeight: Typography.title.lineHeight / Typography.title.fontSize,
                 }}
               >
                 {lumiMessage}
-              </p>
-              {!isMuted && lumiState === 'speaking' && (
-                <div style={{
-                  marginTop: '12px',
-                  fontSize: '12px',
-                  color: '#6B5F52',
-                }}>
-                  🔊 Speaking...
-                </div>
-              )}
-            </div>
+              </motion.p>
+              
+              <AnimatePresence>
+                {!isMuted && lumiState === 'speaking' && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    style={{
+                      marginTop: Spacing.md,
+                      fontSize: Typography.caption.fontSize,
+                      color: Colors.textMuted,
+                    }}
+                  >
+                    🔊 Speaking...
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
           )}
+        </AnimatePresence>
 
-          {/* User transcript while recording */}
+        {/* User transcript with animation */}
+        <AnimatePresence>
           {transcript && lumiState === 'listening' && (
-            <div
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
               style={{
-                marginBottom: '20px',
-                padding: '16px 24px',
-                background: 'rgba(245, 166, 35, 0.08)',
-                borderRadius: 12,
-                borderLeft: '4px solid #F5A623',
+                marginBottom: Spacing.lg,
+                padding: `${Spacing.md}px ${Spacing.xl}px`,
+                background: getColorWithOpacity(ModuleColors.lumi, 0.08),
+                borderRadius: BorderRadius.md,
+                borderLeft: `4px solid ${ModuleColors.lumi}`,
               }}
             >
-              <p
+              <motion.p
                 style={{
                   margin: 0,
-                  fontSize: 16,
-                  color: '#F5F0E8',
-                  fontFamily: "'Inter', sans-serif",
-                  lineHeight: 1.5,
+                  fontSize: Typography.body.fontSize,
+                  color: Colors.textPrimary,
+                  fontFamily: FontFamilies.body,
+                  lineHeight: Typography.body.lineHeight / Typography.body.fontSize,
                 }}
               >
                 {transcript}
-              </p>
-            </div>
+              </motion.p>
+            </motion.div>
           )}
-        </div>
+        </AnimatePresence>
+      </div>
 
-        {/* Bottom control area */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          padding: '20px',
-        }}>
-          {/* Status text */}
-          <div
-            style={{
-              marginBottom: '24px',
-              textAlign: 'center',
-            }}
-          >
-            <p
-              style={{
-                margin: 0,
-                fontSize: 14,
-                color: lumiState === 'listening' ? '#E05252' : '#A89880',
-                fontFamily: "'Inter', sans-serif",
-                fontWeight: 500,
-              }}
-            >
-              {getStatusText()}
-            </p>
-          </div>
+    {/* Bottom control area */}
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      padding: Spacing.lg,
+    }}>
+      {/* Status text */}
+      <div
+        style={{
+          marginBottom: Spacing.xl,
+          textAlign: 'center',
+        }}
+      >
+        <p
+          style={{
+            margin: 0,
+            fontSize: Typography.body.fontSize,
+            color: lumiState === 'listening' ? Colors.error : Colors.textSecondary,
+            fontFamily: FontFamilies.body,
+            fontWeight: FontWeights.medium,
+          }}
+        >
+          {getStatusText()}
+        </p>
+      </div>
 
           {/* Lumi Orb / Recording button */}
           <div style={{ marginBottom: '24px' }}>
@@ -651,108 +759,108 @@ export default function TalkToLumi() {
                 gap: 12,
               }}
             >
-              <input
-                type="text"
-                value={textInput}
-                onChange={(e) => setTextInput(e.target.value)}
-                placeholder="Type your message..."
-                disabled={processingRef.current}
-                style={{
-                  flex: 1,
-                  padding: '14px 18px',
-                  backgroundColor: '#1A1A1A',
-                  border: '1px solid #2E2E2E',
-                  borderRadius: 12,
-                  color: '#F5F0E8',
-                  fontSize: 16,
-                  fontFamily: "'Inter', sans-serif",
-                  outline: 'none',
-                  transition: 'border-color 0.2s',
-                  opacity: processingRef.current ? 0.6 : 1,
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#F5A623';
-                  e.target.style.boxShadow = '0 0 0 2px rgba(245, 166, 35, 0.2)';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#2E2E2E';
-                  e.target.style.boxShadow = 'none';
-                }}
-              />
-              <button
-                type="submit"
-                disabled={processingRef.current || !textInput.trim()}
-                style={{
-                  padding: '14px 24px',
-                  backgroundColor: '#F5A623',
-                  border: 'none',
-                  borderRadius: 12,
-                  color: '#0D0D0D',
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: processingRef.current ? 'not-allowed' : 'pointer',
-fontFamily: "'Inter', sans-serif",
-                  transition: 'all 0.2s',
-                  opacity: processingRef.current || !textInput.trim() ? 0.6 : 1,
-                }}
-                onMouseEnter={(e) => {
-                  if (!processingRef.current && textInput.trim()) {
-                    e.target.style.backgroundColor = '#E09415';
-                    e.target.style.transform = 'translateY(-1px)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = '#F5A623';
-                  e.target.style.transform = 'translateY(0)';
-                }}
-              >
-                Send
-              </button>
-            </form>
-          )}
+        <input
+          type="text"
+          value={textInput}
+          onChange={(e) => setTextInput(e.target.value)}
+          placeholder="Type your message..."
+          disabled={processingRef.current}
+          style={{
+            flex: 1,
+            padding: '14px 18px',
+            backgroundColor: Colors.card,
+            border: `1px solid ${Colors.border}`,
+            borderRadius: 12,
+            color: Colors.textPrimary,
+            fontSize: 16,
+            fontFamily: "'Inter', sans-serif",
+            outline: 'none',
+            transition: 'border-color 0.2s',
+            opacity: processingRef.current ? 0.6 : 1,
+          }}
+          onFocus={(e) => {
+            e.target.style.borderColor = ModuleColors.lumi;
+            e.target.style.boxShadow = `0 0 0 2px ${getColorWithOpacity(ModuleColors.lumi, 0.2)}`;
+          }}
+          onBlur={(e) => {
+            e.target.style.borderColor = Colors.border;
+            e.target.style.boxShadow = 'none';
+          }}
+        />
+        <button
+          type="submit"
+          disabled={processingRef.current || !textInput.trim()}
+          style={{
+            padding: '14px 24px',
+            backgroundColor: ModuleColors.lumi,
+            border: 'none',
+            borderRadius: 12,
+            color: Colors.background,
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: processingRef.current ? 'not-allowed' : 'pointer',
+            fontFamily: "'Inter', sans-serif",
+            transition: 'all 0.2s',
+            opacity: processingRef.current || !textInput.trim() ? 0.6 : 1,
+          }}
+          onMouseEnter={(e) => {
+            if (!processingRef.current && textInput.trim()) {
+              e.target.style.backgroundColor = '#E09415';
+              e.target.style.transform = 'translateY(-1px)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.backgroundColor = ModuleColors.lumi;
+            e.target.style.transform = 'translateY(0)';
+          }}
+        >
+          Send
+        </button>
+      </form>
+    )}
 
-          {/* Toggle text input button */}
-          {!showTextInput && lumiListen.isSpeechRecognitionAvailable() && (
-            <button
-              onClick={() => setShowTextInput(!showTextInput)}
-              style={{
-                marginTop: '16px',
-                padding: '8px 16px',
-                backgroundColor: 'transparent',
-                border: '1px solid #2E2E2E',
-                borderRadius: 8,
-                color: '#6B5F52',
-                fontSize: 12,
-                cursor: 'pointer',
-                fontFamily: "'Inter', sans-serif ",
-              }}
-            >
-              {showTextInput ? 'Hide text input' : 'Use text input instead'}
-            </button>
-          )}
-        </div>
+    {/* Toggle text input button */}
+    {!showTextInput && lumiListen.isSpeechRecognitionAvailable() && (
+      <button
+        onClick={() => setShowTextInput(!showTextInput)}
+        style={{
+          marginTop: '16px',
+          padding: '8px 16px',
+          backgroundColor: 'transparent',
+          border: `1px solid ${Colors.border}`,
+          borderRadius: 8,
+          color: Colors.textMuted,
+          fontSize: 12,
+          cursor: 'pointer',
+          fontFamily: "'Inter', sans-serif",
+        }}
+      >
+        {showTextInput ? 'Hide text input' : 'Use text input instead'}
+      </button>
+    )}
+  </div>
 
-        {/* Error message */}
-        {error && (
-          <div
-            style={{
-              position: 'fixed',
-              bottom: 20,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              padding: '12px 24px',
-              background: 'rgba(224, 82, 82, 0.1)',
-              border: '1px solid rgba(224, 82, 82, 0.3)',
-              borderRadius: 12,
-              color: '#E05252',
-              fontSize: 14,
-              fontFamily: "'Inter', sans-serif",
-            }}
-          >
-            {error}
-          </div>
-        )}
-      </div>
+  {/* Error message */}
+  {error && (
+    <div
+      style={{
+        position: 'fixed',
+        bottom: 20,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        padding: '12px 24px',
+        background: getColorWithOpacity(Colors.error, 0.1),
+        border: `1px solid ${getColorWithOpacity(Colors.error, 0.3)}`,
+        borderRadius: 12,
+        color: Colors.error,
+        fontSize: 14,
+        fontFamily: "'Inter', sans-serif",
+      }}
+    >
+      {error}
     </div>
-  );
+  )}
+</div>
+</div>
+);
 }

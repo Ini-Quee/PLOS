@@ -1,723 +1,614 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../lib/auth';
-import api from '../lib/api';
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 
-// Skeleton Loader Component
-function SkeletonLoader({ width = '100%', height = '20px', circle = false }) {
-  return (
-    <div
-      style={{
-        width,
-        height,
-        borderRadius: circle ? '50%' : '8px',
-        background: 'linear-gradient(90deg, #1C1C27 25%, #2D2D3A 50%, #1C1C27 75%)',
-        backgroundSize: '200% 100%',
-        animation: 'pulse 1.5s ease-in-out infinite',
-      }}
-    >
-      <style>{`
-        @keyframes pulse {
-          0% { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
-        }
-      `}</style>
-    </div>
-  );
+// ─── Inline styles ────────────────────────────────────────────────────────────
+const C = {
+  bg: '#07070f',
+  bg2: '#0f0f1c',
+  bg3: '#141428',
+  amber: '#F5A623',
+  amber2: '#ffbe4d',
+  teal: '#00d4aa',
+  purple: '#8b5cf6',
+  pink: '#f472b6',
+  text: '#e8e8f0',
+  muted: '#6b6b8a',
+  border: 'rgba(255,255,255,0.07)',
 }
 
-// Card Skeleton
-function CardSkeleton({ rows = 3 }) {
+const SEASONS = {
+  harmattan: { label: '☀️ Harmattan', bg: '#07070f' },
+  rain: { label: '🌧 Rainy', bg: '#070d0f' },
+  night: { label: '🌙 Night', bg: '#040408' },
+  dawn: { label: '🌅 Dawn', bg: '#0f0a07' },
+}
+
+// ─── Static mock data (replace with real API calls) ───────────────────────────
+const SCHEDULE = [
+  // Empty schedule - user hasn't created any routines yet
+]
+
+const HABITS = [
+  // Empty habits - user hasn't set up any habits yet
+]
+
+const GOALS = [
+  // Empty goals - user hasn't created any goals yet
+]
+
+const BUDGET_CATS = [
+  // Empty budget - user hasn't set up budget categories yet
+]
+
+const JOURNAL_SPARK = []
+const COMPLETED_DAYS = []
+const TODAY_DATE = 27
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+function StatCard({ icon, label, value, sub, badge, badgeType, accentColor, spark, delay }) {
+  const badgeColors = {
+    up: { bg: 'rgba(0,212,170,0.12)', color: C.teal },
+    down: { bg: 'rgba(244,114,182,0.12)', color: C.pink },
+    warn: { bg: 'rgba(245,166,35,0.12)', color: C.amber },
+  }
+  const bc = badgeColors[badgeType] || badgeColors.warn
+  
   return (
-    <div style={{ padding: '24px' }}>
-      <SkeletonLoader width="60%" height="24px" style={{ marginBottom: '16px' }} />
-      <div style={{ borderTop: '1px solid #2E2E2E', paddingTop: '16px' }}>
-        {Array.from({ length: rows }).map((_, i) => (
-          <div key={i} style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <SkeletonLoader width="24px" height="24px" />
-            <SkeletonLoader width="70%" height="16px" />
-          </div>
+    <div style={{ 
+      background: C.bg2, 
+      border: `1px solid ${C.border}`, 
+      borderTop: `1px solid ${accentColor}40`, 
+      borderRadius: 16, 
+      padding: 18, 
+      position: 'relative', 
+      overflow: 'hidden', 
+      cursor: 'pointer',
+      animation: `fadeUp 0.5s ${delay}s ease both`,
+    }}>
+      <div style={{ fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 14 }}>{icon}</span>
+        {label}
+      </div>
+      <div style={{ fontFamily: 'system-ui,sans-serif', fontSize: 32, fontWeight: 800, color: accentColor, lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: 11, color: C.muted, marginTop: 6 }}>{sub}</div>
+      {badge && (
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, padding: '3px 7px', borderRadius: 20, marginTop: 8, fontWeight: 500, background: bc.bg, color: bc.color }}>
+          {badge}
+        </div>
+      )}
+      {spark && (
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 32, marginTop: 10 }}>
+          {JOURNAL_SPARK.map((v, i) => (
+            <div key={i} style={{ width: 12, height: v * 4, background: `rgba(245,166,35,${0.3 + v * 0.08})`, borderRadius: 2 }} />
+          ))}
+        </div>
+      )}
+      <div style={{ position: 'absolute', bottom: 0, left: 0, height: 2, width: '72%', borderRadius: '0 0 0 16px', background: accentColor }} />
+    </div>
+  )
+}
+
+function Calendar() {
+  const startDay = 3
+  const days = []
+  for (let i = 0; i < startDay; i++) days.push(null)
+  for (let d = 1; d <= 30; d++) days.push(d)
+  
+  return (
+    <div style={{ background: C.bg2, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18, animation: 'fadeUp 0.5s 0.25s ease both' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <div style={{ fontWeight: 700, fontSize: 14 }}>April 2026 — activity map</div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {['‹','›'].map(b => (
+            <button key={b} style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(255,255,255,0.05)', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 12 }}>{b}</button>
+          ))}
+        </div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4, marginBottom: 6 }}>
+        {['S','M','T','W','T','F','S'].map((d,i) => (
+          <div key={i} style={{ fontSize: 9, color: C.muted, textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{d}</div>
         ))}
       </div>
-    </div>
-  );
-}
-
-// Error State Component
-function ErrorState({ message, onRetry }) {
-  return (
-    <div style={{ padding: '24px', textAlign: 'center' }}>
-      <div style={{ fontSize: '32px', marginBottom: '12px' }}>⚠️</div>
-      <p style={{ color: '#E05252', fontSize: '14px', marginBottom: '16px', fontFamily: "'Inter', sans-serif" }}>
-        {message}
-      </p>
-      <button
-        onClick={onRetry}
-        style={{
-          padding: '8px 16px',
-          backgroundColor: 'transparent',
-          border: '1px solid #F5A623',
-          borderRadius: '8px',
-          color: '#F5A623',
-          fontSize: '14px',
-          cursor: 'pointer',
-          fontFamily: "'Inter', sans-serif",
-        }}
-      >
-        Try Again
-      </button>
-    </div>
-  );
-}
-
-// Empty State Component
-function EmptyState({ icon, message, actionLabel, onAction }) {
-  return (
-    <div style={{ padding: '40px', textAlign: 'center' }}>
-      <div style={{ fontSize: '32px', marginBottom: '12px', opacity: 0.5 }}>{icon}</div>
-      <p style={{ color: '#A89880', fontSize: '14px', margin: '0 0 16px 0', fontFamily: "'Inter', sans-serif" }}>
-        {message}
-      </p>
-      {actionLabel && onAction && (
-        <button
-          onClick={onAction}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: '#F5A623',
-            border: 'none',
-            borderRadius: '12px',
-            color: '#0D0D0D',
-            fontSize: '14px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            fontFamily: "'Inter', sans-serif",
-          }}
-        >
-          {actionLabel}
-        </button>
-      )}
-    </div>
-  );
-}
-
-// Coming Soon Card
-function ComingSoonCard({ title, icon, description }) {
-  return (
-    <div
-      style={{
-        backgroundColor: '#1A1A1A',
-        borderRadius: '16px',
-        border: '1px solid #2E2E2E',
-        padding: '24px',
-        opacity: 0.7,
-      }}
-    >
-      <h2 style={{
-        margin: '0 0 16px 0',
-        fontSize: '18px',
-        fontWeight: 600,
-        fontFamily: "'Inter', sans-serif",
-        color: '#F5F0E8',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
-      }}>
-        <span style={{ opacity: 0.5 }}>{icon}</span>
-        {title}
-      </h2>
-      <div style={{ borderTop: '1px solid #2E2E2E', paddingTop: '16px' }}>
-        <div style={{ textAlign: 'center', padding: '20px' }}>
-          <span style={{ fontSize: '24px', marginBottom: '8px', display: 'block' }}>🚧</span>
-          <p style={{ color: '#6B5F52', fontSize: '14px', margin: 0, fontFamily: "'Inter', sans-serif" }}>
-            {description}
-          </p>
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4 }}>
+        {days.map((d, i) => {
+          if (!d) return <div key={i} />
+          const isToday = d === TODAY_DATE
+          const isFilled = COMPLETED_DAYS.includes(d)
+          return (
+            <div key={i} style={{ 
+              aspectRatio: '1', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', 
+              fontSize: 11, cursor: 'pointer', position: 'relative',
+              color: isToday ? '#000' : isFilled ? C.amber : C.muted,
+              background: isToday ? C.amber : isFilled ? 'rgba(245,166,35,0.15)' : 'transparent',
+              fontWeight: isToday ? 700 : isFilled ? 600 : 400,
+              boxShadow: isToday ? '0 4px 12px rgba(245,166,35,0.4)' : 'none',
+            }}>
+              {d}
+              {isFilled && !isToday && (
+                <div style={{ position: 'absolute', bottom: 3, left: '50%', transform: 'translateX(-50%)', width: 3, height: 3, borderRadius: '50%', background: C.amber }} />
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
-  );
+  )
 }
 
-export default function Dashboard() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-
-  // Data states
-  const [schedules, setSchedules] = useState([]);
-  const [journalEntries, setJournalEntries] = useState([]);
-  const [journalStreak, setJournalStreak] = useState(0);
-
-  // Loading states
-  const [schedulesLoading, setSchedulesLoading] = useState(true);
-  const [journalLoading, setJournalLoading] = useState(true);
-
-  // Error states
-  const [schedulesError, setSchedulesError] = useState(null);
-  const [journalError, setJournalError] = useState(null);
-
-  // Get time-based greeting
-  const getGreeting = useCallback(() => {
-    const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) return 'Good morning';
-    if (hour >= 12 && hour < 17) return 'Good afternoon';
-    if (hour >= 17 && hour < 21) return 'Good evening';
-    return 'Good night';
-  }, []);
-
-  // Fetch today's schedule
-  const fetchSchedules = useCallback(async () => {
-    setSchedulesLoading(true);
-    setSchedulesError(null);
-    try {
-      const response = await api.get('/schedule/today');
-      setSchedules(response.data.schedules || []);
-    } catch (err) {
-      console.error('Failed to fetch schedules:', err);
-      setSchedulesError('Couldn\'t load your schedule');
-    } finally {
-      setSchedulesLoading(false);
-    }
-  }, []);
-
-  // Fetch journal entries
-  const fetchJournalEntries = useCallback(async () => {
-    setJournalLoading(true);
-    setJournalError(null);
-    try {
-      const response = await api.get('/journal/entries');
-      const entries = response.data.entries || [];
-      setJournalEntries(entries);
-      
-      // Calculate streak from entries
-      const streak = calculateStreak(entries);
-      setJournalStreak(streak);
-    } catch (err) {
-      console.error('Failed to fetch journal entries:', err);
-      setJournalError('Couldn\'t load journal data');
-    } finally {
-      setJournalLoading(false);
-    }
-  }, []);
-
-  // Calculate journal streak from entries
-  function calculateStreak(entries) {
-    if (!entries || entries.length === 0) return 0;
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    // Get unique dates with entries
-    const entryDates = new Set(
-      entries.map(e => {
-        const d = new Date(e.recorded_at);
-        d.setHours(0, 0, 0, 0);
-        return d.getTime();
-      })
-    );
-    
-    let streak = 0;
-    let checkDate = new Date(today);
-    
-    // Check today or yesterday to start streak
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    
-    const hasToday = entryDates.has(today.getTime());
-    const hasYesterday = entryDates.has(yesterday.getTime());
-    
-    if (!hasToday && !hasYesterday) {
-      return 0; // Streak broken
-    }
-    
-    // Count consecutive days
-    while (true) {
-      if (entryDates.has(checkDate.getTime())) {
-        streak++;
-        checkDate.setDate(checkDate.getDate() - 1);
-      } else if (checkDate.getTime() === today.getTime()) {
-        // Today not completed, check yesterday
-        checkDate.setDate(checkDate.getDate() - 1);
-      } else {
-        break;
-      }
-    }
-    
-    return streak;
-  }
-
-  // Toggle schedule completion
-  const toggleScheduleComplete = async (scheduleId, currentlyCompleted) => {
-    try {
-      if (currentlyCompleted) {
-        await api.delete(`/schedule/${scheduleId}/complete`);
-      } else {
-        await api.post(`/schedule/${scheduleId}/complete`);
-      }
-      // Refresh schedules
-      fetchSchedules();
-    } catch (err) {
-      console.error('Failed to toggle completion:', err);
-    }
-  };
-
-  // Initial data fetch
-  useEffect(() => {
-    fetchSchedules();
-    fetchJournalEntries();
-  }, [fetchSchedules, fetchJournalEntries]);
-
-  // Logout handler
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
-
-  // Today's date
-  const today = new Date();
-  const dateString = today.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-
-  // Get last entry date text
-  const lastEntryText = journalEntries.length > 0
-    ? new Date(journalEntries[0].recorded_at).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-      })
-    : 'No entries yet';
-
-  // Calculate completed vs total schedules
-  const completedCount = schedules.filter(s => s.completed).length;
-  const totalCount = schedules.length;
-
-  // Category icons
-  const categoryIcons = {
-    wellness: '🌿',
-    work: '💼',
-    personal: '✨',
-    learning: '📚',
-    'lumi-suggested': '✨',
-  };
-
-  // Category colors
-  const categoryColors = {
-    wellness: '#4CAF7D',
-    work: '#F5A623',
-    personal: '#9B59B6',
-    learning: '#3498DB',
-    'lumi-suggested': '#F5A623',
-  };
-
+function LumiCard() {
+  const navigate = useNavigate()
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        backgroundColor: '#0D0D0D',
-        color: '#F5F0E8',
-        fontFamily: "'Inter', system-ui, sans-serif",
-      }}
-    >
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px' }}>
-        {/* Header */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            flexWrap: 'wrap',
-            gap: '16px',
-            marginBottom: '32px',
-            padding: '24px',
-            backgroundColor: '#1A1A1A',
-            borderRadius: '16px',
-            border: '1px solid #2E2E2E',
-          }}
-        >
-          <div>
-            <p style={{ margin: 0, color: '#A89880', fontSize: '14px', fontFamily: "'Inter', sans-serif" }}>
-              {getGreeting()}, {user?.name || 'User'}.
-            </p>
-            <p style={{
-              margin: '8px 0 0 0',
-              color: '#6B5F52',
-              fontSize: '14px',
-              fontFamily: "'DM Serif Display', serif",
-              fontStyle: 'italic'
-            }}>
-              {dateString}
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <button
-              onClick={() => navigate('/settings')}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: 'transparent',
-                border: '1px solid #2E2E2E',
-                borderRadius: '12px',
-                color: '#A89880',
-                fontSize: '14px',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                fontFamily: "'Inter', sans-serif",
-              }}
-            >
-              Settings
-            </button>
-            <button
-              onClick={handleLogout}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#F5A623',
-                border: 'none',
-                borderRadius: '12px',
-                color: '#0D0D0D',
-                fontSize: '14px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                fontFamily: "'Inter', sans-serif",
-              }}
-            >
-              Sign Out
-            </button>
-          </div>
-        </div>
+    <div style={{
+      background: 'linear-gradient(135deg,rgba(139,92,246,0.15),rgba(245,166,35,0.08))',
+      border: '1px solid rgba(139,92,246,0.2)', borderRadius: 16, padding: 18,
+      animation: 'fadeUp 0.5s 0.3s ease both', position: 'relative', overflow: 'hidden',
+    }}>
+      <div style={{
+        width: 44, height: 44, borderRadius: '50%',
+        background: `radial-gradient(circle at 35% 35%, ${C.amber2}, ${C.amber}, rgba(245,166,35,0.4))`,
+        marginBottom: 12, animation: 'breathe 3s ease-in-out infinite',
+        boxShadow: '0 0 20px rgba(245,166,35,0.3)',
+      }} />
+      <div style={{ fontSize: 11, color: C.purple, fontWeight: 700, marginBottom: 6, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Lumi says</div>
+      <div style={{ fontSize: 12, lineHeight: 1.6, color: C.text, opacity: 0.85 }}>
+        Welcome to PLOS, Erica. I'm your daily companion. Start by journaling or talking to me about your day. I'm here to help you build the life you want.
+      </div>
+      <div
+        onClick={() => navigate('/talk-to-lumi')}
+        style={{
+          marginTop: 12,
+          background: 'rgba(139,92,246,0.15)',
+          border: '1px solid rgba(139,92,246,0.25)',
+          borderRadius: 8, padding: '7px 12px', fontSize: 11, color: C.purple,
+          cursor: 'pointer', display: 'inline-block', transition: 'all 0.2s',
+        }}
+      >
+        Talk to Lumi →
+      </div>
+    </div>
+  )
+}
 
-        {/* Talk to Lumi Button */}
-        <div style={{ marginBottom: '32px' }}>
+function ScheduleCard() {
+  const navigate = useNavigate()
+  const [items, setItems] = useState(SCHEDULE)
+
+  if (items.length === 0) {
+    return (
+      <div style={{ background: C.bg2, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18, animation: 'fadeUp 0.5s 0.35s ease both', gridColumn: 'span 2' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <div style={{ fontWeight: 700, fontSize: 14 }}>Today's schedule</div>
+          <div style={{ fontSize: 11, color: C.amber, cursor: 'pointer' }} onClick={() => navigate('/schedule')}>Set up →</div>
+        </div>
+        <div style={{ textAlign: 'center', padding: '32px 0' }}>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>📅</div>
+          <div style={{ fontSize: 14, color: C.text, marginBottom: 8 }}>No schedule yet</div>
+          <div style={{ fontSize: 12, color: C.muted, marginBottom: 16 }}>Add your daily routines and Lumi will guide you through your day</div>
           <button
-            onClick={() => navigate('/talk-to-lumi')}
+            onClick={() => navigate('/schedule')}
             style={{
-              width: '100%',
-              padding: '16px 24px',
-              backgroundColor: '#F5A623',
+              padding: '10px 20px',
+              background: C.amber,
               border: 'none',
-              borderRadius: '16px',
+              borderRadius: 10,
               color: '#0D0D0D',
-              fontSize: '18px',
+              fontSize: 13,
               fontWeight: 600,
               cursor: 'pointer',
-              transition: 'all 0.2s',
-              fontFamily: "'DM Serif Display', serif",
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '12px',
             }}
           >
-            <span style={{ fontSize: '24px' }}>✨</span>
-            Talk to Lumi
-            <span style={{ fontSize: '24px' }}>✨</span>
+            Create your first routine
           </button>
         </div>
+      </div>
+    )
+  }
 
-        {/* Dashboard Grid */}
-        <div
+  const toggle = (i) => {
+    setItems(prev => prev.map((it, idx) => idx === i ? { ...it, done: !it.done } : it))
+  }
+
+  return (
+    <div style={{ background: C.bg2, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18, animation: 'fadeUp 0.5s 0.35s ease both', gridColumn: 'span 2' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <div style={{ fontWeight: 700, fontSize: 14 }}>Today's schedule</div>
+        <div style={{ fontSize: 11, color: C.amber, cursor: 'pointer' }}>See all →</div>
+      </div>
+      {items.map((s, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: i < items.length - 1 ? `1px solid ${C.border}` : 'none' }}>
+          <span style={{ fontSize: 10, color: C.muted, width: 42, flexShrink: 0, textAlign: 'right' }}>{s.time}</span>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 12, fontWeight: 500, color: s.done ? C.muted : C.text, textDecoration: s.done ? 'line-through' : 'none' }}>{s.name}</div>
+            <div style={{ fontSize: 10, color: C.muted, marginTop: 1 }}>{s.cat}</div>
+          </div>
+          <div
+            onClick={() => toggle(i)}
+            style={{
+              width: 20, height: 20, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 10, cursor: 'pointer', flexShrink: 0, transition: 'all 0.2s',
+              background: s.done ? 'rgba(0,212,170,0.15)' : 'rgba(255,255,255,0.05)',
+              border: s.done ? 'none' : `1px solid ${C.border}`,
+              color: s.done ? C.teal : 'transparent',
+            }}
+          >✓</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function BudgetCard() {
+  const navigate = useNavigate()
+
+  // Empty state - no budget set up yet
+  return (
+    <div style={{ background: C.bg2, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18, animation: 'fadeUp 0.5s 0.4s ease both' }}>
+      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 14 }}>Monthly budget</div>
+      <div style={{ textAlign: 'center', padding: '16px 0' }}>
+        <div style={{ fontSize: 28, marginBottom: 8 }}>💰</div>
+        <div style={{ fontSize: 12, color: C.muted, marginBottom: 12 }}>Track your spending and savings goals</div>
+        <button
+          onClick={() => navigate('/budget')}
           style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-            gap: '24px',
+            padding: '8px 16px',
+            background: 'transparent',
+            border: `1px solid ${C.amber}`,
+            borderRadius: 10,
+            color: C.amber,
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: 'pointer',
           }}
         >
-          {/* TODAY'S PLAN - Real Data */}
-          <div
+          Set up budget
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function HabitsCard() {
+  const navigate = useNavigate()
+  const hasHabits = HABITS.length > 0
+
+  return (
+    <div style={{ background: C.bg2, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18, animation: 'fadeUp 0.5s 0.45s ease both' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700, fontSize: 14, marginBottom: 14 }}>
+        Habits
+        {hasHabits && <span style={{ fontSize: 11, color: C.muted, fontWeight: 400 }}>last 7 days</span>}
+      </div>
+      {!hasHabits ? (
+        <div style={{ textAlign: 'center', padding: '16px 0' }}>
+          <div style={{ fontSize: 28, marginBottom: 8 }}>🔥</div>
+          <div style={{ fontSize: 12, color: C.muted, marginBottom: 12 }}>Build consistency one day at a time</div>
+          <button
+            onClick={() => navigate('/habits')}
             style={{
-              backgroundColor: '#1A1A1A',
-              borderRadius: '16px',
-              border: '1px solid #2E2E2E',
-              transition: 'box-shadow 0.2s',
+              padding: '8px 16px',
+              background: 'transparent',
+              border: `1px solid ${C.teal}`,
+              borderRadius: 10,
+              color: C.teal,
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: 'pointer',
             }}
           >
-            <h2 style={{
-              margin: '0',
-              padding: '24px 24px 16px 24px',
-              fontSize: '18px',
-              fontWeight: 600,
-              fontFamily: "'Inter', sans-serif",
-              color: '#F5F0E8'
-            }}>
-              TODAY'S PLAN
-            </h2>
-            
-            {schedulesLoading ? (
-              <CardSkeleton rows={4} />
-            ) : schedulesError ? (
-              <ErrorState 
-                message={schedulesError} 
-                onRetry={fetchSchedules} 
-              />
-            ) : schedules.length === 0 ? (
-              <EmptyState
-                icon="📅"
-                message="No plan for today. Tap + to add tasks"
-                actionLabel="Add Routine"
-                onAction={() => navigate('/schedule')}
-              />
-            ) : (
-              <div style={{ padding: '0 24px 24px 24px' }}>
-                <div style={{ borderTop: '1px solid #2E2E2E', paddingTop: '16px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {schedules.slice(0, 5).map((schedule) => (
-                      <div 
-                        key={schedule.id}
-                        onClick={() => toggleScheduleComplete(schedule.id, schedule.completed)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '12px',
-                          padding: '8px',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          transition: 'background-color 0.2s',
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(245, 166, 35, 0.05)'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                      >
-                        <span style={{ 
-                          fontSize: '16px',
-                          color: schedule.completed ? '#4CAF7D' : '#6B5F52'
-                        }}>
-                          {schedule.completed ? '✅' : '⬜'}
-                        </span>
-                        <div style={{ flex: 1 }}>
-                          <span style={{ 
-                            color: schedule.completed ? '#6B5F52' : '#A89880', 
-                            fontSize: '14px',
-                            fontFamily: "'Inter', sans-serif",
-                            textDecoration: schedule.completed ? 'line-through' : 'none'
-                          }}>
-                            {schedule.title}
-                          </span>
-                          {schedule.streak > 1 && (
-                            <span style={{
-                              marginLeft: '8px',
-                              fontSize: '12px',
-                              color: '#F5A623',
-                            }}>
-                              🔥 {schedule.streak}
-                            </span>
-                          )}
-                        </div>
-                        <span style={{
-                          fontSize: '12px',
-                          color: categoryColors[schedule.category] || '#A89880',
-                        }}>
-                          {categoryIcons[schedule.category] || '✨'}
-                        </span>
-                      </div>
-                    ))}
-                    {schedules.length > 5 && (
-                      <p style={{
-                        margin: '8px 0 0 0',
-                        color: '#6B5F52',
-                        fontSize: '12px',
-                        fontFamily: "'Inter', sans-serif",
-                        textAlign: 'center'
-                      }}>
-                        +{schedules.length - 5} more items
-                      </p>
-                    )}
-                  </div>
-                  
-                  <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #2E2E2E' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ color: '#A89880', fontSize: '12px' }}>
-                        {completedCount} of {totalCount} completed
-                      </span>
-                      <span style={{ color: '#F5A623', fontSize: '12px', fontWeight: 600 }}>
-                        {totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0}%
-                      </span>
-                    </div>
-                    <div style={{
-                      height: '4px',
-                      backgroundColor: '#2E2E2E',
-                      borderRadius: '2px',
-                      overflow: 'hidden'
-                    }}>
-                      <div style={{
-                        height: '100%',
-                        width: `${totalCount > 0 ? (completedCount / totalCount) * 100 : 0}%`,
-                        backgroundColor: '#F5A623',
-                        borderRadius: '2px',
-                        transition: 'width 0.3s'
-                      }} />
-                    </div>
-                  </div>
-                  
-                  <div style={{ marginTop: '16px' }}>
-                    <button
-                      onClick={() => navigate('/schedule')}
-                      style={{
-                        padding: '8px 0',
-                        backgroundColor: 'transparent',
-                        border: 'none',
-                        color: '#F5A623',
-                        fontSize: '14px',
-                        cursor: 'pointer',
-                        fontWeight: 500,
-                        fontFamily: "'Inter', sans-serif",
-                      }}
-                    >
-                      [Full Schedule]
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+            Add first habit
+          </button>
+        </div>
+      ) : (
+        HABITS.map((h, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: i < HABITS.length - 1 ? 10 : 0 }}>
+            <span style={{ fontSize: 14, width: 24 }}>{h.icon}</span>
+            <span style={{ fontSize: 12, flex: 1 }}>{h.name}</span>
+            <div style={{ display: 'flex', gap: 3 }}>
+              {h.week.map((d, j) => (
+                <div
+                  key={j}
+                  style={{
+                    width: 8, height: 8, borderRadius: '50%',
+                    background: j === 6 ? C.amber : d ? C.teal : 'rgba(255,255,255,0.08)',
+                    animation: j === 6 ? 'pulse 2s infinite' : 'none',
+                  }}
+                />
+              ))}
+            </div>
           </div>
+        ))
+      )}
+    </div>
+  )
+}
 
-          {/* JOURNAL - Real Data */}
-          <div
+function GoalsCard() {
+  const navigate = useNavigate()
+  const hasGoals = GOALS.length > 0
+
+  return (
+    <div style={{ background: C.bg2, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18, animation: 'fadeUp 0.5s 0.5s ease both' }}>
+      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 14 }}>Life goals</div>
+      {!hasGoals ? (
+        <div style={{ textAlign: 'center', padding: '24px 0' }}>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>🎯</div>
+          <div style={{ fontSize: 14, color: C.text, marginBottom: 8 }}>No goals set yet</div>
+          <div style={{ fontSize: 12, color: C.muted, marginBottom: 16 }}>Define what you want to achieve and track your progress</div>
+          <button
+            onClick={() => navigate('/goals')}
             style={{
-              backgroundColor: '#1A1A1A',
-              borderRadius: '16px',
-              border: '1px solid #2E2E2E',
-              transition: 'box-shadow 0.2s',
+              padding: '10px 20px',
+              background: C.amber,
+              border: 'none',
+              borderRadius: 10,
+              color: '#0D0D0D',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
             }}
           >
-            <h2 style={{
-              margin: '0',
-              padding: '24px 24px 16px 24px',
-              fontSize: '18px',
-              fontWeight: 600,
-              fontFamily: "'Inter', sans-serif",
-              color: '#F5F0E8'
-            }}>
-              JOURNAL
-            </h2>
-            
-            {journalLoading ? (
-              <CardSkeleton rows={3} />
-            ) : journalError ? (
-              <ErrorState
-                message={journalError}
-                onRetry={fetchJournalEntries}
-              />
-            ) : (
-              <div style={{ padding: '0 24px 24px 24px' }}>
-                <div style={{ borderTop: '1px solid #2E2E2E', paddingTop: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                    <span style={{ fontSize: '20px' }}>🔥</span>
-                    <span style={{ color: '#F5F0E8', fontSize: '16px', fontWeight: 600, fontFamily: "'Inter', sans-serif" }}>
-                      {journalStreak} day streak
-                    </span>
-                  </div>
-                  <p style={{ margin: '0 0 16px 0', color: '#A89880', fontSize: '14px', fontFamily: "'Inter', sans-serif" }}>
-                    Last entry: {lastEntryText}
-                  </p>
-                  
-                  {journalEntries.length === 0 ? (
-                    <EmptyState
-                      icon="📝"
-                      message="Start your first journal entry"
-                      actionLabel="Open Journal"
-                      onAction={() => navigate('/journal')}
-                    />
-                  ) : (
-                    <button
-                      onClick={() => navigate('/journal')}
-                      style={{
-                        padding: '10px 16px',
-                        backgroundColor: '#F5A623',
-                        border: 'none',
-                        borderRadius: '12px',
-                        color: '#0D0D0D',
-                        fontSize: '14px',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        width: '100%',
-                        fontFamily: "'Inter', sans-serif",
-                        transition: 'all 0.2s',
-                      }}
-                    >
-                      [Open Journal]
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
+            Set your first goal
+          </button>
+        </div>
+      ) : (
+        GOALS.map((g, i) => (
+          <div key={i} style={{ marginBottom: i < GOALS.length - 1 ? 12 : 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 5 }}>
+              <span>{g.name}</span>
+              <span style={{ color: C.muted }}>{g.pct}%</span>
+            </div>
+            <div style={{ height: 5, background: 'rgba(255,255,255,0.06)', borderRadius: 3 }}>
+              <div style={{ height: 5, width: `${g.pct}%`, background: g.color, borderRadius: 3, transition: 'width 1.4s ease' }} />
+            </div>
           </div>
+        ))
+      )}
+    </div>
+  )
+}
 
-          {/* ACTIVE PROJECTS - Coming Soon */}
-          <ComingSoonCard
-            title="ACTIVE PROJECTS"
-            icon="🎯"
-            description="Track your projects and progress. Coming soon!"
-          />
+function ReadingCard() {
+  const navigate = useNavigate()
 
-          {/* THIS WEEK'S GOALS - Coming Soon */}
-          <ComingSoonCard
-            title="THIS WEEK'S GOALS"
-            icon="🎯"
-            description="Set and track weekly goals. Coming soon!"
-          />
+  // Empty state - no books added yet
+  return (
+    <div style={{ background: C.bg2, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18, animation: 'fadeUp 0.5s 0.55s ease both' }}>
+      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>Reading</div>
+      <div style={{ textAlign: 'center', padding: '16px 0' }}>
+        <div style={{ fontSize: 28, marginBottom: 8 }}>📚</div>
+        <div style={{ fontSize: 12, color: C.muted, marginBottom: 12 }}>Track your reading journey</div>
+        <button
+          onClick={() => navigate('/books')}
+          style={{
+            padding: '8px 16px',
+            background: 'transparent',
+            border: `1px solid ${C.purple}`,
+            borderRadius: 10,
+            color: C.purple,
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          Add your first book
+        </button>
+      </div>
+    </div>
+  )
+}
 
-          {/* TODAY'S AFFIRMATION - Full Width */}
-          <div
-            style={{
-              backgroundColor: '#1A1A1A',
-              borderRadius: '16px',
-              border: '1px solid #2E2E2E',
-              padding: '24px',
-              gridColumn: '1 / -1',
-              textAlign: 'center',
-            }}
-          >
-            <h2 style={{
-              margin: '0 0 16px 0',
-              fontSize: '14px',
-              fontWeight: 600,
-              fontFamily: "'Inter', sans-serif",
-              color: '#A89880',
-              textTransform: 'uppercase',
-              letterSpacing: '1px'
-            }}>
-              TODAY'S AFFIRMATION
-            </h2>
-            <p style={{
-              margin: 0,
-              fontSize: '24px',
-              fontFamily: "'DM Serif Display', serif",
-              fontStyle: 'italic',
-              color: '#F5F0E8'
-            }}>
-              "I am disciplined enough to build the life I want."
-            </p>
+// ─── Main Dashboard ───────────────────────────────────────────────────────────
+export default function Dashboard() {
+  const [season, setSeason] = useState('harmattan')
+  const [showSeasonMenu, setShowSeasonMenu] = useState(false)
+  const navigate = useNavigate()
+  
+  const navItems = [
+    { icon: '◈', label: 'Dashboard', active: true },
+    { icon: '📅', label: "Today's Plan", active: false },
+    { icon: '📖', label: 'Journal', active: false },
+  ]
+  
+  const lifeItems = [
+    { icon: '💰', label: 'Budget' },
+    { icon: '🔥', label: 'Habits' },
+    { icon: '🎯', label: 'Goals' },
+    { icon: '📚', label: 'Reading' },
+  ]
+  
+  const proItems = [
+    { icon: '🩺', label: 'Health' },
+    { icon: '✨', label: 'Talk to Lumi' },
+  ]
+
+  return (
+    <>
+      {/* ── Global keyframes ── */}
+      <style>{`
+        @keyframes fadeUp { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
+        @keyframes breathe { 0%,100% { transform:scale(1); box-shadow:0 0 20px rgba(245,166,35,0.3) } 50% { transform:scale(1.08); box-shadow:0 0 35px rgba(245,166,35,0.5) } }
+        @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.4 } }
+        * { box-sizing:border-box; margin:0; padding:0 }
+        body { background:${SEASONS[season].bg}; transition:background 0.8s ease }
+      `}</style>
+      
+      <div style={{ 
+        display: 'flex', minHeight: '100vh', background: SEASONS[season].bg, 
+        color: C.text, fontFamily: "'DM Sans', system-ui, sans-serif",
+        transition: 'background 0.8s ease' 
+      }}>
+        {/* ── SIDEBAR ── */}
+        <div style={{ 
+          width: 220, background: C.bg2, borderRight: `1px solid ${C.border}`, 
+          padding: '24px 16px', display: 'flex', flexDirection: 'column', 
+          gap: 8, flexShrink: 0, position: 'relative', overflow: 'hidden' 
+        }}>
+          <div style={{ 
+            position: 'absolute', bottom: -60, left: -60, width: 180, height: 180,
+            background: 'radial-gradient(circle,rgba(245,166,35,0.12) 0%,transparent 70%)',
+            pointerEvents: 'none' 
+          }} />
+          
+          {/* Logo */}
+          <div style={{ 
+            fontSize: 20, fontWeight: 800, color: C.amber, letterSpacing: '-0.5px',
+            padding: '4px 12px 20px', borderBottom: `1px solid ${C.border}`, marginBottom: 8 
+          }}>
+            PLOS<span style={{ color: C.text, opacity: 0.4 }}>.</span>
           </div>
-
-          {/* UPCOMING POSTS - Coming Soon */}
-          <div
-            style={{
-              backgroundColor: '#1A1A1A',
-              borderRadius: '16px',
-              border: '1px solid #2E2E2E',
-              padding: '24px',
-              gridColumn: '1 / -1',
-            }}
-          >
-            <h2 style={{
-              margin: '0 0 16px 0',
-              fontSize: '18px',
-              fontWeight: 600,
-              fontFamily: "'Inter', sans-serif",
-              color: '#F5F0E8'
+          
+          {navItems.map(n => (
+            <div 
+              key={n.label} 
+              onClick={() => n.label === 'Dashboard' ? navigate('/dashboard') : navigate(`/${n.label.toLowerCase().replace("'", '').replace(' ', '-')}`)}
+              style={{ 
+                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+                borderRadius: 10, cursor: 'pointer', fontSize: 13,
+                color: n.active ? C.amber : C.muted,
+                background: n.active ? 'rgba(245,166,35,0.12)' : 'transparent',
+                fontWeight: 500,
+              }}
+            >
+              <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>{n.icon}</span>
+              {n.label}
+            </div>
+          ))}
+          
+          <div style={{ fontSize: 10, color: C.muted, letterSpacing: '0.1em', padding: '12px 12px 4px', textTransform: 'uppercase', opacity: 0.5 }}>Life</div>
+          
+          {lifeItems.map(n => (
+            <div 
+              key={n.label} 
+              onClick={() => navigate(`/${n.label.toLowerCase()}`)}
+              style={{ 
+                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+                borderRadius: 10, cursor: 'pointer', fontSize: 13, color: C.muted, fontWeight: 500 
+              }}
+            >
+              <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>{n.icon}</span>
+              {n.label}
+            </div>
+          ))}
+          
+          <div style={{ fontSize: 10, color: C.muted, letterSpacing: '0.1em', padding: '12px 12px 4px', textTransform: 'uppercase', opacity: 0.5 }}>Pro</div>
+          
+          {proItems.map(n => (
+            <div 
+              key={n.label} 
+              onClick={() => n.label === 'Talk to Lumi' ? navigate('/talk-to-lumi') : navigate('/health')}
+              style={{ 
+                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+                borderRadius: 10, cursor: 'pointer', fontSize: 13, color: C.muted, fontWeight: 500 
+              }}
+            >
+              <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>{n.icon}</span>
+              {n.label}
+            </div>
+          ))}
+          
+          {/* User */}
+          <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+            <div style={{ 
+              display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+              borderRadius: 10, background: 'rgba(255,255,255,0.04)' 
             }}>
-              UPCOMING POSTS
-            </h2>
-            <div style={{ borderTop: '1px solid #2E2E2E', paddingTop: '16px' }}>
-              <div style={{ textAlign: 'center', padding: '20px' }}>
-                <span style={{ fontSize: '24px', marginBottom: '8px', display: 'block' }}>🚧</span>
-                <p style={{ color: '#6B5F52', fontSize: '14px', margin: 0, fontFamily: "'Inter', sans-serif" }}>
-                  Content planner coming soon! Schedule and manage your social media posts.
-                </p>
+              <div style={{ 
+                width: 32, height: 32, borderRadius: '50%', 
+                background: `linear-gradient(135deg,${C.amber},${C.purple})`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontWeight: 700, fontSize: 12, color: '#fff', flexShrink: 0 
+              }}>EI</div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 500 }}>Erica Inno.</div>
+                <div style={{ fontSize: 10, color: C.muted }}>Free plan</div>
               </div>
             </div>
           </div>
         </div>
+
+        {/* ── MAIN CONTENT ── */}
+        <div style={{ flex: 1, overflow: 'auto' }}>
+          {/* Topbar */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px 28px 0' }}>
+            <div>
+              <div style={{ fontSize: 22, fontWeight: 700 }}>
+                Good morning, <span style={{ color: C.amber }}>Erica</span> ☀️
+              </div>
+              <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
+                Sunday, April 27 · {SEASONS[season].label} · 3 tasks remaining
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, position: 'relative' }}>
+              <div 
+                onClick={() => setShowSeasonMenu(v => !v)} 
+                style={{ 
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  background: 'rgba(255,255,255,0.05)', border: `1px solid ${C.border}`,
+                  borderRadius: 20, padding: '6px 14px', fontSize: 12,
+                  cursor: 'pointer', color: C.muted 
+                }}
+              >
+                🌤 Change season ▾
+              </div>
+              
+              {/* Season dropdown */}
+              {showSeasonMenu && (
+                <div style={{ 
+                  position: 'absolute', top: 42, right: 44, background: C.bg3,
+                  border: `1px solid ${C.border}`, borderRadius: 12, padding: 8,
+                  zIndex: 100, minWidth: 160 
+                }}>
+                  {Object.entries(SEASONS).map(([key, s]) => (
+                    <div 
+                      key={key} 
+                      onClick={() => { setSeason(key); setShowSeasonMenu(false) }}
+                      style={{ 
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '8px 10px', borderRadius: 8, cursor: 'pointer',
+                        fontSize: 12, color: season === key ? C.amber : C.muted 
+                      }}
+                    >
+                      {s.label}
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              <div style={{ 
+                width: 36, height: 36, borderRadius: '50%', 
+                background: 'rgba(255,255,255,0.05)', border: `1px solid ${C.border}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', position: 'relative' 
+              }}>
+                🔔
+                <div style={{ position: 'absolute', top: 6, right: 6, width: 6, height: 6, borderRadius: '50%', background: C.amber }} />
+              </div>
+            </div>
+          </div>
+
+          {/* Dashboard Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, padding: '20px 28px 28px' }}>
+      {/* Row 1: 4 stat cards */}
+      <StatCard icon="📖" label="Journal streak" value="0" sub="days in a row" badge="Start journaling" badgeType="warn" accentColor={C.amber} delay={0.05} />
+      <StatCard icon="💪" label="Workouts" value="0" sub="of 0 this month" badge="Log your first workout" badgeType="warn" accentColor={C.teal} delay={0.1} />
+      <StatCard icon="💰" label="Savings goal" value="₦0" sub="of ₦0 target" badge="Set a savings goal" badgeType="warn" accentColor={C.purple} delay={0.15} />
+      <StatCard icon="⚡" label="Habits today" value="0/0" sub="done · 0 set up" badge="Add your first habit" badgeType="warn" accentColor={C.pink} delay={0.2} />
+            
+            {/* Row 2: Calendar (2-wide) + Lumi + Reading */}
+            <div style={{ gridColumn: 'span 2' }}><Calendar /></div>
+            <LumiCard />
+            <ReadingCard />
+            
+            {/* Row 3: Schedule (2-wide) + Budget + Habits */}
+            <ScheduleCard />
+            <BudgetCard />
+            <HabitsCard />
+            
+            {/* Row 4: Goals (full width) */}
+            <div style={{ gridColumn: 'span 4' }}><GoalsCard /></div>
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    </>
+  )
 }

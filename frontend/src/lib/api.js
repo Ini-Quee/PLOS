@@ -10,6 +10,21 @@ const api = axios.create({
 
 let accessToken = null;
 
+// FIX: Add flags to prevent infinite retry loops
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 export function setAccessToken(token) {
   accessToken = token;
   // Also store in localStorage for persistence across refreshes
@@ -61,36 +76,57 @@ api.interceptors.response.use(
       });
     }
 
-    // Handle 401 with expired token
-    if (
-      error.response.status === 401 &&
-      error.response.data &&
-      error.response.data.code === 'TOKEN_EXPIRED' &&
-      !originalRequest._retry
-    ) {
+    // Handle 401 errors
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      // If already refreshing, queue this request
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then(token => {
+          originalRequest.headers['Authorization'] = `Bearer ${token}`;
+          return api(originalRequest);
+        }).catch(err => Promise.reject(err));
+      }
+
       originalRequest._retry = true;
+      isRefreshing = true;
 
       try {
-        const refreshResponse = await axios.post(
+        const refreshToken = localStorage.getItem('refreshToken');
+        
+        // No refresh token — clear everything and redirect
+        if (!refreshToken) {
+          setAccessToken(null);
+          localStorage.clear();
+          window.location.href = '/login';
+          return Promise.reject(error);
+        }
+
+        const response = await axios.post(
           `${API_URL}/api/auth/refresh`,
-          {},
+          { refreshToken },
           { withCredentials: true, timeout: 10000 }
         );
-        const newToken = refreshResponse.data.accessToken;
+
+        const newToken = response.data.accessToken;
         setAccessToken(newToken);
-        originalRequest.headers.Authorization = 'Bearer ' + newToken;
+        
+        // Process any queued requests
+        processQueue(null, newToken);
+        
+        // Retry the original request
+        originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
         return api(originalRequest);
       } catch (refreshError) {
+        // Refresh failed — reject queued requests and clear everything
+        processQueue(refreshError, null);
         setAccessToken(null);
+        localStorage.clear();
         window.location.href = '/login';
         return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
       }
-    }
-
-    // Handle other 401 errors (not expired token)
-    if (error.response.status === 401 && !originalRequest._retry) {
-      setAccessToken(null);
-      window.location.href = '/login';
     }
 
     return Promise.reject(error);
