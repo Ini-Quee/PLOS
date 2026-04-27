@@ -1,20 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import SidebarLayout, { C } from '../components/layout/SidebarLayout'
+import { useLumi } from '../hooks/useLumi'
 
-// ─── Inline styles ────────────────────────────────────────────────────────────
-const C = {
-  bg: '#07070f',
-  bg2: '#0f0f1c',
-  bg3: '#141428',
-  amber: '#F5A623',
-  amber2: '#ffbe4d',
-  teal: '#00d4aa',
-  purple: '#8b5cf6',
-  pink: '#f472b6',
-  text: '#e8e8f0',
-  muted: '#6b6b8a',
-  border: 'rgba(255,255,255,0.07)',
-}
+// ─── Design tokens are now imported from SidebarLayout ─────────────────────────
 
 const SEASONS = {
   harmattan: { label: '☀️ Harmattan', bg: '#07070f' },
@@ -36,32 +25,28 @@ const GOALS = [
   // Empty goals - user hasn't created any goals yet
 ]
 
-const BUDGET_CATS = [
-  // Empty budget - user hasn't set up budget categories yet
-]
-
 const JOURNAL_SPARK = []
 const COMPLETED_DAYS = []
 const TODAY_DATE = 27
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
-function StatCard({ icon, label, value, sub, badge, badgeType, accentColor, spark, delay }) {
+function StatCard({ icon, label, value, sub, badge, badgeType, accentColor, delay }) {
   const badgeColors = {
     up: { bg: 'rgba(0,212,170,0.12)', color: C.teal },
     down: { bg: 'rgba(244,114,182,0.12)', color: C.pink },
     warn: { bg: 'rgba(245,166,35,0.12)', color: C.amber },
   }
   const bc = badgeColors[badgeType] || badgeColors.warn
-  
+
   return (
-    <div style={{ 
-      background: C.bg2, 
-      border: `1px solid ${C.border}`, 
-      borderTop: `1px solid ${accentColor}40`, 
-      borderRadius: 16, 
-      padding: 18, 
-      position: 'relative', 
-      overflow: 'hidden', 
+    <div style={{
+      background: C.bg2,
+      border: `1px solid ${C.border}`,
+      borderTop: `1px solid ${accentColor}40`,
+      borderRadius: 16,
+      padding: 18,
+      position: 'relative',
+      overflow: 'hidden',
       cursor: 'pointer',
       animation: `fadeUp 0.5s ${delay}s ease both`,
     }}>
@@ -76,13 +61,6 @@ function StatCard({ icon, label, value, sub, badge, badgeType, accentColor, spar
           {badge}
         </div>
       )}
-      {spark && (
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 32, marginTop: 10 }}>
-          {JOURNAL_SPARK.map((v, i) => (
-            <div key={i} style={{ width: 12, height: v * 4, background: `rgba(245,166,35,${0.3 + v * 0.08})`, borderRadius: 2 }} />
-          ))}
-        </div>
-      )}
       <div style={{ position: 'absolute', bottom: 0, left: 0, height: 2, width: '72%', borderRadius: '0 0 0 16px', background: accentColor }} />
     </div>
   )
@@ -93,7 +71,7 @@ function Calendar() {
   const days = []
   for (let i = 0; i < startDay; i++) days.push(null)
   for (let d = 1; d <= 30; d++) days.push(d)
-  
+
   return (
     <div style={{ background: C.bg2, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18, animation: 'fadeUp 0.5s 0.25s ease both' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
@@ -115,8 +93,8 @@ function Calendar() {
           const isToday = d === TODAY_DATE
           const isFilled = COMPLETED_DAYS.includes(d)
           return (
-            <div key={i} style={{ 
-              aspectRatio: '1', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', 
+            <div key={i} style={{
+              aspectRatio: '1', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 11, cursor: 'pointer', position: 'relative',
               color: isToday ? '#000' : isFilled ? C.amber : C.muted,
               background: isToday ? C.amber : isFilled ? 'rgba(245,166,35,0.15)' : 'transparent',
@@ -145,7 +123,7 @@ function LumiCard() {
     }}>
       <div style={{
         width: 44, height: 44, borderRadius: '50%',
-        background: `radial-gradient(circle at 35% 35%, ${C.amber2}, ${C.amber}, rgba(245,166,35,0.4))`,
+        background: `radial-gradient(circle at 35% 35%, #ffbe4d, ${C.amber}, rgba(245,166,35,0.4))`,
         marginBottom: 12, animation: 'breathe 3s ease-in-out infinite',
         boxShadow: '0 0 20px rgba(245,166,35,0.3)',
       }} />
@@ -240,8 +218,6 @@ function ScheduleCard() {
 
 function BudgetCard() {
   const navigate = useNavigate()
-
-  // Empty state - no budget set up yet
   return (
     <div style={{ background: C.bg2, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18, animation: 'fadeUp 0.5s 0.4s ease both' }}>
       <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 14 }}>Monthly budget</div>
@@ -369,8 +345,6 @@ function GoalsCard() {
 
 function ReadingCard() {
   const navigate = useNavigate()
-
-  // Empty state - no books added yet
   return (
     <div style={{ background: C.bg2, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18, animation: 'fadeUp 0.5s 0.55s ease both' }}>
       <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>Reading</div>
@@ -402,213 +376,254 @@ export default function Dashboard() {
   const [season, setSeason] = useState('harmattan')
   const [showSeasonMenu, setShowSeasonMenu] = useState(false)
   const navigate = useNavigate()
-  
-  const navItems = [
-    { icon: '◈', label: 'Dashboard', active: true },
-    { icon: '📅', label: "Today's Plan", active: false },
-    { icon: '📖', label: 'Journal', active: false },
-  ]
-  
-  const lifeItems = [
-    { icon: '💰', label: 'Budget' },
-    { icon: '🔥', label: 'Habits' },
-    { icon: '🎯', label: 'Goals' },
-    { icon: '📚', label: 'Reading' },
-  ]
-  
-  const proItems = [
-    { icon: '🩺', label: 'Health' },
-    { icon: '✨', label: 'Talk to Lumi' },
-  ]
+
+  // Lumi hook
+  const { 
+    isListening, 
+    isThinking, 
+    lumiResponse, 
+    savedRoute, 
+    needsConfirmation, 
+    pendingState,
+    startListening, 
+    stopListening, 
+    sendText,
+    confirmSave,
+    declineSave 
+  } = useLumi('dashboard')
 
   return (
     <>
-      {/* ── Global keyframes ── */}
       <style>{`
         @keyframes fadeUp { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
         @keyframes breathe { 0%,100% { transform:scale(1); box-shadow:0 0 20px rgba(245,166,35,0.3) } 50% { transform:scale(1.08); box-shadow:0 0 35px rgba(245,166,35,0.5) } }
         @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.4 } }
-        * { box-sizing:border-box; margin:0; padding:0 }
         body { background:${SEASONS[season].bg}; transition:background 0.8s ease }
       `}</style>
-      
-      <div style={{ 
-        display: 'flex', minHeight: '100vh', background: SEASONS[season].bg, 
-        color: C.text, fontFamily: "'DM Sans', system-ui, sans-serif",
-        transition: 'background 0.8s ease' 
-      }}>
-        {/* ── SIDEBAR ── */}
-        <div style={{ 
-          width: 220, background: C.bg2, borderRight: `1px solid ${C.border}`, 
-          padding: '24px 16px', display: 'flex', flexDirection: 'column', 
-          gap: 8, flexShrink: 0, position: 'relative', overflow: 'hidden' 
-        }}>
-          <div style={{ 
-            position: 'absolute', bottom: -60, left: -60, width: 180, height: 180,
-            background: 'radial-gradient(circle,rgba(245,166,35,0.12) 0%,transparent 70%)',
-            pointerEvents: 'none' 
-          }} />
-          
-          {/* Logo */}
-          <div style={{ 
-            fontSize: 20, fontWeight: 800, color: C.amber, letterSpacing: '-0.5px',
-            padding: '4px 12px 20px', borderBottom: `1px solid ${C.border}`, marginBottom: 8 
-          }}>
-            PLOS<span style={{ color: C.text, opacity: 0.4 }}>.</span>
+      <SidebarLayout customStyles={{ background: SEASONS[season].bg }}>
+        {/* Topbar */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px 28px 0' }}>
+          <div>
+            <div style={{ fontSize: 22, fontWeight: 700 }}>
+              Good morning, <span style={{ color: C.amber }}>Erica</span> ☀️
+            </div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
+              Sunday, April 27 · {SEASONS[season].label} · 3 tasks remaining
+            </div>
           </div>
-          
-          {navItems.map(n => (
-            <div 
-              key={n.label} 
-              onClick={() => n.label === 'Dashboard' ? navigate('/dashboard') : navigate(`/${n.label.toLowerCase().replace("'", '').replace(' ', '-')}`)}
-              style={{ 
-                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
-                borderRadius: 10, cursor: 'pointer', fontSize: 13,
-                color: n.active ? C.amber : C.muted,
-                background: n.active ? 'rgba(245,166,35,0.12)' : 'transparent',
-                fontWeight: 500,
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, position: 'relative' }}>
+            <div
+              onClick={() => setShowSeasonMenu(v => !v)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: 'rgba(255,255,255,0.05)', border: `1px solid ${C.border}`,
+                borderRadius: 20, padding: '6px 14px', fontSize: 12,
+                cursor: 'pointer', color: C.muted
               }}
             >
-              <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>{n.icon}</span>
-              {n.label}
+              🌤 Change season ▾
             </div>
-          ))}
-          
-          <div style={{ fontSize: 10, color: C.muted, letterSpacing: '0.1em', padding: '12px 12px 4px', textTransform: 'uppercase', opacity: 0.5 }}>Life</div>
-          
-          {lifeItems.map(n => (
-            <div 
-              key={n.label} 
-              onClick={() => navigate(`/${n.label.toLowerCase()}`)}
-              style={{ 
-                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
-                borderRadius: 10, cursor: 'pointer', fontSize: 13, color: C.muted, fontWeight: 500 
-              }}
-            >
-              <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>{n.icon}</span>
-              {n.label}
-            </div>
-          ))}
-          
-          <div style={{ fontSize: 10, color: C.muted, letterSpacing: '0.1em', padding: '12px 12px 4px', textTransform: 'uppercase', opacity: 0.5 }}>Pro</div>
-          
-          {proItems.map(n => (
-            <div 
-              key={n.label} 
-              onClick={() => n.label === 'Talk to Lumi' ? navigate('/talk-to-lumi') : navigate('/health')}
-              style={{ 
-                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
-                borderRadius: 10, cursor: 'pointer', fontSize: 13, color: C.muted, fontWeight: 500 
-              }}
-            >
-              <span style={{ fontSize: 16, width: 20, textAlign: 'center' }}>{n.icon}</span>
-              {n.label}
-            </div>
-          ))}
-          
-          {/* User */}
-          <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
-            <div style={{ 
-              display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
-              borderRadius: 10, background: 'rgba(255,255,255,0.04)' 
-            }}>
-              <div style={{ 
-                width: 32, height: 32, borderRadius: '50%', 
-                background: `linear-gradient(135deg,${C.amber},${C.purple})`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontWeight: 700, fontSize: 12, color: '#fff', flexShrink: 0 
-              }}>EI</div>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 500 }}>Erica Inno.</div>
-                <div style={{ fontSize: 10, color: C.muted }}>Free plan</div>
+
+            {/* Season dropdown */}
+            {showSeasonMenu && (
+              <div style={{
+                position: 'absolute', top: 42, right: 44, background: C.bg3,
+                border: `1px solid ${C.border}`, borderRadius: 12, padding: 8,
+                zIndex: 100, minWidth: 160
+              }}>
+                {Object.entries(SEASONS).map(([key, s]) => (
+                  <div
+                    key={key}
+                    onClick={() => { setSeason(key); setShowSeasonMenu(false) }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '8px 10px', borderRadius: 8, cursor: 'pointer',
+                      fontSize: 12, color: season === key ? C.amber : C.muted
+                    }}
+                  >
+                    {s.label}
+                  </div>
+                ))}
               </div>
+            )}
+
+            <div style={{
+              width: 36, height: 36, borderRadius: '50%',
+              background: 'rgba(255,255,255,0.05)', border: `1px solid ${C.border}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', position: 'relative'
+            }}>
+              🔔
+              <div style={{ position: 'absolute', top: 6, right: 6, width: 6, height: 6, borderRadius: '50%', background: C.amber }} />
             </div>
           </div>
         </div>
 
-        {/* ── MAIN CONTENT ── */}
-        <div style={{ flex: 1, overflow: 'auto' }}>
-          {/* Topbar */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px 28px 0' }}>
-            <div>
-              <div style={{ fontSize: 22, fontWeight: 700 }}>
-                Good morning, <span style={{ color: C.amber }}>Erica</span> ☀️
+        {/* Lumi Quick Capture Bar */}
+        <div style={{
+          margin: '16px 28px 0',
+          background: 'rgba(139,92,246,0.06)',
+          border: '1px solid rgba(139,92,246,0.15)',
+          borderRadius: 14,
+          padding: '14px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+        }}>
+          {/* Lumi orb */}
+          <div style={{
+            width: 36,
+            height: 36,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle at 35% 35%, #ffbe4d, #F5A623)',
+            animation: isListening ? 'breathe 0.8s infinite' : 'breathe 3s infinite',
+            flexShrink: 0,
+            boxShadow: isListening ? '0 0 20px rgba(245,166,35,0.6)' : 'none',
+          }} />
+
+          {/* Text input */}
+          <input
+            placeholder={
+              isListening
+                ? 'Listening...'
+                : isThinking
+                ? 'Lumi is thinking...'
+                : 'Tell Lumi anything — she will save it to the right place...'
+            }
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                sendText(e.target.value);
+                e.target.value = '';
+              }
+            }}
+            disabled={isListening || isThinking}
+            style={{
+              flex: 1,
+              background: 'transparent',
+              border: 'none',
+              color: '#e8e0d0',
+              fontSize: 13,
+              outline: 'none',
+            }}
+          />
+
+          {/* Voice button */}
+          <div
+            onClick={isListening ? stopListening : startListening}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: '50%',
+              background: isListening ? 'rgba(232,127,155,0.2)' : 'rgba(245,166,35,0.1)',
+              border: `1px solid ${isListening ? '#e87f9b' : 'rgba(245,166,35,0.3)'}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              fontSize: 16,
+            }}
+          >
+            {isListening ? '⏹' : '🎙'}
+          </div>
+        </div>
+
+  {/* Show Lumi's response */}
+      {lumiResponse && (
+        <div style={{
+          margin: '8px 28px 16px',
+          background: 'rgba(139,92,246,0.08)',
+          border: '1px solid rgba(139,92,246,0.2)',
+          borderRadius: 12,
+          padding: '16px 20px',
+        }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+            {/* Lumi orb */}
+            <div style={{
+              width: 36,
+              height: 36,
+              borderRadius: '50%',
+              background: 'radial-gradient(circle at 35% 35%, #ffbe4d, #F5A623)',
+              flexShrink: 0,
+            }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, color: '#e8e0d0', lineHeight: 1.6 }}>
+                {lumiResponse}
               </div>
-              <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
-                Sunday, April 27 · {SEASONS[season].label} · 3 tasks remaining
-              </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, position: 'relative' }}>
-              <div 
-                onClick={() => setShowSeasonMenu(v => !v)} 
-                style={{ 
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  background: 'rgba(255,255,255,0.05)', border: `1px solid ${C.border}`,
-                  borderRadius: 20, padding: '6px 14px', fontSize: 12,
-                  cursor: 'pointer', color: C.muted 
-                }}
-              >
-                🌤 Change season ▾
-              </div>
-              
-              {/* Season dropdown */}
-              {showSeasonMenu && (
-                <div style={{ 
-                  position: 'absolute', top: 42, right: 44, background: C.bg3,
-                  border: `1px solid ${C.border}`, borderRadius: 12, padding: 8,
-                  zIndex: 100, minWidth: 160 
-                }}>
-                  {Object.entries(SEASONS).map(([key, s]) => (
-                    <div 
-                      key={key} 
-                      onClick={() => { setSeason(key); setShowSeasonMenu(false) }}
-                      style={{ 
-                        display: 'flex', alignItems: 'center', gap: 8,
-                        padding: '8px 10px', borderRadius: 8, cursor: 'pointer',
-                        fontSize: 12, color: season === key ? C.amber : C.muted 
+              {/* Show confirmation buttons if needed */}
+              {needsConfirmation && pendingState && (
+                <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: 11, color: C.muted, marginBottom: 4, width: '100%' }}>
+                    Save to which journal?
+                  </div>
+                  {['personal', 'spiritual', 'business', 'goals', 'health'].map((journal) => (
+                    <button
+                      key={journal}
+                      onClick={() => confirmSave(journal)}
+                      disabled={isThinking}
+                      style={{
+                        padding: '6px 12px',
+                        background: pendingState.suggestedJournal === journal ? 'rgba(245,166,35,0.2)' : 'rgba(255,255,255,0.05)',
+                        border: `1px solid ${pendingState.suggestedJournal === journal ? C.amber : C.border}`,
+                        borderRadius: 6,
+                        fontSize: 11,
+                        color: pendingState.suggestedJournal === journal ? C.amber : C.text,
+                        cursor: 'pointer',
                       }}
                     >
-                      {s.label}
-                    </div>
+                      {journal.charAt(0).toUpperCase() + journal.slice(1)}
+                      {pendingState.suggestedJournal === journal && ' ✓'}
+                    </button>
                   ))}
+                  <button
+                    onClick={declineSave}
+                    disabled={isThinking}
+                    style={{
+                      padding: '6px 12px',
+                      background: 'transparent',
+                      border: `1px solid ${C.border}`,
+                      borderRadius: 6,
+                      fontSize: 11,
+                      color: C.muted,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Don't save
+                  </button>
                 </div>
               )}
-              
-              <div style={{ 
-                width: 36, height: 36, borderRadius: '50%', 
-                background: 'rgba(255,255,255,0.05)', border: `1px solid ${C.border}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', position: 'relative' 
-              }}>
-                🔔
-                <div style={{ position: 'absolute', top: 6, right: 6, width: 6, height: 6, borderRadius: '50%', background: C.amber }} />
-              </div>
+              {/* Show saved confirmation */}
+              {!needsConfirmation && savedRoute && (
+                <div style={{ marginTop: 8, fontSize: 11, color: C.amber }}>
+                  ✓ Saved to {savedRoute.replace('journal_', '')} journal
+                </div>
+              )}
             </div>
           </div>
-
-          {/* Dashboard Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, padding: '20px 28px 28px' }}>
-      {/* Row 1: 4 stat cards */}
-      <StatCard icon="📖" label="Journal streak" value="0" sub="days in a row" badge="Start journaling" badgeType="warn" accentColor={C.amber} delay={0.05} />
-      <StatCard icon="💪" label="Workouts" value="0" sub="of 0 this month" badge="Log your first workout" badgeType="warn" accentColor={C.teal} delay={0.1} />
-      <StatCard icon="💰" label="Savings goal" value="₦0" sub="of ₦0 target" badge="Set a savings goal" badgeType="warn" accentColor={C.purple} delay={0.15} />
-      <StatCard icon="⚡" label="Habits today" value="0/0" sub="done · 0 set up" badge="Add your first habit" badgeType="warn" accentColor={C.pink} delay={0.2} />
-            
-            {/* Row 2: Calendar (2-wide) + Lumi + Reading */}
-            <div style={{ gridColumn: 'span 2' }}><Calendar /></div>
-            <LumiCard />
-            <ReadingCard />
-            
-            {/* Row 3: Schedule (2-wide) + Budget + Habits */}
-            <ScheduleCard />
-            <BudgetCard />
-            <HabitsCard />
-            
-            {/* Row 4: Goals (full width) */}
-            <div style={{ gridColumn: 'span 4' }}><GoalsCard /></div>
-          </div>
         </div>
-      </div>
+      )}
+
+        {/* Dashboard Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, padding: '20px 28px 28px' }}>
+          {/* Row 1: 4 stat cards */}
+          <StatCard icon="📖" label="Journal streak" value="0" sub="days in a row" badge="Start journaling" badgeType="warn" accentColor={C.amber} delay={0.05} />
+          <StatCard icon="💪" label="Workouts" value="0" sub="of 0 this month" badge="Log your first workout" badgeType="warn" accentColor={C.teal} delay={0.1} />
+          <StatCard icon="💰" label="Savings goal" value="₦0" sub="of ₦0 target" badge="Set a savings goal" badgeType="warn" accentColor={C.purple} delay={0.15} />
+          <StatCard icon="⚡" label="Habits today" value="0/0" sub="done · 0 set up" badge="Add your first habit" badgeType="warn" accentColor={C.pink} delay={0.2} />
+
+          {/* Row 2: Calendar (2-wide) + Lumi + Reading */}
+          <div style={{ gridColumn: 'span 2' }}><Calendar /></div>
+          <LumiCard />
+          <ReadingCard />
+
+          {/* Row 3: Schedule (2-wide) + Budget + Habits */}
+          <ScheduleCard />
+          <BudgetCard />
+          <HabitsCard />
+
+          {/* Row 4: Goals (full width) */}
+          <div style={{ gridColumn: 'span 4' }}><GoalsCard /></div>
+        </div>
+      </SidebarLayout>
     </>
   )
 }

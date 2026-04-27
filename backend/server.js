@@ -16,6 +16,7 @@ const jobsRoutes = require('./src/routes/jobs');
 const contentRoutes = require('./src/routes/content');
 const goalsRoutes = require('./src/routes/goals');
 const contactsRoutes = require('./src/routes/contacts');
+const lumiRoutes = require('./src/routes/lumi');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -62,6 +63,7 @@ app.use('/api/jobs', jobsRoutes);
 app.use('/api/content', contentRoutes);
 app.use('/api/goals', goalsRoutes);
 app.use('/api/contacts', contactsRoutes);
+app.use('/api/lumi', lumiRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({

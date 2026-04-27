@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Journal from './pages/Journal';
+import JournalDashboard from './pages/JournalDashboard';
 import Schedule from './pages/Schedule';
 import Calendar from './pages/Calendar';
 import Projects from './pages/Projects';
@@ -118,26 +119,26 @@ function AppRoutes() {
               </ProtectedRoute>
             }
           />
-        <Route
-          path="/journal"
-          element={
-            <ProtectedRoute>
-              <AnimatedRoute>
-                <Journal />
-              </AnimatedRoute>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/journal/:journalType"
-          element={
-            <ProtectedRoute>
-              <AnimatedRoute>
-                <Journal />
-              </AnimatedRoute>
-            </ProtectedRoute>
-          }
-        />
+      <Route
+        path="/journal"
+        element={
+          <ProtectedRoute>
+            <AnimatedRoute>
+              <JournalDashboard />
+            </AnimatedRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/journal/write/:journalType"
+        element={
+          <ProtectedRoute>
+            <AnimatedRoute>
+              <Journal />
+            </AnimatedRoute>
+          </ProtectedRoute>
+        }
+      />
         <Route
           path="/mfa-setup"
           element={

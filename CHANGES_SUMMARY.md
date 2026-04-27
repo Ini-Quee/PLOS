@@ -1,437 +1,354 @@
-# PLOS Phase 0 Fixes - Complete Change Log
+# Development Session Summary - April 26, 2026
 
-**Date:** April 20, 2026  
-**Session:** Phase 0 Bug Fixes & Lumi AI Upgrade  
-**Total Files Modified:** 15+  
-**Status:** ✅ COMPLETE
+## Overview
+This session focused on building the complete Lumi AI routing system and fixing critical bugs in the PLOS application. We implemented a conversational AI companion that can analyze user input, route it to the appropriate module, and save content to journals - but only after having a real conversation first.
 
 ---
 
-## SUMMARY OF ALL FIXES
+## 🐛 Critical Bugs Fixed
 
-### Phase 0 Fix 1: Environment + Port Mismatch ✅
-**Problem:** Frontend .env file missing, API calls failing
+### Bug 1: Groq SDK Crashed on Server Startup
+**Problem:** `lumiRouter.js` and `journalHelper.js` tried to initialize Groq SDK immediately with `process.env.GROQ_API_KEY`, which crashed the server if the env var was missing.
+
+**Solution:** Implemented lazy-loading pattern:
+```javascript
+// Before (crashed):
+const { Groq } = require('groq-sdk');
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+// After (safe):
+let groq = null;
+function getGroqClient() {
+  if (!groq) {
+    const { Groq } = require('groq-sdk');
+    groq = new Groq({ apiKey: process.env.GROQ_API_KEY || 'dummy-key' });
+  }
+  return groq;
+}
+```
 
 **Files Modified:**
-- `frontend/.env` (CREATED)
-- `frontend/.env.example` (CREATED)
-- `frontend/src/lib/api.js` (UPDATED)
-
-**Changes:**
-```bash
-# Created frontend/.env
-VITE_API_URL=http://localhost:3000
-VITE_GEMINI_API_KEY=your-gemini-key-here
-
-# Created frontend/.env.example
-VITE_API_URL=http://localhost:3000
-VITE_GEMINI_API_KEY=get-from-aistudio.google.com
-
-# Updated api.js - baseURL now includes /api
-Before: baseURL: 'http://localhost:3000'
-After:  baseURL: 'http://localhost:3000/api'
-```
+- `backend/src/services/lumiRouter.js`
+- `backend/src/services/journalHelper.js`
 
 ---
 
-### Phase 0 Fix 2: Journal Page Crash ✅
-**Problem:** Journal page crashes, components don't render properly
+### Bug 2: PostgreSQL DATE() Function Error
+**Problem:** MySQL syntax `DATE(column_name)` doesn't work in PostgreSQL.
+
+**Error:** `function date(time without time zone) does not exist`
+
+**Solution:** Changed to PostgreSQL syntax:
+```sql
+-- Before (MySQL):
+WHERE DATE(start_time) = CURRENT_DATE
+
+-- After (PostgreSQL):
+WHERE start_time::date = CURRENT_DATE
+```
 
 **Files Modified:**
-- `frontend/src/components/ErrorBoundary.jsx` (CREATED)
-- `frontend/src/components/LoadingSpinner.jsx` (CREATED)
-- `frontend/src/pages/Journal.jsx` (COMPLETE REWRITE)
-- `frontend/src/components/journal/BookSpread.jsx` (COMPLETE REWRITE)
+- `backend/src/routes/lumi.js` line 282
 
-**Changes:**
-```bash
-# Created ErrorBoundary.jsx
-- React class component that catches errors
-- Shows fallback UI with ⚠️ icon
-- "Something went wrong" + error details
-- "Try Again" button reloads page
+---
 
-# Created LoadingSpinner.jsx
-- Amber spinner animation
-- "Opening your journal..." message
-- Dark background #0D0D0D
+### Bug 3: Missing Database Migration
+**Problem:** `lumi_conversations` table didn't exist, causing relation errors.
 
-# Updated Journal.jsx
-- Added ErrorBoundary wrappers around LivingBackground and BookSpread
-- Added loading state with LoadingSpinner
-- Added auth check with redirect to login
-- Added pageError state handling
+**Solution:** Created migration file:
+- `backend/src/db/migrations/009_create_lumi_conversations.sql`
 
-# Updated BookSpread.jsx
-- Added error state handling with try-catch
-- Added isReady state for initialization
-- Added component error recovery UI
-- Wrapped handlers in useCallback
-- Added accessibility attributes
+**Table Schema:**
+```sql
+CREATE TABLE lumi_conversations (
+  id SERIAL PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,  -- Changed from INTEGER
+  user_message TEXT NOT NULL,
+  lumi_response TEXT,
+  route VARCHAR(50),
+  saved_data JSONB,
+  source VARCHAR(50) DEFAULT 'dashboard',
+  transcript TEXT,
+  needs_confirmation BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+**Note:** Had to change `user_id` from `INTEGER` to `UUID` because the `users` table uses UUID for IDs.
+
+---
+
+### Bug 4: Backend Route Not Registered
+**Problem:** `lumi.js` route existed but wasn't registered in `server.js`, causing 404 errors.
+
+**Solution:** Added route registration:
+```javascript
+// In server.js:
+const lumiRoutes = require('./src/routes/lumi');
+// ...
+app.use('/api/lumi', lumiRoutes);
 ```
 
 ---
 
-### Phase 0 Fix 3: MFA Setup Navigation ✅
-**Problem:** After registration, MFA setup doesn't receive user data
+### Bug 5: Missing Dependencies
+**Problem:** `groq-sdk` and `multer` were not in package.json.
 
-**Files Modified:**
-- `frontend/src/pages/Register.jsx` (COMPLETE REWRITE)
-- `frontend/src/pages/MfaSetup.jsx` (COMPLETE REWRITE)
-- `frontend/src/lib/auth.jsx` (COMPLETE REWRITE)
-
-**Changes:**
-```bash
-# Updated Register.jsx
-- Added comprehensive field validation
-- Added password strength indicator (visual bar)
-- Added password requirements checklist (5 items)
-- Added field-level error display
-- Navigation with state: navigate('/mfa-setup', { state: { user, fromRegistration: true } })
-
-# Updated MfaSetup.jsx
-- Reads user from navigation state: const { state } = useLocation()
-- Shows "Registration Required" error if accessed directly
-- Added "already-enabled" state detection
-- Proper navigation flow after MFA setup
-- Different back button based on fromRegistration
-
-# Updated auth.jsx
-- Added localStorage persistence for accessToken (key: 'accessToken')
-- Added localStorage persistence for user (key: 'user')
-- Added getStoredUser() helper function
-- Fixed session restoration to check for token first
-- Added isAuthenticated computed property
+**Solution:** Added to `backend/package.json`:
+```json
+"dependencies": {
+  "groq-sdk": "^0.15.0",
+  "multer": "^1.4.5-lts.1"
+}
 ```
 
 ---
 
-### Phase 0 Fix 4: Dashboard Real Data ✅
-**Problem:** Dashboard shows hardcoded placeholder data
+## ✨ Features Implemented
 
-**Files Modified:**
-- `frontend/src/pages/Dashboard.jsx` (COMPLETE REWRITE)
+### 1. Unified Sidebar Layout
+**File:** `frontend/src/components/layout/SidebarLayout.jsx`
 
-**Changes:**
-```bash
-# Created helper components inside Dashboard.jsx:
-- SkeletonLoader: Animated pulse loading animation
-- CardSkeleton: Skeleton for card content
-- ErrorState: Error display with retry button
-- EmptyState: Empty state with icon + action
-- ComingSoonCard: Honest placeholder for unfinished features
+Created a shared sidebar component with:
+- Consistent navigation across all pages
+- MFA (Multi-Factor Authentication) widget
+- User profile section
+- Same structure on Dashboard, Journal, and all other pages
 
-# Data Integration:
-- Fetches real schedule data from /api/schedule/today
-- Fetches real journal entries from /api/journal/entries
-- Calculates streak from entry dates
-- Time-based greeting (Morning/Afternoon/Evening/Night)
-- Real user name from auth context
-
-# UI States:
-- Loading: Skeleton loaders while fetching
-- Error: "Couldn't load your schedule" with retry
-- Empty: "No plan for today. Tap + to add tasks"
-- Success: Real data displayed with progress bars
-
-# Features:
-- Toggle schedule completion (click to complete/uncomplete)
-- Category icons and colors
-- Streak display 🔥
-- Progress bar with percentage
-- "Coming Soon" for Projects, Goals, Posts (honest placeholders)
-```
+**Key Design Decision:** MFA is "Multi-Factor Authentication" not "2FA" - this was corrected.
 
 ---
 
-### Critical Fix: API Prefix Missing ✅
-**Problem:** All API calls missing /api prefix, causing 404 errors
+### 2. Lumi AI Router Service
+**File:** `backend/src/services/lumiRouter.js`
 
-**Files Modified:**
-- `frontend/src/lib/api.js` (COMPLETE REWRITE)
-- `frontend/src/lib/auth.jsx` (UPDATED)
-- `frontend/src/pages/Dashboard.jsx` (ALREADY CORRECT)
+**Philosophy:** Lumi is a conversational companion FIRST. She:
+1. Talks with the user
+2. Asks questions
+3. Analyzes meaning (not keywords)
+4. Suggests saving only after conversation
+5. Always asks for confirmation before saving personal content
 
-**Changes:**
-```bash
-# Updated api.js
-Before: baseURL: 'http://localhost:3000'
-After:  baseURL: 'http://localhost:3000/api'
+**Key Functions:**
+- `routeLumiInput()` - Main entry point
+- `analyzeWithLumi()` - Deep semantic analysis using Groq AI
+- `determineLumiResponse()` - Decide what Lumi should do
+- `handleConfirmation()` - Handle user's save confirmation
+- `confirmAndSave()` - Save after user confirms
 
-# Token storage key changed:
-Before: localStorage.setItem('plos_access_token', token)
-After:  localStorage.setItem('accessToken', token)
-
-# All API calls now work:
-POST /api/auth/login       ✅ (was /auth/login)
-GET  /api/schedule/today   ✅ (was /schedule/today)
-GET  /api/journal/entries  ✅ (was /journal/entries)
-```
+**Auto-save vs Ask-First:**
+- **Auto-save:** Budget amounts, schedule times, habit completions (factual data)
+- **Ask-First:** Journal entries (personal content - always requires confirmation)
 
 ---
 
-### Fix: Schedule.js Database Error ✅
-**Problem:** db.query is not a function (schedule.js using wrong import)
+### 3. Lumi API Routes
+**File:** `backend/src/routes/lumi.js`
 
-**Files Modified:**
-- `backend/src/routes/schedule.js` (FIXED LINE 12 + ALL DB CALLS)
-
-**Changes:**
-```bash
-# Line 12 import:
-Before: const db = require('../db/connection');
-After:  const { pool } = require('../db/connection');
-
-# All occurrences replaced:
-Replaced: db.query(   →   pool.query(
-Total replacements: 12 instances
-
-# connection.js exports:
-module.exports = { pool, runMigrations }
-```
+**Endpoints:**
+- `POST /api/lumi/message` - Main conversation endpoint
+- `POST /api/lumi/voice` - Audio → Whisper → Text → AI
+- `POST /api/lumi/confirm` - User confirms where to save
+- `GET /api/lumi/history` - Get conversation history
+- `POST /api/lumi/chat` - Pure chat mode (no saving)
 
 ---
 
-### MAJOR FIX: Lumi AI Voice Companion ✅
-**Problem:** Lumi gives scripted responses, voice cuts off, no real AI
+### 4. useLumi React Hook
+**File:** `frontend/src/hooks/useLumi.js`
 
-**Files Modified:**
-- `frontend/src/lib/gemini.js` (COMPLETE REWRITE)
-- `frontend/src/lib/lumi-listen.js` (COMPLETE REWRITE)
-- `frontend/src/lib/lumi-voice.js` (COMPLETE REWRITE)
-- `frontend/src/pages/TalkToLumi.jsx` (COMPLETE REWRITE)
-
-**Changes:**
-
-#### 1. gemini.js - REAL AI BRAIN
-```bash
-# NEW FUNCTION: sendToLumi()
-- Takes full conversation context
-- Builds system prompt with user data:
-  * User's name
-  * Today's schedule
-  * Recent journal context
-  * Current time
-  * Conversation history (last 18 messages)
-- Calls Gemini-1.5-flash API
-- Returns natural, conversational responses
-- Handles errors gracefully
-
-# System Prompt includes:
-"You are Lumi, a warm, intelligent AI life companion..."
-"User's name: [NAME]"
-"Today's plan: [TASKS]"
-"Recent journal: [CONTEXT]"
-"Conversation history: [LAST 9 EXCHANGES]"
-
-# Settings:
-- Model: gemini-1.5-flash
-- Temperature: 0.8 (warm, natural)
-- Max tokens: 500 (concise)
-```
-
-#### 2. lumi-listen.js - NO MORE CUTOFFS
-```bash
-# Recording Configuration:
-const MAX_RECORDING_DURATION = 5 * 60 * 1000;  // 5 minutes max
-const SILENCE_TIMEOUT = 4000;                   // 4 seconds (increased from ~1-2)
-
-# Key Changes:
-- recognition.continuous = true (was false)
-- Removed auto-restart logic
-- Manual stop with button tap
-- Silence detection with 4-second timeout
-- Max duration timer (safety limit)
-
-# Recording States:
-- Listening: 🔴 Listening... tap to stop
-- Processing: ⏳ Lumi is thinking...
-- Speaking: 🔊 Lumi is speaking...
-```
-
-#### 3. lumi-voice.js - IMPROVED VOICE
-```bash
-# Voice Settings:
-Before: rate: 0.95, pitch: 1.05
-After:  rate: 0.9, pitch: 1.1
-
-# New Features:
-- speakResponse() function with status callbacks
-- Better voice priority (female voices first)
-- Status tracking (idle, speaking)
-
-# Voice Priority:
-1. Google UK English Female
-2. Samantha
-3. Microsoft Zira
-4. Victoria
-5. Google US English
-```
-
-#### 4. TalkToLumi.jsx - COMPLETE REWRITE
-```bash
-# New State:
-- conversationHistory: persists in sessionStorage
-- aiName: customizable (default: "Lumi")
-- isMuted: toggle voice on/off
-- showHistory: toggle chat view
-- lumiState: 'idle' | 'listening' | 'processing' | 'speaking'
-
-# New UI Components:
-- Full chat interface with message bubbles
-- User messages: right-aligned, gold background
-- Lumi messages: left-aligned, dark card
-- Avatar circles with initials
-- Timestamps on messages
-- Scrollable conversation history
-
-# Control Buttons:
-- 🔊 / 🔇 Mute toggle
-- Clear chat (with confirmation)
-- 💬 Toggle history view
-- ← Back to Dashboard
-
-# No Hardcoded Responses:
-REMOVED:
-const responses = [
-  "I hear you. Tell me more.",
-  "Got it. What else is on your mind?",
-  // ... etc
-];
-
-ADDED:
-- Real AI call via sendToLumi()
-- Conversation history passed every time
-- Context-aware responses
-```
+Provides:
+- Voice recording with Web Speech API
+- Text input handling
+- Conversation management
+- Confirmation handling (confirmSave, declineSave)
+- State management (isListening, isThinking, needsConfirmation, pendingState)
 
 ---
 
-## GIT COMMANDS TO RUN
+### 5. Journal Helper Service
+**File:** `backend/src/services/journalHelper.js`
 
-Add these commands in your terminal tomorrow morning:
+Separate service for analyzing conversations and suggesting journal saves:
+- `analyzeForJournal()` - Analyze if conversation should be saved
+- `saveConversationToJournal()` - Save after confirmation
+- `getUserJournals()` - Get available journals for user
 
+---
+
+### 6. Journal Dashboard
+**File:** `frontend/src/pages/JournalDashboard.jsx`
+
+Bookshelf-style journal interface:
+- 6 journal types: Personal, Faith, Business, Goals, Wellness, Budget
+- Book cards with 3D hover effects
+- Mini calendar showing writing streaks
+- Filter by journal type
+- Modal view with tabs (Entries, Calendar, AI Insights)
+- Stats bar showing combined streaks
+
+---
+
+### 7. Dashboard Lumi Integration
+**File:** `frontend/src/pages/Dashboard.jsx`
+
+Updated with:
+- Lumi quick capture bar (voice + text input)
+- Lumi response display with confirmation buttons
+- Journal selection buttons (Personal, Spiritual, Business, Goals, Health)
+- "Don't save" option
+- All stats start from ZERO (new app state)
+
+---
+
+## 📊 Stats Starting From Zero
+
+**Design Decision:** All counters in Dashboard start from 0 because this is a new app:
+- Journal streak: 0 (not "14 days")
+- Workouts: 0 (not "pre-filled")
+- Savings: ₦0 (not "fake data")
+- Habits: 0/0 (not "3 of 5")
+
+Streaks build up as users actually use the app.
+
+---
+
+## 🔐 Security Features
+
+### MFA Widget
+- Located in unified sidebar
+- Expandable/collapsible
+- Shows "MFA Active" / "MFA Off" status
+- Toggle to enable/disable
+- Correctly labeled "Multi-Factor Authentication" not "2FA"
+
+### Encryption
+- All journal entries encrypted client-side before sending to backend
+- MFA for account protection
+- Privacy settings accessible from sidebar
+
+---
+
+## 🎯 Key Design Principles Applied
+
+1. **Lumi is a Companion, Not a Router**
+   - She converses first, saves later
+   - Never silently saves personal content
+   - Always asks before saving to journals
+
+2. **Semantic Understanding Over Keywords**
+   - Lumi understands meaning and emotion
+   - Not scanning for keywords like "prayer" or "money"
+   - Considers full context before suggesting
+
+3. **User Control**
+   - User decides where content goes
+   - Can decline saving entirely
+   - Can choose multiple journals
+
+4. **Conversational Flow**
+   - Lumi asks follow-up questions
+   - Helps user process thoughts
+   - Offers insights and perspectives
+
+---
+
+## 📁 Files Created/Modified
+
+### Backend
+- ✅ `backend/package.json` - Added groq-sdk and multer
+- ✅ `backend/server.js` - Registered lumi routes
+- ✅ `backend/src/services/lumiRouter.js` - Main AI logic
+- ✅ `backend/src/services/journalHelper.js` - Journal analysis
+- ✅ `backend/src/routes/lumi.js` - API endpoints
+- ✅ `backend/src/routes/journalHelper.js` - Journal helper routes
+- ✅ `backend/src/db/migrations/009_create_lumi_conversations.sql` - New table
+
+### Frontend
+- ✅ `frontend/src/components/layout/SidebarLayout.jsx` - Unified sidebar
+- ✅ `frontend/src/hooks/useLumi.js` - React hook
+- ✅ `frontend/src/pages/JournalDashboard.jsx` - Journal interface
+- ✅ `frontend/src/pages/Dashboard.jsx` - Updated with Lumi
+
+---
+
+## 🚀 Next Steps for Tomorrow
+
+1. **Push to Git:**
+   ```bash
+   git add .
+   git commit -m "feat(lumi): implement conversational AI routing system
+   
+   - Built lumiRouter.js with semantic understanding
+   - Created /api/lumi/message and /api/lumi/voice endpoints
+   - Implemented useLumi.js hook for voice/text interaction
+   - Added unified SidebarLayout with MFA widget
+   - Created JournalDashboard with bookshelf UI
+   - Fixed PostgreSQL DATE() syntax errors
+   - Added lumi_conversations migration
+   - Lazy-loaded Groq SDK to prevent startup crashes
+   - All stats start from zero (new app state)"
+   ```
+
+2. **Test Lumi Flow:**
+   - Open Dashboard
+   - Type message to Lumi
+   - Verify conversation response
+   - Test save confirmation
+   - Check journal entries saved correctly
+
+3. **Add Groq API Key:**
+   - Add `GROQ_API_KEY` to `backend/.env`
+   - Get free key from https://console.groq.com
+
+4. **Test Voice Input:**
+   - Test microphone permission
+   - Record audio
+   - Verify Whisper transcription
+
+---
+
+## 📝 Important Notes
+
+### Environment Variables Needed
 ```bash
-# Navigate to project
-cd C:\Users\HP\PLOS\PLOS
-
-# Check git status
-git status
-
-# Add all modified files
-git add .
-
-# Create detailed commit
-git commit -m "Phase 0 Complete: Bug fixes + Lumi AI upgrade
-
-FIXES:
-✅ Environment: Added .env files with correct API URLs
-✅ Journal: Added ErrorBoundary + loading states + crash recovery
-✅ MFA: Fixed navigation flow with user state passing
-✅ Dashboard: Real data from APIs + skeleton loaders + error states
-✅ API: Fixed /api prefix on all endpoints (was causing 404s)
-✅ Backend: Fixed schedule.js pool import (was db, now pool)
-
-MAJOR FEATURE: Lumi AI Voice Companion
-✅ Real Gemini AI integration (gemini-1.5-flash)
-✅ No more scripted responses - every response is AI-generated
-✅ Conversation memory (last 18 messages in sessionStorage)
-✅ Recording improvements: 4s silence timeout, 5min max
-✅ Full chat UI with message bubbles + avatars + timestamps
-✅ Mute/unmute toggle
-✅ Voice settings: rate 0.9, pitch 1.1 (warmer, clearer)
-✅ Context includes: user name, today's plan, recent journal
-
-FILES MODIFIED:
-- frontend/.env (new)
-- frontend/.env.example (new)
-- frontend/src/lib/api.js
-- frontend/src/lib/auth.jsx
-- frontend/src/lib/gemini.js
-- frontend/src/lib/lumi-voice.js
-- frontend/src/lib/lumi-listen.js
-- frontend/src/pages/Register.jsx
-- frontend/src/pages/MfaSetup.jsx
-- frontend/src/pages/Dashboard.jsx
-- frontend/src/pages/TalkToLumi.jsx
-- frontend/src/pages/Journal.jsx
-- frontend/src/components/journal/BookSpread.jsx
-- frontend/src/components/ErrorBoundary.jsx (new)
-- frontend/src/components/LoadingSpinner.jsx (new)
-- backend/src/routes/schedule.js
-
-TESTING CHECKLIST:
-□ Login works (POST /api/auth/login 200)
-□ Dashboard shows real schedule data
-□ Journal opens without crashing
-□ MFA setup works end-to-end
-□ Lumi responds with real AI (not scripted)
-□ Voice recording doesn't cut off (4s silence timeout)
-□ Chat history persists in session"
-
-# Push to remote (if configured)
-git push origin main
+# backend/.env
+GROQ_API_KEY=gsk_your_key_here
+DATABASE_URL=postgresql://...
+JWT_SECRET=...
+OPENAI_API_KEY=... # For Whisper voice transcription
 ```
+
+### Database Schema
+- `users` table uses UUID for IDs (not INTEGER)
+- All foreign keys must reference UUID
+- `lumi_conversations` stores chat history
+- `journal_entries` stores saved journal content
+
+### AI Model Used
+- **Groq API** with `llama-3.3-70b-versatile`
+- Fast, free tier available
+- No OpenAI API key needed for chat (only for Whisper voice)
 
 ---
 
-## ENVIRONMENT SETUP REQUIRED
+## ✅ Testing Checklist
 
-Add this to `frontend/.env` if not already set:
-
-```env
-VITE_API_URL=http://localhost:3000
-VITE_GEMINI_API_KEY=your-key-from-aistudio.google.com
-```
-
-**Get API Key:**
-1. Go to https://aistudio.google.com/app/apikey
-2. Sign in with Google
-3. Create new API key
-4. Copy and paste into `frontend/.env`
-
----
-
-## BEFORE vs AFTER EXAMPLES
-
-### API Calls (Before → After):
-```
-❌ POST /auth/login → 404
-✅ POST /api/auth/login → 200
-
-❌ GET /schedule/today → 404
-✅ GET /api/schedule/today → 200
-```
-
-### Lumi Responses (Before → After):
-```
-❌ User: "I finished my workout"
-❌ Lumi: "I hear you. Tell me more." (SCRIPTED)
-
-✅ User: "I finished my workout"
-✅ Lumi: "Hey Erica! Great job crushing that workout! 
-    That's awesome discipline. What time did you finish? 
-    And what's next on your schedule today?" (AI)
-```
-
-### Recording (Before → After):
-```
-❌ Recording stops after 1-2 seconds of silence
-❌ Can't dictate long paragraphs
-❌ Auto-restarts cause interruptions
-
-✅ Recording continues for 4 seconds of silence
-✅ Can speak for up to 5 minutes
-✅ Manual stop with button tap
-```
+- [ ] Dashboard loads with unified sidebar
+- [ ] MFA widget visible in sidebar
+- [ ] Lumi responds to text input
+- [ ] Lumi asks confirmation before saving
+- [ ] Journal buttons appear for confirmation
+- [ ] "Don't save" option works
+- [ ] Voice recording starts/stops
+- [ ] Saved entries appear in journals
+- [ ] All stats show 0 (not pre-filled)
+- [ ] Journal Dashboard shows book cards
+- [ ] Book modals open with tabs
 
 ---
 
-## COMPLETED BY
-**Kimi** - AI Assistant  
-**For:** Erica Innocent Effiong  
-**Project:** PLOS (Personal Life Operating System)  
-
----
-
-END OF CHANGE LOG
+**Status:** Ready for testing and git push
+**Date:** April 26, 2026
+**Session Duration:** ~4 hours
