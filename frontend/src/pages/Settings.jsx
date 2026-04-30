@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import * as lumiVoice from '../lib/lumi-voice';
+import { THEME_LIBRARY } from '../lib/livingBackgroundConfig';
 
 /**
  * Settings Page — 8 sections per AGENTS.md Part 6.12
@@ -20,8 +21,15 @@ export default function Settings() {
 
   // Settings state
   const [theme, setTheme] = useState('dark');
-  const [livingBackground, setLivingBackground] = useState(false);
-  const [backgroundTheme, setBackgroundTheme] = useState('cloud');
+  const [livingBackground, setLivingBackground] = useState(() => {
+    return localStorage.getItem('plos_living_background') === 'true';
+  });
+  const [backgroundTheme, setBackgroundTheme] = useState(() => {
+    return localStorage.getItem('plos_bg_theme') || 'auto';
+  });
+  const [motionIntensity, setMotionIntensity] = useState(() => {
+    return localStorage.getItem('plos_bg_intensity') || 'full';
+  });
 
   // Lumi Voice settings
   const [voiceEnabled, setVoiceEnabled] = useState(true);
@@ -70,6 +78,19 @@ export default function Settings() {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
+  // Persist Living Background settings to localStorage
+  useEffect(() => {
+    localStorage.setItem('plos_living_background', livingBackground);
+  }, [livingBackground]);
+
+  useEffect(() => {
+    localStorage.setItem('plos_bg_theme', backgroundTheme);
+  }, [backgroundTheme]);
+
+  useEffect(() => {
+    localStorage.setItem('plos_bg_intensity', motionIntensity);
+  }, [motionIntensity]);
+
   async function handleLogout() {
     await logout();
     navigate('/login');
@@ -103,6 +124,28 @@ export default function Settings() {
   function saveDisplayName() {
     setIsEditingName(false);
     // TODO: API call to update name
+  }
+
+  // Get preview gradient for selected theme
+  function getPreviewGradient(themeKey) {
+    const themeConfig = THEME_LIBRARY[themeKey];
+    if (!themeConfig || !themeConfig.override) {
+      // Default auto theme - dawn gradient
+      return 'linear-gradient(180deg, #1a0a2e 0%, #4a1942 30%, #FF6B35 70%, #FFB347 100%)';
+    }
+
+    if (themeConfig.override.sky_override) {
+      return themeConfig.override.sky_override;
+    }
+
+    // Construct from sky colors if available
+    const { sky_top, sky_mid, sky_horizon, sky_low } = themeConfig.override;
+    if (sky_top && sky_mid) {
+      return `linear-gradient(180deg, ${sky_top} 0%, ${sky_mid} 30%, ${sky_horizon || sky_mid} 70%, ${sky_low || sky_horizon || sky_mid} 100%)`;
+    }
+
+    // Fallback
+    return 'linear-gradient(180deg, #1a0a2e 0%, #4a1942 30%, #FF6B35 70%, #FFB347 100%)';
   }
 
   // Settings sections
@@ -437,7 +480,7 @@ export default function Settings() {
               </div>
             </div>
 
-            {/* LivingBackground toggle */}
+            {/* Living Background toggle */}
             <div style={{ marginBottom: '24px' }}>
               <label
                 style={{
@@ -460,7 +503,7 @@ export default function Settings() {
                     fontFamily: "'Inter', sans-serif",
                   }}
                 >
-                  Enable LivingBackground
+                  Living Background
                 </span>
               </label>
               <p
@@ -471,57 +514,139 @@ export default function Settings() {
                   fontFamily: "'Inter', sans-serif",
                 }}
               >
-                Animated environment in the background (requires refresh)
+                Your background auto-adjusts with time and season
               </p>
             </div>
 
-            {/* Background theme selector */}
+            {/* Living Background theme dropdown */}
             {livingBackground && (
-              <div>
-                <label
-                  style={{
-                    display: 'block',
-                    marginBottom: '12px',
-                    color: '#A89880',
-                    fontSize: '14px',
-                    fontFamily: "'Inter', sans-serif",
-                  }}
-                >
-                  Background Theme
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-                  {[
-                    { id: 'forest', label: '🌲 Forest', color: '#2D5A3D' },
-                    { id: 'starfield', label: '✨ Starfield', color: '#1a1a2e' },
-                    { id: 'warm-study', label: '🕯️ Warm Study', color: '#3d2817' },
-                    { id: 'cloud', label: '☁️ Cloud', color: '#4a5568' },
-                    { id: 'minimal', label: '⬜ Minimal', color: '#2E2E2E' },
-                  ].map((theme) => (
-                    <button
-                      key={theme.id}
-                      onClick={() => setBackgroundTheme(theme.id)}
-                      style={{
-                        padding: '16px 12px',
-                        backgroundColor:
-                          backgroundTheme === theme.id ? '#F5A623' : '#242424',
-                        border:
-                          backgroundTheme === theme.id
-                            ? '2px solid #F5A623'
-                            : '1px solid #2E2E2E',
-                        borderRadius: '12px',
-                        color: backgroundTheme === theme.id ? '#0D0D0D' : '#F5F0E8',
-                        fontSize: '13px',
-                        cursor: 'pointer',
-                        fontWeight: backgroundTheme === theme.id ? 600 : 400,
-                        fontFamily: "'Inter', sans-serif",
-                        transition: 'all 0.2s',
-                      }}
-                    >
-                      {theme.label}
-                    </button>
-                  ))}
+              <>
+                <div style={{ marginBottom: '24px' }}>
+                  <label
+                    style={{
+                      display: 'block',
+                      marginBottom: '12px',
+                      color: '#A89880',
+                      fontSize: '14px',
+                      fontFamily: "'Inter', sans-serif",
+                    }}
+                  >
+                    Theme
+                  </label>
+                  <select
+                    value={backgroundTheme}
+                    onChange={(e) => setBackgroundTheme(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      backgroundColor: '#242424',
+                      border: '1px solid #2E2E2E',
+                      borderRadius: '12px',
+                      color: '#F5F0E8',
+                      fontSize: '14px',
+                      fontFamily: "'Inter', sans-serif",
+                      cursor: 'pointer',
+                      outline: 'none',
+                    }}
+                  >
+                    {Object.entries(THEME_LIBRARY).map(([key, theme]) => (
+                      <option key={key} value={key}>
+                        {theme.name} — {theme.description}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              </div>
+
+                {/* Motion Intensity slider */}
+                <div style={{ marginBottom: '24px' }}>
+                  <label
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      marginBottom: '8px',
+                      color: '#A89880',
+                      fontSize: '14px',
+                      fontFamily: "'Inter', sans-serif",
+                    }}
+                  >
+                    <span>Motion Intensity</span>
+                    <span style={{ color: '#F5A623', textTransform: 'capitalize' }}>
+                      {motionIntensity}
+                    </span>
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                    {['minimal', 'reduced', 'full'].map((level) => (
+                      <button
+                        key={level}
+                        onClick={() => setMotionIntensity(level)}
+                        style={{
+                          flex: 1,
+                          padding: '10px',
+                          backgroundColor: motionIntensity === level ? '#F5A623' : '#242424',
+                          border: 'none',
+                          borderRadius: '12px',
+                          color: motionIntensity === level ? '#0D0D0D' : '#F5F0E8',
+                          fontSize: '13px',
+                          cursor: 'pointer',
+                          fontWeight: motionIntensity === level ? 600 : 400,
+                          fontFamily: "'Inter', sans-serif",
+                          textTransform: 'capitalize',
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        {level}
+                      </button>
+                    ))}
+                  </div>
+                  <p
+                    style={{
+                      margin: '0',
+                      color: '#6B5F52',
+                      fontSize: '12px',
+                      fontFamily: "'Inter', sans-serif",
+                    }}
+                  >
+                    {motionIntensity === 'minimal' && 'Static gradient only — best for low-end devices'}
+                    {motionIntensity === 'reduced' && 'Fewer particles — balanced performance'}
+                    {motionIntensity === 'full' && 'All effects enabled — best visual experience'}
+                  </p>
+                </div>
+
+                {/* Preview thumbnail */}
+                <div>
+                  <label
+                    style={{
+                      display: 'block',
+                      marginBottom: '12px',
+                      color: '#A89880',
+                      fontSize: '14px',
+                      fontFamily: "'Inter', sans-serif",
+                    }}
+                  >
+                    Preview
+                  </label>
+                  <div
+                    style={{
+                      width: '100%',
+                      height: '80px',
+                      borderRadius: '12px',
+                      border: '1px solid #2E2E2E',
+                      background: getPreviewGradient(backgroundTheme),
+                      position: 'relative',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        background: 'radial-gradient(circle at 50% 40%, transparent 0%, rgba(0,0,0,0.3) 100%)',
+                        opacity: 0.4,
+                      }}
+                    />
+                  </div>
+                </div>
+              </>
             )}
           </SettingsSection>
 

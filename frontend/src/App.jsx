@@ -21,6 +21,8 @@ import Settings from './pages/Settings';
 import TalkToLumi from './pages/TalkToLumi';
 import ColorPreview from './pages/ColorPreview';
 import DesignSystemPreview from './pages/DesignSystemPreview';
+import LivingBackground from './components/LivingBackground';
+import { useState, useEffect } from 'react';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -275,10 +277,34 @@ function AppRoutes() {
 }
 
 export default function App() {
+  const [livingBackgroundEnabled, setLivingBackgroundEnabled] = useState(false);
+  const [backgroundTheme, setBackgroundTheme] = useState('auto');
+  const [motionIntensity, setMotionIntensity] = useState('full');
+
+  // Load Living Background settings from localStorage
+  useEffect(() => {
+    const enabled = localStorage.getItem('plos_living_background') === 'true';
+    const theme = localStorage.getItem('plos_bg_theme') || 'auto';
+    const intensity = localStorage.getItem('plos_bg_intensity') || 'full';
+
+    setLivingBackgroundEnabled(enabled);
+    setBackgroundTheme(theme);
+    setMotionIntensity(intensity);
+  }, []);
+
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        {livingBackgroundEnabled && (
+          <LivingBackground
+            theme={backgroundTheme}
+            enabled={true}
+            intensity={motionIntensity}
+          />
+        )}
+        <div style={{ position: 'relative', zIndex: 10 }}>
+          <AppRoutes />
+        </div>
       </AuthProvider>
     </BrowserRouter>
   );
