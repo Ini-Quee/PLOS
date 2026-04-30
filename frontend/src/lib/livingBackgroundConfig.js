@@ -28,8 +28,8 @@ export const TIME_OF_DAY_CONFIGS = {
     sky_low: '#FEF9E7',
     ground_tone: '#2d3a2e',
     ambient_glow: 'rgba(255,243,176,0.12)',
-    particles: 'bokeh_float',
-    description: 'Morning - Clear blue sky'
+    particles: 'birds_flying',
+    description: 'Morning - Clear blue sky with birds'
   },
 
   MIDDAY: {
@@ -40,8 +40,8 @@ export const TIME_OF_DAY_CONFIGS = {
     sky_low: '#E3F2FD',
     ground_tone: '#1a3a1a',
     ambient_glow: 'rgba(255,255,255,0.08)',
-    particles: 'heat_shimmer',
-    description: 'Midday - Bright blue'
+    particles: 'sun_rays',
+    description: 'Midday - Bright sun rays'
   },
 
   GOLDEN_HOUR: {
@@ -52,8 +52,8 @@ export const TIME_OF_DAY_CONFIGS = {
     sky_low: '#F5A623',
     ground_tone: '#2a1a0a',
     ambient_glow: 'rgba(245,166,35,0.2)',
-    particles: 'dust_particles',
-    description: 'Golden Hour - Warm amber light'
+    particles: 'clouds_drifting',
+    description: 'Golden Hour - Warm clouds'
   },
 
   SUNSET: {

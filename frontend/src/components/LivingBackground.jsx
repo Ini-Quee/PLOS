@@ -290,25 +290,25 @@ function renderWeatherEffect(effect, accentColor) {
     case 'tropical_rain':
       return (
         <>
-          {[...Array(35)].map((_, i) => (
+          {[...Array(100)].map((_, i) => (
             <div
               key={`rain-${i}`}
               className="rain-drop"
               style={{
                 left: `${Math.random() * 100}%`,
-                top: `-${Math.random() * 20}px`,
-                animationDuration: `${0.6 + Math.random() * 0.6}s`,
-                animationDelay: `${Math.random() * 2}s`
+                top: `-${Math.random() * 30}px`,
+                animationDuration: `${0.4 + Math.random() * 0.4}s`,
+                animationDelay: `${Math.random() * 3}s`
               }}
             />
           ))}
-          {[...Array(8)].map((_, i) => (
+          {[...Array(15)].map((_, i) => (
             <div
               key={`ripple-${i}`}
               className="rain-ripple"
               style={{
                 left: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 2}s`
+                animationDelay: `${Math.random() * 3}s`
               }}
             />
           ))}
@@ -337,67 +337,65 @@ function renderWeatherEffect(effect, accentColor) {
       );
 
     case 'cherry_petals':
-      const petalColors = ['#FFB7C5', '#FF91A4', '#FFE4E8'];
-      return [...Array(20)].map((_, i) => (
+      const petalColors = ['#FFB7C5', '#FF91A4', '#FFE4E8', '#FFC0CB'];
+      return [...Array(40)].map((_, i) => (
         <div
           key={`petal-${i}`}
           className="cherry-petal"
           style={{
             background: petalColors[Math.floor(Math.random() * petalColors.length)],
             left: `${Math.random() * 100}%`,
-            top: `-10px`,
-            animationDuration: `${6 + Math.random() * 4}s`,
-            animationDelay: `${Math.random() * 5}s`
-          }}
-        />
-      ));
-
-    case 'falling_leaves':
-      const leafColors = ['#E67E22', '#C0392B', '#F39C12', '#8B4513'];
-      return [...Array(18)].map((_, i) => (
-        <div
-          key={`leaf-${i}`}
-          className="autumn-leaf"
-          style={{
-            background: leafColors[Math.floor(Math.random() * leafColors.length)],
-            width: `${8 + Math.random() * 6}px`,
-            height: `${8 + Math.random() * 6}px`,
-            left: `${Math.random() * 100}%`,
-            top: `-10px`,
-            animationDuration: `${4 + Math.random() * 4}s`,
-            animationDelay: `${Math.random() * 6}s`
-          }}
-        />
-      ));
-
-    case 'snowfall':
-      return [...Array(40)].map((_, i) => (
-        <div
-          key={`snow-${i}`}
-          className="snowflake"
-          style={{
-            width: `${2 + Math.random() * 3}px`,
-            height: `${2 + Math.random() * 3}px`,
-            left: `${Math.random() * 100}%`,
-            top: `-10px`,
-            animationDuration: `${5 + Math.random() * 7}s`,
+            top: `-20px`,
+            animationDuration: `${8 + Math.random() * 6}s`,
             animationDelay: `${Math.random() * 8}s`
           }}
         />
       ));
 
+    case 'falling_leaves':
+      const leafColors = ['#E67E22', '#C0392B', '#F39C12', '#8B4513', '#CD853F'];
+      return [...Array(35)].map((_, i) => (
+        <div
+          key={`leaf-${i}`}
+          className="autumn-leaf"
+          style={{
+            color: leafColors[Math.floor(Math.random() * leafColors.length)],
+            left: `${Math.random() * 100}%`,
+            top: `-20px`,
+            animationDuration: `${6 + Math.random() * 6}s`,
+            animationDelay: `${Math.random() * 10}s`
+          }}
+        />
+      ));
+
+    case 'snowfall':
+      return [...Array(60)].map((_, i) => (
+        <div
+          key={`snow-${i}`}
+          className="snowflake"
+          style={{
+            width: `${8 + Math.random() * 12}px`,
+            height: `${8 + Math.random() * 12}px`,
+            left: `${Math.random() * 100}%`,
+            top: `-20px`,
+            animationDuration: `${8 + Math.random() * 10}s`,
+            animationDelay: `${Math.random() * 12}s`
+          }}
+        />
+      ));
+
     case 'star_twinkle':
-      return [...Array(80)].map((_, i) => (
+      return [...Array(120)].map((_, i) => (
         <div
           key={`star-${i}`}
           className="star"
           style={{
-            width: `${1 + Math.random()}px`,
-            height: `${1 + Math.random()}px`,
+            width: `${3 + Math.random() * 4}px`,
+            height: `${3 + Math.random() * 4}px`,
             left: `${Math.random() * 100}%`,
             top: `${Math.random() * 70}%`,
-            animationDuration: `${1.5 + Math.random() * 2.5}s`,
-            animationDelay: `${Math.random() * 4}s`
+            animationDuration: `${2 + Math.random() * 3}s`,
+            animationDelay: `${Math.random() * 5}s`
           }}
         />
       ));
@@ -427,17 +425,16 @@ function renderWeatherEffect(effect, accentColor) {
       return <div className="ocean-shimmer" />;
 
     case 'firefly_glow':
-      return [...Array(15)].map((_, i) => (
+      return [...Array(25)].map((_, i) => (
         <div
           key={`firefly-${i}`}
           className="firefly"
           style={{
-            width: `${4 + Math.random() * 4}px`,
-            height: `${4 + Math.random() * 4}px`,
+            color: '#F5A623',
             left: `${Math.random() * 100}%`,
-            bottom: `${Math.random() * 30}%`,
-            animationDuration: `${4 + Math.random() * 4}s`,
-            animationDelay: `${Math.random() * 5}s`
+            bottom: `${Math.random() * 40}%`,
+            animationDuration: `${6 + Math.random() * 6}s`,
+            animationDelay: `${Math.random() * 8}s`
           }}
         />
       ));
@@ -488,6 +485,45 @@ function renderWeatherEffect(effect, accentColor) {
 
     case 'aurora_wave':
       return <div className="aurora-wave" />;
+
+    case 'birds_flying':
+      return [...Array(8)].map((_, i) => (
+        <div
+          key={`bird-${i}`}
+          className="bird"
+          style={{
+            top: `${10 + Math.random() * 30}%`,
+            animationDuration: `${15 + Math.random() * 10}s`,
+            animationDelay: `${Math.random() * 20}s`
+          }}
+        />
+      ));
+
+    case 'clouds_drifting':
+      return [...Array(6)].map((_, i) => (
+        <div
+          key={`cloud-${i}`}
+          className="cloud"
+          style={{
+            top: `${5 + Math.random() * 25}%`,
+            animationDuration: `${40 + Math.random() * 30}s`,
+            animationDelay: `${Math.random() * 40}s`,
+            transform: `scale(${0.8 + Math.random() * 0.6})`
+          }}
+        />
+      ));
+
+    case 'sun_rays':
+      return [...Array(12)].map((_, i) => (
+        <div
+          key={`ray-${i}`}
+          className="sun-ray"
+          style={{
+            transform: `rotate(${i * 30}deg)`,
+            animationDelay: `${i * 5}s`
+          }}
+        />
+      ));
 
     default:
       return null;
