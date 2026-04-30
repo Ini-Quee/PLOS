@@ -1,6 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import SidebarLayout, { C } from '../components/layout/SidebarLayout';
+import SeasonalBookBackground from '../components/journal/SeasonalBookBackground';
+import { initializeSeasonDetection, getCachedSeason, SEASONS } from '../lib/seasonDetection';
+import { getBookTheme, BOOK_TYPES } from '../lib/bookThemes';
 
 // ─── Journal Data ───────────────────────────────────────────────────────────────
 const JOURNALS = [
@@ -121,21 +125,45 @@ function MiniCal({ completedDays, accent }) {
 }
 
 // ─── Book Card Component ────────────────────────────────────────────────────────
-function BookCard({ journal, onClick, delay }) {
+function BookCard({ journal, onClick, delay, currentSeason }) {
   const [hovered, setHovered] = useState(false);
+
+  // Get theme for this book card
+  const cardTheme = currentSeason ? getBookTheme(journal.type, currentSeason) : null;
+
   return (
-    <div
+    <motion.div
       onClick={() => onClick(journal)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
         cursor: 'pointer',
         animation: `fadeUp 0.5s ${delay}s ease both`,
-        transform: hovered ? 'translateY(-6px) rotate(-1deg)' : 'translateY(0)',
-        transition: 'transform 0.25s ease',
         position: 'relative',
       }}
+      whileHover={{ y: -8, scale: 1.02, rotate: -1.5 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
+      {/* Themed glow on hover */}
+      <AnimatePresence>
+        {hovered && cardTheme && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.3 }}
+            style={{
+              position: 'absolute',
+              inset: -30,
+              background: `radial-gradient(circle, ${cardTheme.gradient1} 0%, transparent 70%)`,
+              filter: 'blur(40px)',
+              zIndex: -1,
+              borderRadius: '50%',
+            }}
+          />
+        )}
+      </AnimatePresence>
+
       <div
         style={{
           background: journal.color,
@@ -147,8 +175,9 @@ function BookCard({ journal, onClick, delay }) {
           display: 'flex',
           flexDirection: 'column',
           boxShadow: hovered
-            ? `0 20px 40px rgba(0,0,0,0.5),-4px 0 0 ${journal.spine}`
+            ? `0 20px 40px rgba(0,0,0,0.5),-4px 0 0 ${journal.spine}${cardTheme ? `, 0 0 60px ${cardTheme.accentColor}40` : ''}`
             : `0 8px 24px rgba(0,0,0,0.3),-4px 0 0 ${journal.spine}`,
+          transition: 'box-shadow 0.3s ease',
         }}
       >
         <div
@@ -195,24 +224,46 @@ function BookCard({ journal, onClick, delay }) {
           <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>{journal.entries} entries</div>
           <div style={{ fontSize: 10, color: journal.accent, fontWeight: 500 }}>{journal.lastActive}</div>
         </div>
+        {/* Seasonal badge */}
+        {cardTheme && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 8,
+              right: 8,
+              background: `${cardTheme.gradient1}`,
+              backdropFilter: 'blur(10px)',
+              border: `1px solid ${cardTheme.accentColor}40`,
+              borderRadius: 20,
+              padding: '4px 8px',
+              fontSize: 9,
+              color: cardTheme.accentColor,
+              fontWeight: 600,
+              opacity: hovered ? 1 : 0.7,
+              transition: 'opacity 0.2s',
+            }}
+          >
+            {cardTheme.ambience.split('-')[0]}
+          </div>
+        )}
       </div>
-      {hovered && (
+      {hovered && cardTheme && (
         <div
           style={{
             position: 'absolute',
-            bottom: -28,
+            bottom: -32,
             left: '50%',
             transform: 'translateX(-50%)',
             fontSize: 10,
-            color: journal.accent,
+            color: cardTheme.accentColor,
             whiteSpace: 'nowrap',
             fontWeight: 500,
           }}
         >
-          Tap to open →
+          {cardTheme.description} →
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }
 
@@ -410,7 +461,7 @@ function OpenJournal({ journal, onClose }) {
           {tab === 'entries' && (
             <div>
               <div
-                onClick={() => navigate(`/journal/write/${journal.type}`)}
+                onClick={() => navigate(`/journal/page?type=${journal.type}`)}
                 style={{
                   background: `${journal.color}20`,
                   border: `1px solid ${journal.accent}30`,
@@ -606,32 +657,93 @@ export default function JournalDashboard() {
   const [openJournal, setOpenJournal] = useState(null);
   const [filter, setFilter] = useState('all');
 
+  // Season detection state
+  const [currentSeason, setCurrentSeason] = useState(null);
+  const [userCountry, setUserCountry] = useState(null);
+  const [seasonInfo, setSeasonInfo] = useState(null);
+  const [seasonInitialized, setSeasonInitialized] = useState(false);
+
+  // Initialize season detection ONCE
+  useEffect(() => {
+    if (seasonInitialized) return;
+
+    async function loadSeason() {
+      const { season, countryCode, seasonInfo: info } = await initializeSeasonDetection();
+      setCurrentSeason(season);
+      setUserCountry(countryCode);
+      setSeasonInfo(info);
+      setSeasonInitialized(true);
+      console.log(`📍 Season loaded: ${countryCode}, ${info.name} ${info.emoji}`);
+    }
+    loadSeason();
+  }, []); // Empty array - run once only
+
+  // Memoize active book type to prevent recalculation
+  const activeBookType = useMemo(() => {
+    if (openJournal?.type) return openJournal.type;
+    if (filter !== 'all') return filter;
+    return BOOK_TYPES.PERSONAL;
+  }, [openJournal, filter]);
+
+  // Memoize theme to prevent unnecessary recalculation
+  const theme = useMemo(() => {
+    if (!currentSeason) return null;
+    return getBookTheme(activeBookType, currentSeason);
+  }, [activeBookType, currentSeason]);
+
   const filtered = filter === 'all' ? JOURNALS : JOURNALS.filter((j) => j.type === filter);
 
   return (
     <>
       <style>{`
-        @keyframes fadeUp { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
-        @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
-        @keyframes scaleIn { from { opacity:0; transform:scale(0.94) } to { opacity:1; transform:scale(1) } }
-        @keyframes breathe { 0%,100% { transform:scale(1) } 50% { transform:scale(1.08) } }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
+  @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
+  @keyframes scaleIn { from { opacity:0; transform:scale(0.94) } to { opacity:1; transform:scale(1) } }
+  @keyframes breathe { 0%,100% { transform:scale(1) } 50% { transform:scale(1.08) } }
       `}</style>
+
       <SidebarLayout>
+        {/* Dynamic seasonal background - inside layout, behind content */}
+        {theme && currentSeason && (
+          <SeasonalBookBackground
+            key={`background-${activeBookType}-${currentSeason}`}
+            bookType={activeBookType}
+            season={currentSeason}
+            theme={theme}
+          />
+        )}
         {/* Header Section */}
         <div style={{ padding: '28px 32px 0' }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 6 }}>
             <div>
-              <div
-                style={{
-                  fontSize: 11,
-                  color: C.muted,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  marginBottom: 6,
-                }}
-              >
-                📖 Your journals
-              </div>
+            <div
+              style={{
+                fontSize: 11,
+                color: C.muted,
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                marginBottom: 6,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              📖 Your journals
+              {seasonInfo && (
+                <span
+                  style={{
+                    fontSize: 10,
+                    color: theme?.accentColor || C.amber,
+                    background: 'rgba(255,255,255,0.05)',
+                    padding: '2px 8px',
+                    borderRadius: 10,
+                  }}
+                  title={seasonInfo.description}
+                >
+                  {seasonInfo.emoji} {seasonInfo.name}
+                </span>
+              )}
+            </div>
               <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1 }}>My Library</div>
               <div style={{ fontSize: 12, color: C.muted, marginTop: 6 }}>
                 {JOURNALS.length} journals · {JOURNALS.reduce((a, j) => a + j.entries, 0)} total entries ·{' '}
@@ -703,20 +815,49 @@ export default function JournalDashboard() {
           </div>
         </div>
 
-        {/* Bookshelf grid */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))',
-            gap: 24,
-            padding: '28px 32px 40px',
-          }}
-        >
-          {filtered.map((j, i) => (
-            <BookCard key={j.id} journal={j} onClick={setOpenJournal} delay={i * 0.06} />
-          ))}
-          <NewJournalCard />
-        </div>
+      {/* Bookshelf grid */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))',
+          gap: 24,
+          padding: '28px 32px 40px',
+        }}
+      >
+        {filtered.map((j, i) => (
+          <BookCard key={j.id} journal={j} onClick={setOpenJournal} delay={i * 0.06} currentSeason={currentSeason} />
+        ))}
+        <NewJournalCard />
+      </div>
+
+        {/* Active theme indicator */}
+        {theme && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{
+              position: 'fixed',
+              top: 20,
+              right: 32,
+              background: `${theme.gradient1}`,
+              backdropFilter: 'blur(10px)',
+              border: `1px solid ${theme.accentColor}40`,
+              borderRadius: 12,
+              padding: '8px 14px',
+              fontSize: 11,
+              color: theme.accentColor,
+              fontWeight: 600,
+              zIndex: 100,
+              boxShadow: `0 4px 12px ${theme.accentColor}20`,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <span style={{ fontSize: 12 }}>{seasonInfo?.emoji}</span>
+            {theme.ambience.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Theme
+          </motion.div>
+        )}
 
         {/* Stats bar */}
         <div

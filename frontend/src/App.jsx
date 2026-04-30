@@ -7,6 +7,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Journal from './pages/Journal';
 import JournalDashboard from './pages/JournalDashboard';
+import JournalPage from './pages/JournalPage';
 import Schedule from './pages/Schedule';
 import Calendar from './pages/Calendar';
 import Projects from './pages/Projects';
@@ -135,6 +136,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <AnimatedRoute>
               <Journal />
+            </AnimatedRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/journal/page"
+        element={
+          <ProtectedRoute>
+            <AnimatedRoute>
+              <JournalPage />
             </AnimatedRoute>
           </ProtectedRoute>
         }
