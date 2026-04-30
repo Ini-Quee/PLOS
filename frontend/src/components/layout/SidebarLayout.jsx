@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { getCachedSeason, SEASONS, setSeasonOverride } from '../../lib/seasonDetection';
 
 // ─── Design Tokens (Shared across all pages) ───────────────────────────────────
 export const C = {
@@ -192,6 +193,102 @@ function SectionHeader({ label }) {
   );
 }
 
+// ─── Season Widget Component ────────────────────────────────────────────────────
+function SeasonWidget() {
+  const [seasonInfo, setSeasonInfo] = useState(null);
+  const [showOverride, setShowOverride] = useState(false);
+  const [currentSeason, setCurrentSeason] = useState(null);
+
+  useEffect(() => {
+    const season = getCachedSeason();
+    setSeasonInfo(season);
+    setCurrentSeason(localStorage.getItem('currentSeason') || SEASONS.HARMATTAN);
+  }, []);
+
+  const handleSeasonChange = (newSeason) => {
+    setCurrentSeason(newSeason);
+    const newInfo = setSeasonOverride(newSeason);
+    setSeasonInfo(newInfo);
+    window.location.reload();
+  };
+
+  const seasonOptions = [
+    { value: SEASONS.HARMATTAN, label: '🌾 Harmattan', desc: 'Dry, dusty' },
+    { value: SEASONS.RAINY, label: '🌧️ Rainy', desc: 'Wet, tropical' },
+    { value: SEASONS.SPRING, label: '🌸 Spring', desc: 'Fresh growth' },
+    { value: SEASONS.SUMMER, label: '☀️ Summer', desc: 'Warm, vibrant' },
+    { value: SEASONS.FALL, label: '🍂 Fall', desc: 'Harvest, cozy' },
+    { value: SEASONS.WINTER, label: '❄️ Winter', desc: 'Quiet, snow' },
+    { value: SEASONS.WET, label: '🌴 Wet', desc: 'Tropical rains' },
+    { value: SEASONS.DRY, label: '☀️ Dry', desc: 'Clear, sunny' },
+  ];
+
+  return (
+    <div style={{ marginTop: 16 }}>
+      <div
+        onClick={() => setShowOverride(!showOverride)}
+        style={{
+          background: 'rgba(255,255,255,0.03)',
+          border: `1px solid ${C.border}`,
+          borderRadius: 10,
+          padding: '10px 12px',
+          cursor: 'pointer',
+          transition: 'all 0.2s',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 16 }}>{seasonInfo?.emoji || '🌾'}</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 10, color: C.muted, textTransform: 'uppercase' }}>
+              Current Season
+            </div>
+            <div style={{ fontSize: 11, color: C.text, fontWeight: 600 }}>
+              {seasonInfo?.name || 'Harmattan'}
+            </div>
+          </div>
+          <div style={{ fontSize: 10, color: C.muted }}>{showOverride ? '▲' : '▼'}</div>
+        </div>
+      </div>
+
+      {showOverride && (
+        <div
+          style={{
+            marginTop: 8,
+            background: C.bg3,
+            border: `1px solid ${C.border}`,
+            borderRadius: 10,
+            padding: '8px',
+          }}
+        >
+          <div style={{ fontSize: 9, color: C.muted, marginBottom: 6 }}>
+            Override season:
+          </div>
+          <select
+            value={currentSeason}
+            onChange={(e) => handleSeasonChange(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '6px 8px',
+              background: C.bg4,
+              border: `1px solid ${C.border}`,
+              borderRadius: 6,
+              color: C.text,
+              fontSize: 10,
+              cursor: 'pointer',
+            }}
+          >
+            {seasonOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label} — {opt.desc}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── User Profile Card ─────────────────────────────────────────────────────────
 function UserProfile() {
   return (
@@ -339,6 +436,10 @@ export function Sidebar() {
         />
       ))}
 
+      {/* Season Widget */}
+      <SectionHeader label="Atmosphere" />
+      <SeasonWidget />
+
       {/* User Profile */}
       <UserProfile />
     </div>
@@ -350,26 +451,28 @@ export default function SidebarLayout({ children, customStyles = {} }) {
   return (
     <>
       <style>{`
-        @keyframes fadeUp { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
-        @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
-        @keyframes scaleIn { from { opacity:0; transform:scale(0.94) } to { opacity:1; transform:scale(1) } }
-        @keyframes breathe { 0%,100% { transform:scale(1) } 50% { transform:scale(1.08) } }
-        * { box-sizing: border-box; margin: 0; padding: 0 }
-        ::-webkit-scrollbar { width: 4px }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
+  @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
+  @keyframes scaleIn { from { opacity:0; transform:scale(0.94) } to { opacity:1; transform:scale(1) } }
+  @keyframes breathe { 0%,100% { transform:scale(1) } 50% { transform:scale(1.08) } }
+  * { box-sizing: border-box; margin: 0; padding: 0 }
+  ::-webkit-scrollbar { width: 4px }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px }
       `}</style>
       <div
         style={{
           display: 'flex',
           minHeight: '100vh',
-          background: C.bg,
+          background: C.bg, // Fallback color
           color: C.text,
           fontFamily: "'DM Sans', system-ui, sans-serif",
+          position: 'relative',
+          zIndex: 1, // Content above background
           ...customStyles,
         }}
       >
         <Sidebar />
-        <div style={{ flex: 1, overflow: 'auto' }}>{children}</div>
+        <div style={{ flex: 1, overflow: 'auto', position: 'relative', zIndex: 1 }}>{children}</div>
       </div>
     </>
   );
