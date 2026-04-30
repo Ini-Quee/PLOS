@@ -398,9 +398,8 @@ export default function Dashboard() {
         @keyframes fadeUp { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
         @keyframes breathe { 0%,100% { transform:scale(1); box-shadow:0 0 20px rgba(245,166,35,0.3) } 50% { transform:scale(1.08); box-shadow:0 0 35px rgba(245,166,35,0.5) } }
         @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.4 } }
-        body { background:${SEASONS[season].bg}; transition:background 0.8s ease }
       `}</style>
-      <SidebarLayout customStyles={{ background: SEASONS[season].bg }}>
+      <SidebarLayout customStyles={{ background: 'transparent' }}>
         {/* Topbar */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px 28px 0' }}>
           <div>
@@ -412,6 +411,17 @@ export default function Dashboard() {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, position: 'relative' }}>
+            <div
+              onClick={() => navigate('/settings')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: 'rgba(255,255,255,0.05)', border: `1px solid ${C.border}`,
+                borderRadius: 20, padding: '6px 14px', fontSize: 12,
+                cursor: 'pointer', color: C.muted
+              }}
+            >
+              ⚙️ Settings
+            </div>
             <div
               onClick={() => setShowSeasonMenu(v => !v)}
               style={{

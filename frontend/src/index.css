@@ -71,6 +71,16 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Living Background enabled - make body transparent */
+body.living-background-enabled {
+  background-color: transparent;
+}
+
+/* Ensure main app container has transparent background when Living Background is on */
+body.living-background-enabled #root {
+  background-color: transparent;
+}
+
 /* Typography Classes */
 .font-display {
   font-family: var(--font-display);

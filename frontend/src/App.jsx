@@ -290,6 +290,13 @@ export default function App() {
     setLivingBackgroundEnabled(enabled);
     setBackgroundTheme(theme);
     setMotionIntensity(intensity);
+
+    // Add body class when Living Background is enabled
+    if (enabled) {
+      document.body.classList.add('living-background-enabled');
+    } else {
+      document.body.classList.remove('living-background-enabled');
+    }
   }, []);
 
   return (
