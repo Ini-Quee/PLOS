@@ -287,6 +287,8 @@ export default function App() {
     const theme = localStorage.getItem('plos_bg_theme') || 'auto';
     const intensity = localStorage.getItem('plos_bg_intensity') || 'full';
 
+    console.log('🎨 Living Background Settings:', { enabled, theme, intensity });
+
     setLivingBackgroundEnabled(enabled);
     setBackgroundTheme(theme);
     setMotionIntensity(intensity);
@@ -294,8 +296,10 @@ export default function App() {
     // Add body class when Living Background is enabled
     if (enabled) {
       document.body.classList.add('living-background-enabled');
+      console.log('✅ Living Background ENABLED - body class added');
     } else {
       document.body.classList.remove('living-background-enabled');
+      console.log('❌ Living Background DISABLED');
     }
   }, []);
 

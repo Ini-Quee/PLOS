@@ -12,6 +12,8 @@ export default function LivingBackground({ theme = 'auto', enabled = true, inten
   const [config, setConfig] = useState(null);
   const [isLowMemory, setIsLowMemory] = useState(false);
 
+  console.log('🌈 LivingBackground rendered!', { theme, enabled, intensity });
+
   // Detect low memory devices
   useEffect(() => {
     if (navigator.deviceMemory && navigator.deviceMemory < 2) {
@@ -28,6 +30,7 @@ export default function LivingBackground({ theme = 'auto', enabled = true, inten
       const region = detectRegion();
 
       const bgConfig = computeBackground(hour, month, region, theme);
+      console.log('⏰ Background config computed:', { hour, month, region, theme, particles: bgConfig.particles, overlay_effect: bgConfig.overlay_effect });
       setConfig(bgConfig);
     }
 

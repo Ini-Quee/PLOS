@@ -187,9 +187,9 @@ export const THEME_LIBRARY = {
     override: {
       sky_horizon: '#00BCD4',
       sky_low: '#E0F7FA',
-      silhouette: 'beach_horizon',
-      accent: '#26C6DA',
-      overlay: 'ocean_shimmer'
+      horizon_silhouette: 'beach_horizon',
+      accent_color: '#26C6DA',
+      overlay_effect: 'ocean_shimmer'
     }
   },
 
@@ -198,9 +198,9 @@ export const THEME_LIBRARY = {
     description: 'Snow peaks, deep pine forest',
     override: {
       sky_horizon: '#81D4FA',
-      silhouette: 'pine_forest',
-      accent: '#B3E5FC',
-      overlay: 'snowfall'
+      horizon_silhouette: 'pine_forest',
+      accent_color: '#B3E5FC',
+      overlay_effect: 'snowfall'
     }
   },
 
@@ -209,9 +209,9 @@ export const THEME_LIBRARY = {
     description: 'Acacia silhouettes, red African sky',
     override: {
       sky_horizon: '#E67E22',
-      silhouette: 'savanna',
-      accent: '#F5A623',
-      overlay: 'heat_shimmer'
+      horizon_silhouette: 'savanna',
+      accent_color: '#F5A623',
+      overlay_effect: 'heat_shimmer'
     }
   },
 
@@ -219,9 +219,9 @@ export const THEME_LIBRARY = {
     name: 'Kyoto',
     description: 'Cherry blossoms, temple horizon',
     override: {
-      silhouette: 'temple_treeline',
-      accent: '#FFB7C5',
-      overlay: 'cherry_petals'
+      horizon_silhouette: 'temple_treeline',
+      accent_color: '#FFB7C5',
+      overlay_effect: 'cherry_petals'
     }
   },
 
@@ -231,8 +231,8 @@ export const THEME_LIBRARY = {
     override: {
       sky_top: '#0a1628',
       sky_mid: '#0d3b2e',
-      overlay: 'aurora_wave',
-      accent: '#4CAF7D'
+      overlay_effect: 'aurora_wave',
+      accent_color: '#4CAF7D'
     }
   },
 
@@ -241,10 +241,10 @@ export const THEME_LIBRARY = {
     description: 'Firelight glow, snow, pine trees',
     override: {
       sky_top: '#1a0a05',
-      overlay: 'snowfall',
-      silhouette: 'pine_forest',
+      overlay_effect: 'snowfall',
+      horizon_silhouette: 'pine_forest',
       warm_glow: true,
-      accent: '#F5A623'
+      accent_color: '#F5A623'
     }
   },
 
@@ -253,8 +253,8 @@ export const THEME_LIBRARY = {
     description: 'Warm amber light, bokeh, cozy interior',
     override: {
       type: 'lifestyle',
-      sky_override: 'linear-gradient(180deg, #3d1c08 0%, #6b3424 100%)',
-      overlay: 'bokeh_warm',
+      sky_override: { background: 'linear-gradient(180deg, #3d1c08 0%, #6b3424 100%)' },
+      overlay_effect: 'bokeh_warm',
       no_silhouette: true,
       warm_glow: true
     }
@@ -264,10 +264,10 @@ export const THEME_LIBRARY = {
     name: 'City Night',
     description: 'City lights, urban night skyline',
     override: {
-      sky_override: 'linear-gradient(180deg, #0a0a0f 0%, #1a1a2e 100%)',
-      silhouette: 'city_skyline',
-      overlay: 'bokeh_city',
-      accent: '#4A9EFF'
+      sky_override: { background: 'linear-gradient(180deg, #0a0a0f 0%, #1a1a2e 100%)' },
+      horizon_silhouette: 'city_skyline',
+      overlay_effect: 'bokeh_city',
+      accent_color: '#4A9EFF'
     }
   },
 
@@ -277,9 +277,9 @@ export const THEME_LIBRARY = {
     override: {
       sky_horizon: '#7F8C8D',
       sky_low: '#BDC3C7',
-      silhouette: 'rolling_hills',
-      overlay: 'rising_mist',
-      accent: '#95A5A6'
+      horizon_silhouette: 'rolling_hills',
+      overlay_effect: 'rising_mist',
+      accent_color: '#95A5A6'
     }
   }
 };
