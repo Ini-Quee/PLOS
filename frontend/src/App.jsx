@@ -21,7 +21,8 @@ import Settings from './pages/Settings';
 import TalkToLumi from './pages/TalkToLumi';
 import ColorPreview from './pages/ColorPreview';
 import DesignSystemPreview from './pages/DesignSystemPreview';
-import CinematicWallpaper from './components/CinematicWallpaper';
+import Atmosphere from './components/Atmosphere';
+import LumiOrchestrator from './components/LumiOrchestrator';
 import { useState, useEffect } from 'react';
 
 function ProtectedRoute({ children }) {
@@ -277,29 +278,13 @@ function AppRoutes() {
 }
 
 export default function App() {
-  const [wallpaperEnabled, setWallpaperEnabled] = useState(true); // Always enabled by default
-
-  useEffect(() => {
-    // Check if user has disabled it
-    const disabled = localStorage.getItem('plos_wallpaper_disabled') === 'true';
-    setWallpaperEnabled(!disabled);
-
-    // Add body class for transparent background
-    if (!disabled) {
-      document.body.classList.add('living-background-enabled');
-      console.log('🎬 Cinematic Wallpaper enabled');
-    }
-  }, []);
-
   return (
     <BrowserRouter>
       <AuthProvider>
-        {/* Cinematic Wallpaper - always renders in background */}
-        {wallpaperEnabled && <CinematicWallpaper />}
-
-        <div style={{ position: 'relative', zIndex: 10 }}>
+        <Atmosphere section="all">
           <AppRoutes />
-        </div>
+          <LumiOrchestrator />
+        </Atmosphere>
       </AuthProvider>
     </BrowserRouter>
   );

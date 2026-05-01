@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
-import LivingBackground from '../components/LivingBackground';
 
 /**
  * Year Plan Page
@@ -59,13 +58,12 @@ export default function YearPlan() {
 
   return (
     <div style={{ minHeight: '100vh', position: 'relative' }}>
-      <LivingBackground />
 
       <div style={{ position: 'relative', zIndex: 1, padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '32px' }}>
           <button onClick={() => navigate('/dashboard')} style={{
-            padding: '10px 20px', backgroundColor: 'transparent', border: '1px solid #2E2E2E',
+            padding: '10px 20px', backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.07)',
             borderRadius: '12px', color: '#A89880', fontSize: '14px', cursor: 'pointer',
           }}>← Back</button>
           <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 700, fontFamily: "'DM Serif Display', serif", color: '#F5F0E8' }}>
@@ -75,10 +73,10 @@ export default function YearPlan() {
 
         {/* Daily Intention */}
         <div style={{
-          backgroundColor: '#1A1A1A', borderRadius: '16px', border: '1px solid #2E2E2E',
+          backgroundColor: 'rgba(8,8,18,0.32)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.07)',
           padding: '24px', marginBottom: '32px'
         }}>
-          <h2 style={{ margin: '0 0 16px 0', color: '#F5A623', fontSize: '18px' }}>
+          <h2 style={{ margin: '0 0 16px 0', color: '#C8955C', fontSize: '18px' }}>
             🌅 Today's Intention
           </h2>
           <form onSubmit={setDailyIntention}>
@@ -88,13 +86,13 @@ export default function YearPlan() {
               onChange={(e) => setIntention(e.target.value)}
               placeholder="What is your intention for today?"
               style={{
-                width: '100%', padding: '16px', backgroundColor: '#242424',
-                border: '1px solid #2E2E2E', borderRadius: '12px', color: '#F5F0E8',
+                width: '100%', padding: '16px', backgroundColor: 'rgba(12,12,24,0.40)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+                border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', color: '#F5F0E8',
                 fontSize: '18px', fontFamily: "'DM Serif Display', serif", fontStyle: 'italic'
               }}
             />
             <button type="submit" style={{
-              marginTop: '12px', padding: '12px 24px', backgroundColor: '#F5A623',
+              marginTop: '12px', padding: '12px 24px', backgroundColor: '#C8955C',
               border: 'none', borderRadius: '8px', color: '#0D0D0D', fontWeight: 600,
               cursor: 'pointer'
             }}>
@@ -115,14 +113,14 @@ export default function YearPlan() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
             {/* Year Goal */}
             <div style={{
-              backgroundColor: '#1A1A1A', borderRadius: '16px', border: '1px solid #2E2E2E', padding: '24px'
+              backgroundColor: 'rgba(8,8,18,0.32)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.07)', padding: '24px'
             }}>
-              <h2 style={{ margin: '0 0 16px 0', color: '#F5A623', fontSize: '18px' }}>🎯 Year Goal</h2>
+              <h2 style={{ margin: '0 0 16px 0', color: '#C8955C', fontSize: '18px' }}>🎯 Year Goal</h2>
               {goals.year.length === 0 ? (
                 <p style={{ color: '#6B5F52', textAlign: 'center' }}>No year goal set yet</p>
               ) : (
                 goals.year.map((g) => (
-                  <div key={g.id} style={{ padding: '12px', backgroundColor: '#242424', borderRadius: '8px' }}>
+                  <div key={g.id} style={{ padding: '12px', backgroundColor: 'rgba(12,12,24,0.40)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', borderRadius: '8px' }}>
                     <p style={{ margin: 0, color: '#F5F0E8' }}>{g.title}</p>
                   </div>
                 ))
@@ -131,16 +129,16 @@ export default function YearPlan() {
 
             {/* Current Quarter */}
             <div style={{
-              backgroundColor: '#1A1A1A', borderRadius: '16px', border: '1px solid #2E2E2E', padding: '24px'
+              backgroundColor: 'rgba(8,8,18,0.32)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.07)', padding: '24px'
             }}>
-              <h2 style={{ margin: '0 0 16px 0', color: '#F5A623', fontSize: '18px' }}>
+              <h2 style={{ margin: '0 0 16px 0', color: '#C8955C', fontSize: '18px' }}>
                 📅 Q{currentQuarter} Milestones
               </h2>
               {(goals.quarters[currentQuarter] || []).length === 0 ? (
                 <p style={{ color: '#6B5F52', textAlign: 'center' }}>No quarterly milestones</p>
               ) : (
                 goals.quarters[currentQuarter].map((g) => (
-                  <div key={g.id} style={{ padding: '12px', backgroundColor: '#242424', borderRadius: '8px', marginBottom: '8px' }}>
+                  <div key={g.id} style={{ padding: '12px', backgroundColor: 'rgba(12,12,24,0.40)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', borderRadius: '8px', marginBottom: '8px' }}>
                     <p style={{ margin: 0, color: '#F5F0E8' }}>{g.title}</p>
                   </div>
                 ))
@@ -149,16 +147,16 @@ export default function YearPlan() {
 
             {/* Current Month */}
             <div style={{
-              backgroundColor: '#1A1A1A', borderRadius: '16px', border: '1px solid #2E2E2E', padding: '24px'
+              backgroundColor: 'rgba(8,8,18,0.32)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.07)', padding: '24px'
             }}>
-              <h2 style={{ margin: '0 0 16px 0', color: '#F5A623', fontSize: '18px' }}>
+              <h2 style={{ margin: '0 0 16px 0', color: '#C8955C', fontSize: '18px' }}>
                 📆 {new Date().toLocaleDateString('en-US', { month: 'long' })} Theme
               </h2>
               {(goals.months[currentMonth] || []).length === 0 ? (
                 <p style={{ color: '#6B5F52', textAlign: 'center' }}>No monthly theme set</p>
               ) : (
                 goals.months[currentMonth].map((g) => (
-                  <div key={g.id} style={{ padding: '12px', backgroundColor: '#242424', borderRadius: '8px', marginBottom: '8px' }}>
+                  <div key={g.id} style={{ padding: '12px', backgroundColor: 'rgba(12,12,24,0.40)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', borderRadius: '8px', marginBottom: '8px' }}>
                     <p style={{ margin: 0, color: '#F5F0E8' }}>{g.title}</p>
                   </div>
                 ))

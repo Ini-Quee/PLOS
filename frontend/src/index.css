@@ -2,20 +2,20 @@
 @import 'tailwindcss';
 
 :root {
-  /* PLOS Design System - Dark Mode (Default) */
-  --color-background: #0D0D0D;
-  --color-surface-card: #1A1A1A;
-  --color-surface-elevated: #242424;
-  --color-primary: #F5A623;
-  --color-primary-hover: #E09415;
-  --color-primary-muted: rgba(245, 166, 35, 0.12);
-  --color-text-primary: #F5F0E8;
+  /* PLOS Design System — atmosphere-aware */
+  --color-background: transparent;
+  --color-surface-card: rgba(10, 8, 6, 0.30);
+  --color-surface-elevated: rgba(16, 12, 8, 0.42);
+  --color-primary: #C8955C;
+  --color-primary-hover: #DBA870;
+  --color-primary-muted: rgba(200, 149, 92, 0.12);
+  --color-text-primary: #F0EAE0;
   --color-text-secondary: #A89880;
   --color-text-muted: #6B5F52;
-  --color-border: #2E2E2E;
+  --color-border: rgba(255, 255, 255, 0.07);
   --color-success: #4CAF7D;
   --color-error: #E05252;
-  --color-lumi-glow: rgba(245, 166, 35, 0.25);
+  --color-lumi-glow: rgba(200, 149, 92, 0.22);
 
   /* Typography */
   --font-display: 'DM Serif Display', Georgia, serif;
@@ -60,11 +60,11 @@
   box-sizing: border-box;
 }
 
-html, body {
+html, body, #root {
   margin: 0;
   padding: 0;
   min-height: 100vh;
-  background-color: var(--color-background);
+  background-color: #06060e; /* fallback only — atmosphere renders on top */
   color: var(--color-text-primary);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
@@ -111,16 +111,18 @@ body.living-background-enabled #root {
   box-shadow: 0 0 24px rgba(245, 166, 35, 0.12);
 }
 
-/* Card Styles */
+/* Card Styles — glass */
 .card {
   background-color: var(--color-surface-card);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
   transition: box-shadow var(--transition-base);
 }
 
 .card:hover {
-  box-shadow: 0 0 24px rgba(245, 166, 35, 0.08);
+  box-shadow: 0 0 28px rgba(200, 149, 92, 0.1);
 }
 
 /* Button Styles */

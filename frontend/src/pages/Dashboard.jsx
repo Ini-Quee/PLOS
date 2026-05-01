@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SidebarLayout, { C } from '../components/layout/SidebarLayout'
+import { useAtmos } from '../components/Atmosphere'
 import { useLumi } from '../hooks/useLumi'
 
 // ─── Design tokens are now imported from SidebarLayout ─────────────────────────
@@ -29,6 +30,14 @@ const JOURNAL_SPARK = []
 const COMPLETED_DAYS = []
 const TODAY_DATE = 27
 
+// Glass style for cards — semi-transparent so the atmosphere shows through
+const GLASS = {
+  background: 'rgba(6,6,14,0.30)',
+  backdropFilter: 'blur(18px)',
+  WebkitBackdropFilter: 'blur(18px)',
+  border: '1px solid rgba(255,255,255,0.07)',
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 function StatCard({ icon, label, value, sub, badge, badgeType, accentColor, delay }) {
   const badgeColors = {
@@ -40,8 +49,7 @@ function StatCard({ icon, label, value, sub, badge, badgeType, accentColor, dela
 
   return (
     <div style={{
-      background: C.bg2,
-      border: `1px solid ${C.border}`,
+      ...GLASS,
       borderTop: `1px solid ${accentColor}40`,
       borderRadius: 16,
       padding: 18,
@@ -376,6 +384,8 @@ export default function Dashboard() {
   const [season, setSeason] = useState('harmattan')
   const [showSeasonMenu, setShowSeasonMenu] = useState(false)
   const navigate = useNavigate()
+  const { palette } = useAtmos()
+  const AC = palette.accent
 
   // Lumi hook
   const { 
@@ -404,7 +414,7 @@ export default function Dashboard() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px 28px 0' }}>
           <div>
             <div style={{ fontSize: 22, fontWeight: 700 }}>
-              Good morning, <span style={{ color: C.amber }}>Erica</span> ☀️
+              Good morning, <span style={{ color: AC }}>Erica</span> ☀️
             </div>
             <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
               Sunday, April 27 · {SEASONS[season].label} · 3 tasks remaining

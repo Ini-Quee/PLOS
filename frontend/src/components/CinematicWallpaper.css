@@ -32,6 +32,24 @@
   opacity: 1;
 }
 
+/* ─── KEN BURNS VIDEO LAYER ─────────────────────────────────────────────────── */
+
+.ken-burns-video {
+  position: absolute;
+  inset: -5%; /* Extend beyond viewport for zoom effect */
+  width: 110%;
+  height: 110%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 1.5s ease-in-out;
+  animation: kenBurns var(--kb-duration, 30s) ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+.ken-burns-video.loaded {
+  opacity: 1;
+}
+
 /* Ken Burns animation - smooth zoom and pan */
 @keyframes kenBurns {
   0% {
@@ -107,7 +125,8 @@
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 /* Minimal mode - gradient only, no animation */
-.cinematic-root.minimal-mode .ken-burns-photo {
+.cinematic-root.minimal-mode .ken-burns-photo,
+.cinematic-root.minimal-mode .ken-burns-video {
   display: none;
 }
 
@@ -125,12 +144,14 @@
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 /* Pause Ken Burns when tab hidden */
-.cinematic-root.paused .ken-burns-photo {
+.cinematic-root.paused .ken-burns-photo,
+.cinematic-root.paused .ken-burns-video {
   animation-play-state: paused;
 }
 
 /* Pause when battery low */
-.cinematic-root.low-battery .ken-burns-photo {
+.cinematic-root.low-battery .ken-burns-photo,
+.cinematic-root.low-battery .ken-burns-video {
   animation-play-state: paused;
 }
 
@@ -143,7 +164,8 @@
    ═══════════════════════════════════════════════════════════════════════════════ */
 
 /* Smooth fade between scenes */
-.cinematic-root.transitioning .ken-burns-photo {
+.cinematic-root.transitioning .ken-burns-photo,
+.cinematic-root.transitioning .ken-burns-video {
   opacity: 0;
   transition: opacity 0.8s ease-out;
 }
@@ -159,7 +181,8 @@
 
 /* Respect reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
-  .ken-burns-photo {
+  .ken-burns-photo,
+  .ken-burns-video {
     animation: none !important;
     transform: scale(1.05) !important;
   }
@@ -185,7 +208,8 @@
     opacity: 0.7;
   }
 
-  .ken-burns-photo {
+  .ken-burns-photo,
+  .ken-burns-video {
     animation-duration: calc(var(--kb-duration, 25s) * 1.5) !important;
   }
 }

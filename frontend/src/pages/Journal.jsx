@@ -4,7 +4,7 @@ import api from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { encryptText } from '../lib/encryption';
 import { analyzeJournalEntryWithGemini } from '../lib/gemini';
-import LivingBackground from '../components/LivingBackground';
+
 import BookSpread from '../components/journal/BookSpread';
 import ErrorBoundary from '../components/ErrorBoundary';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -176,10 +176,6 @@ export default function Journal() {
 
   return (
     <>
-      <ErrorBoundary fallbackMessage="Background failed to load">
-        <LivingBackground />
-      </ErrorBoundary>
-
       <div style={{ position: 'relative', zIndex: 1 }}>
         {/* Top navigation */}
         <nav

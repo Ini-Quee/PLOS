@@ -7,7 +7,6 @@ import * as lumiVoice from '../lib/lumi-voice';
 import * as lumiListen from '../lib/lumi-listen';
 import { sendToLumi } from '../lib/gemini';
 import api from '../lib/api';
-import LivingBackground from '../components/LivingBackground';
 import { Colors, ModuleColors, getColorWithOpacity } from '../lib/colors';
 import { Typography, FontWeights, Spacing, BorderRadius, FontFamilies, getTypography } from '../lib/typography';
 import { transitions, animations, micAnimations } from '../styles/motion';
@@ -364,7 +363,6 @@ export default function TalkToLumi() {
   return (
     <div style={{ minHeight: '100vh', position: 'relative' }}>
       {/* Background */}
-      <LivingBackground />
 
       {/* Main content */}
       <div

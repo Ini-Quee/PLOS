@@ -1,20 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getCachedSeason, SEASONS, setSeasonOverride } from '../../lib/seasonDetection';
+import { useAtmos } from '../Atmosphere';
 
-// ─── Design Tokens (Shared across all pages) ───────────────────────────────────
+// ─── Base design tokens (palette values get layered on top via useAtmos) ───────
 export const C = {
-  bg: '#07070f',
-  bg2: '#0f0f1c',
-  bg3: '#141428',
-  bg4: '#1a1a35',
-  amber: '#F5A623',
-  amber2: '#ffbe4d',
+  bg: 'rgba(6,6,14,0.0)',       // transparent — atmosphere shows through
+  bg2: 'rgba(6,6,14,0.30)',     // glass panels
+  bg3: 'rgba(10,10,20,0.38)',
+  bg4: 'rgba(14,14,28,0.48)',
+  amber: '#C8955C',             // warm wood, not harsh orange
+  amber2: '#DBA870',
   cream: '#f5f0e8',
   warm: '#c9b99a',
-  muted: '#6b6b8a',
+  muted: '#7a7a8a',
   border: 'rgba(255,255,255,0.07)',
-  border2: 'rgba(255,255,255,0.06)',
+  border2: 'rgba(255,255,255,0.05)',
   teal: '#00d4aa',
   purple: '#8b5cf6',
   rose: '#f472b6',
@@ -339,6 +340,7 @@ function UserProfile() {
 export function Sidebar() {
   const location = useLocation();
   const currentPath = location.pathname;
+  const { palette } = useAtmos();
 
   // Determine active item based on current path
   const isActive = (path) => {
@@ -358,8 +360,10 @@ export function Sidebar() {
     <div
       style={{
         width: 220,
-        background: C.bg2,
-        borderRight: `1px solid ${C.border}`,
+        background: palette.surface,
+        backdropFilter: 'blur(22px)',
+        WebkitBackdropFilter: 'blur(22px)',
+        borderRight: `1px solid ${palette.border}`,
         padding: '24px 14px',
         display: 'flex',
         flexDirection: 'column',
@@ -386,14 +390,14 @@ export function Sidebar() {
         style={{
           fontSize: 20,
           fontWeight: 800,
-          color: C.amber,
+          color: palette.accent,
           letterSpacing: '-0.5px',
           padding: '4px 12px 20px',
-          borderBottom: `1px solid ${C.border}`,
+          borderBottom: `1px solid ${palette.border}`,
           marginBottom: 12,
         }}
       >
-        PLOS<span style={{ color: C.text, opacity: 0.3 }}>.</span>
+        PLOS<span style={{ color: palette.text, opacity: 0.3 }}>.</span>
       </div>
 
       {/* Main Navigation */}
@@ -457,17 +461,17 @@ export default function SidebarLayout({ children, customStyles = {} }) {
   @keyframes breathe { 0%,100% { transform:scale(1) } 50% { transform:scale(1.08) } }
   * { box-sizing: border-box; margin: 0; padding: 0 }
   ::-webkit-scrollbar { width: 4px }
-  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px }
       `}</style>
       <div
         style={{
           display: 'flex',
           minHeight: '100vh',
-          background: C.bg, // Fallback color
+          background: 'transparent',
           color: C.text,
           fontFamily: "'DM Sans', system-ui, sans-serif",
           position: 'relative',
-          zIndex: 1, // Content above background
+          zIndex: 1,
           ...customStyles,
         }}
       >

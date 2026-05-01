@@ -131,7 +131,7 @@ export default function WallpaperPicker({ isOpen, onClose }) {
                     label: 'Auto (Smart)',
                     emoji: '🤖',
                     description: 'Automatically matches time & season',
-                    photo_query: 'nature,beautiful,peaceful'
+                    photo_seed: 1
                   }}
                   isActive={currentSceneId === 'auto'}
                   onSelect={handleSceneSelect}
@@ -178,9 +178,8 @@ export default function WallpaperPicker({ isOpen, onClose }) {
  * Individual scene card
  */
 function SceneCard({ scene, isActive, onSelect }) {
-  const thumbnailUrl = scene.id === 'auto'
-    ? 'https://source.unsplash.com/400x300/?nature,peaceful'
-    : `https://source.unsplash.com/400x300/?${scene.photo_query}`;
+  const seed = scene.photo_seed || 1;
+  const thumbnailUrl = scene.photo_url || `https://picsum.photos/400/300?random=${seed}`;
 
   return (
     <motion.div

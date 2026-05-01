@@ -1018,7 +1018,7 @@ export default function JournalPage() {
 
   // ─── RENDER ───────────────────────────────────────────────────────────────────
   return (
-    <div style={{ background: 'var(--bg)', color: 'var(--text)', fontFamily: "'DM Sans', sans-serif", minHeight: '100vh', padding: '16px' }}>
+    <div style={{ background: 'transparent', color: 'var(--text)', fontFamily: "'DM Sans', sans-serif", minHeight: '100vh', padding: '16px' }}>
       {/* Top bar */}
       <div className="journal-topbar">
         <div className="journal-logo">PLOS<span>.</span></div>

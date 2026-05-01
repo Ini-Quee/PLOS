@@ -470,6 +470,10 @@
   filter: blur(8px);
 }
 
+.bokeh-circle.bokeh-default {
+  background: radial-gradient(circle, rgba(255,255,255,0.3), transparent 70%);
+}
+
 /* ─── HARMATTAN DUST - HORIZONTAL DRIFT ──────────────────────────────────────── */
 
 @keyframes dust-blow {

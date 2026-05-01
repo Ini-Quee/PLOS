@@ -1,11 +1,12 @@
 const express = require('express');
 const multer = require('multer');
 const { authenticate } = require('../middleware/authenticate');
-const { 
-  routeLumiInput, 
+const {
+  routeLumiInput,
   confirmAndSave,
-  getConversationHistory 
+  getConversationHistory
 } = require('../services/lumiRouter');
+const { executeActions, getUserFullContext } = require('../services/lumiActions');
 const { pool } = require('../db/connection');
 
 const router = express.Router();
@@ -335,5 +336,201 @@ async function getUserContext(userId) {
 
   return context;
 }
+
+/**
+ * POST /api/lumi/plan
+ * Lumi reads user intent (free text) and returns a PROPOSED action plan.
+ * Nothing is written yet — user sees the plan and confirms or edits.
+ */
+router.post('/plan', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { text, source = 'dashboard' } = req.body;
+    if (!text?.trim()) return res.status(400).json({ error: 'Text is required' });
+
+    // Pull full context so Lumi can build a smart plan
+    const context = await getUserFullContext(userId);
+
+    // Ask Lumi to propose concrete actions (uses same Groq model)
+    const { Groq } = require('groq-sdk');
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+    const systemPrompt = `You are Lumi, the AI core of PLOS life planning app. The user just said something and you need to figure out what they want done across their app — their planner, journal, goals, and habits.
+
+USER'S CURRENT DATA:
+Schedule today: ${JSON.stringify(context.todaySchedule?.map(s => `${s.start_time} ${s.title}`).join(', ') || 'empty')}
+Goals: ${JSON.stringify(context.goals?.map(g => `${g.id}: ${g.title} (${g.progress_percentage || 0}%)`).join(', ') || 'none')}
+Recent journal: ${JSON.stringify(context.recentJournal?.map(j => `${j.journal_type}: ${j.ai_summary}`).join(' | ') || 'none')}
+Habits today: ${JSON.stringify(context.habits?.map(h => `${h.name}: ${h.completed ? 'done' : 'pending'}`).join(', ') || 'none')}
+
+Based on what the user said, propose a list of concrete actions Lumi should take.
+Each action has a type, a human-readable summary, and a payload.
+
+Action types available:
+- create_schedule: { title, description, start_time (HH:MM), duration_minutes, repeat_pattern (none/daily/weekly/custom), repeat_days (array of 0-6), category (wellness/work/personal/learning/lumi-suggested), is_high_priority, target_date (YYYY-MM-DD) }
+- create_schedule_batch: { blocks: [array of schedule objects above] }
+- save_journal: { journal_type (personal/spiritual/business/goals/health), content, ai_summary, emotion }
+- complete_habit: { habit_name }
+- achieve_goal: { goal_id, achievement_label, milestone_emoji }
+- update_goal_progress: { goal_id, progress_pct, notes }
+
+Rules:
+- Only propose actions you are confident the user wants
+- For multi-day plans (e.g. "work on anniversary Mon, Fri, Sat"), use create_schedule_batch with the right repeat_days
+- If the user mentions completing something, propose complete_habit or achieve_goal
+- If the user shares reflections, propose save_journal
+- Always ask before saving sensitive journal content — set needsJournalConfirmation: true
+- Return ONLY valid JSON, no markdown
+
+Response format:
+{
+  "lumiMessage": "Here is what I'd like to do for you...",
+  "confirmPrompt": "Should I go ahead and set all this up?",
+  "actions": [
+    { "type": "create_schedule", "summary": "Add Bible Reading at 5:00 AM daily", "payload": {...} }
+  ],
+  "needsJournalConfirmation": false,
+  "journalDraft": null
+}`;
+
+    const completion = await groq.chat.completions.create({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: text },
+      ],
+      model: 'llama-3.1-8b-instant',
+      temperature: 0.4,
+      max_tokens: 1200,
+    });
+
+    const raw = completion.choices[0]?.message?.content || '{}';
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    let plan = {};
+    try { plan = JSON.parse(jsonMatch?.[0] || '{}'); } catch { plan = { lumiMessage: raw, actions: [] }; }
+
+    res.json({
+      success: true,
+      lumiMessage: plan.lumiMessage || "Here's what I'd set up for you.",
+      confirmPrompt: plan.confirmPrompt || "Should I go ahead?",
+      actions: plan.actions || [],
+      needsJournalConfirmation: plan.needsJournalConfirmation || false,
+      journalDraft: plan.journalDraft || null,
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to build plan', message: "I ran into an issue planning that. Could you tell me more?" });
+  }
+});
+
+/**
+ * POST /api/lumi/execute
+ * User confirmed — Lumi executes the action list.
+ */
+router.post('/execute', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { actions } = req.body;
+    if (!Array.isArray(actions) || actions.length === 0) {
+      return res.status(400).json({ error: 'No actions to execute' });
+    }
+
+    const results = await executeActions(userId, actions);
+    const allOk = results.every(r => r.success);
+    const succeeded = results.filter(r => r.success);
+    const failed = results.filter(r => !r.success);
+
+    // Build a celebratory / summary message
+    const summaries = succeeded.map(r => {
+      switch (r.type) {
+        case 'create_schedule':       return `Added "${r.data?.title}" to your planner`;
+        case 'create_schedule_batch': return `Added ${r.data?.length || 0} blocks to your planner`;
+        case 'save_journal':          return `Saved to your ${r.data?.journal_type} journal`;
+        case 'complete_habit':        return `Logged habit completion`;
+        case 'achieve_goal':          return `🏆 Goal achieved — "${r.data?.title}"`;
+        case 'update_goal_progress':  return `Updated goal progress`;
+        default:                      return `Action complete`;
+      }
+    });
+
+    // Check if any goal was just achieved — trigger celebration
+    const achievements = results.filter(r => r.type === 'achieve_goal' && r.success);
+
+    res.json({
+      success: true,
+      allOk,
+      results,
+      summaryMessage: allOk
+        ? `Done! ${summaries.join('. ')}.`
+        : `Completed ${succeeded.length} of ${results.length} actions. ${failed.map(f => f.error).join(', ')}.`,
+      achievements: achievements.map(a => a.data),
+      // Signal the frontend to re-fetch these sections
+      refresh: [...new Set(results.filter(r => r.success).map(r => {
+        if (r.type.includes('schedule')) return 'schedule';
+        if (r.type.includes('journal'))  return 'journal';
+        if (r.type.includes('goal'))     return 'goals';
+        if (r.type.includes('habit'))    return 'habits';
+        return null;
+      }).filter(Boolean))],
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Execution failed', message: "Something went wrong executing that. Your data is safe — try again?" });
+  }
+});
+
+/**
+ * POST /api/lumi/complete-task
+ * When user marks a schedule item done, Lumi proactively asks to document it.
+ */
+router.post('/complete-task', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { schedule_id, title, category } = req.body;
+
+    // Mark completion
+    const today = new Date().toISOString().split('T')[0];
+    if (schedule_id) {
+      await pool.query(
+        `INSERT INTO schedule_completions (schedule_id, user_id, completion_date)
+         VALUES ($1,$2,$3) ON CONFLICT (schedule_id, completion_date) DO NOTHING`,
+        [schedule_id, userId, today]
+      );
+    }
+
+    // Build a contextual follow-up based on category
+    const followUps = {
+      spiritual: {
+        message: `You completed "${title}" ✓ Beautiful. Would you like to document your devotion? I can ask you a few questions and save it to your spiritual journal.`,
+        prompts: ['What Bible verse did you read?', 'Any insights from prayer?', 'How do you feel spiritually right now?', 'Skip journaling'],
+      },
+      health: {
+        message: `"${title}" done ✓ Great work! Want to log how it went? I can save notes to your health journal.`,
+        prompts: ['How was the intensity?', 'Any pain or issues?', 'Log and move on', 'Skip'],
+      },
+      work: {
+        message: `"${title}" complete ✓ What did you accomplish? I can save a quick note to your journal or update a goal.`,
+        prompts: ['Log key wins', 'Update a goal', 'Save to journal', 'Skip'],
+      },
+      meal: {
+        message: `"${title}" logged ✓ Did you stick to the plan? I can note any changes in your health journal.`,
+        prompts: ['Followed the plan', 'Made changes', 'Skip'],
+      },
+      default: {
+        message: `"${title}" done ✓ Want to capture anything about this in your journal?`,
+        prompts: ['Yes, journal it', 'No thanks'],
+      },
+    };
+
+    const follow = followUps[category] || followUps.default;
+
+    res.json({
+      success: true,
+      completionAck: `Marked "${title}" as complete.`,
+      followUp: follow.message,
+      quickPrompts: follow.prompts,
+      canJournal: true,
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to complete task' });
+  }
+});
 
 module.exports = router;

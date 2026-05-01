@@ -174,7 +174,7 @@ export default function Settings() {
     <div
       style={{
         minHeight: '100vh',
-        backgroundColor: '#0D0D0D',
+        backgroundColor: 'transparent',
         color: '#F5F0E8',
         fontFamily: "'Inter', system-ui, sans-serif",
       }}
@@ -217,7 +217,7 @@ export default function Settings() {
             onClick={handleLogout}
             style={{
               padding: '8px 16px',
-              backgroundColor: '#F5A623',
+              backgroundColor: '#C8955C',
               border: 'none',
               borderRadius: '12px',
               color: '#0D0D0D',
@@ -313,7 +313,7 @@ export default function Settings() {
                     style={{
                       width: '100%',
                       padding: '12px',
-                      backgroundColor: '#242424',
+                      backgroundColor: 'rgba(12,12,24,0.40)',
                       border: '1px solid #2E2E2E',
                       borderRadius: '12px',
                       color: '#F5F0E8',
@@ -344,7 +344,7 @@ export default function Settings() {
                     }}
                   >
                     <span>Speed</span>
-                    <span style={{ color: '#F5A623' }}>{voiceRate.toFixed(2)}x</span>
+                    <span style={{ color: '#C8955C' }}>{voiceRate.toFixed(2)}x</span>
                   </label>
                   <input
                     type="range"
@@ -382,7 +382,7 @@ export default function Settings() {
                     }}
                   >
                     <span>Pitch</span>
-                    <span style={{ color: '#F5A623' }}>{voicePitch.toFixed(2)}</span>
+                    <span style={{ color: '#C8955C' }}>{voicePitch.toFixed(2)}</span>
                   </label>
                   <input
                     type="range"
@@ -415,7 +415,7 @@ export default function Settings() {
                     backgroundColor: 'transparent',
                     border: '1px solid #F5A623',
                     borderRadius: '12px',
-                    color: '#F5A623',
+                    color: '#C8955C',
                     fontSize: '14px',
                     fontWeight: 500,
                     cursor: 'pointer',
@@ -469,7 +469,7 @@ export default function Settings() {
                   alignItems: 'center',
                   gap: 16,
                   padding: 16,
-                  backgroundColor: '#242424',
+                  backgroundColor: 'rgba(12,12,24,0.40)',
                   borderRadius: 12,
                   border: '1px solid #2E2E2E'
                 }}
@@ -481,7 +481,7 @@ export default function Settings() {
                     borderRadius: 8,
                     backgroundImage: currentWallpaperScene === 'auto'
                       ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                      : `url(https://source.unsplash.com/400x300/?${getSceneById(currentWallpaperScene)?.photo_query || 'nature'})`,
+                      : `url(https://picsum.photos/400/300?random=${getSceneById(currentWallpaperScene)?.photo_seed || 1})`,
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
                     flexShrink: 0
@@ -499,7 +499,7 @@ export default function Settings() {
                   onClick={() => setShowWallpaperPicker(true)}
                   style={{
                     padding: '10px 20px',
-                    backgroundColor: '#F5A623',
+                    backgroundColor: '#C8955C',
                     border: 'none',
                     borderRadius: 12,
                     color: '#0D0D0D',
@@ -633,7 +633,7 @@ export default function Settings() {
                     style={{
                       width: '100%',
                       padding: '12px',
-                      backgroundColor: '#242424',
+                      backgroundColor: 'rgba(12,12,24,0.40)',
                       border: '1px solid #2E2E2E',
                       borderRadius: '12px',
                       color: '#F5F0E8',
@@ -664,7 +664,7 @@ export default function Settings() {
                     }}
                   >
                     <span>Motion Intensity</span>
-                    <span style={{ color: '#F5A623', textTransform: 'capitalize' }}>
+                    <span style={{ color: '#C8955C', textTransform: 'capitalize' }}>
                       {motionIntensity}
                     </span>
                   </label>
@@ -914,7 +914,7 @@ export default function Settings() {
                   style={{
                     flex: 1,
                     padding: '12px',
-                    backgroundColor: '#242424',
+                    backgroundColor: 'rgba(12,12,24,0.40)',
                     border: '1px solid #2E2E2E',
                     borderRadius: '12px',
                     color: '#F5F0E8',
@@ -1028,7 +1028,7 @@ export default function Settings() {
                 style={{
                   padding: '40px',
                   textAlign: 'center',
-                  backgroundColor: '#242424',
+                  backgroundColor: 'rgba(12,12,24,0.40)',
                   borderRadius: '12px',
                   border: '1px dashed #2E2E2E',
                 }}
@@ -1071,7 +1071,7 @@ export default function Settings() {
                     style={{
                       flex: 1,
                       padding: '12px',
-                      backgroundColor: '#242424',
+                      backgroundColor: 'rgba(12,12,24,0.40)',
                       border: '1px solid #F5A623',
                       borderRadius: '12px',
                       color: '#F5F0E8',
@@ -1084,7 +1084,7 @@ export default function Settings() {
                     onClick={saveDisplayName}
                     style={{
                       padding: '10px 20px',
-                      backgroundColor: '#F5A623',
+                      backgroundColor: '#C8955C',
                       border: 'none',
                       borderRadius: '12px',
                       color: '#0D0D0D',
@@ -1104,7 +1104,7 @@ export default function Settings() {
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     padding: '12px',
-                    backgroundColor: '#242424',
+                    backgroundColor: 'rgba(12,12,24,0.40)',
                     borderRadius: '12px',
                   }}
                 >
@@ -1152,7 +1152,7 @@ export default function Settings() {
               <div
                 style={{
                   padding: '12px',
-                  backgroundColor: '#242424',
+                  backgroundColor: 'rgba(12,12,24,0.40)',
                   borderRadius: '12px',
                   color: '#6B5F52',
                   fontSize: '14px',
@@ -1170,7 +1170,7 @@ export default function Settings() {
                 backgroundColor: 'transparent',
                 border: '1px solid #F5A623',
                 borderRadius: '12px',
-                color: '#F5A623',
+                color: '#C8955C',
                 fontSize: '14px',
                 fontWeight: 500,
                 cursor: 'pointer',
@@ -1197,7 +1197,7 @@ export default function Settings() {
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 padding: '16px',
-                backgroundColor: '#242424',
+                backgroundColor: 'rgba(12,12,24,0.40)',
                 borderRadius: '12px',
                 marginBottom: '16px',
               }}
@@ -1232,7 +1232,7 @@ export default function Settings() {
                   backgroundColor: 'transparent',
                   border: '1px solid #F5A623',
                   borderRadius: '12px',
-                  color: '#F5A623',
+                  color: '#C8955C',
                   fontSize: '14px',
                   cursor: 'pointer',
                   fontFamily: "'Inter', sans-serif",
@@ -1264,7 +1264,7 @@ export default function Settings() {
               <div
                 style={{
                   padding: '12px',
-                  backgroundColor: '#242424',
+                  backgroundColor: 'rgba(12,12,24,0.40)',
                   borderRadius: '12px',
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -1323,7 +1323,7 @@ export default function Settings() {
               <div
                 style={{
                   padding: '12px',
-                  backgroundColor: '#242424',
+                  backgroundColor: 'rgba(12,12,24,0.40)',
                   borderRadius: '12px',
                   color: '#6B5F52',
                   fontSize: '13px',
@@ -1353,7 +1353,7 @@ export default function Settings() {
             <div
               style={{
                 padding: '24px',
-                backgroundColor: '#242424',
+                backgroundColor: 'rgba(12,12,24,0.40)',
                 borderRadius: '12px',
                 textAlign: 'center',
               }}
@@ -1399,7 +1399,7 @@ export default function Settings() {
                   backgroundColor: 'transparent',
                   border: '1px solid #F5A623',
                   borderRadius: '12px',
-                  color: '#F5A623',
+                  color: '#C8955C',
                   fontSize: '14px',
                   fontWeight: 500,
                   cursor: 'pointer',
@@ -1477,7 +1477,7 @@ export default function Settings() {
                 onChange={(e) => setCheckInTime(e.target.value)}
                 style={{
                   padding: '12px',
-                  backgroundColor: '#242424',
+                  backgroundColor: 'rgba(12,12,24,0.40)',
                   border: '1px solid #2E2E2E',
                   borderRadius: '12px',
                   color: '#F5F0E8',
@@ -1523,7 +1523,7 @@ function SettingsSection({ title, icon, children }) {
   return (
     <div
       style={{
-        backgroundColor: '#1A1A1A',
+        backgroundColor: 'rgba(8,8,18,0.32)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)',
         borderRadius: '16px',
         border: '1px solid #2E2E2E',
         padding: '24px',

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
-import LivingBackground from '../components/LivingBackground';
 
 /**
  * Calendar Page — Monthly View
@@ -17,10 +16,10 @@ export default function Calendar() {
 
   const categories = {
     wellness: { color: '#4CAF7D', label: 'Wellness' },
-    work: { color: '#F5A623', label: 'Work' },
+    work: { color: '#C8955C', label: 'Work' },
     personal: { color: '#9B59B6', label: 'Personal' },
     learning: { color: '#3498DB', label: 'Learning' },
-    'lumi-suggested': { color: '#F5A623', label: 'Lumi' },
+    'lumi-suggested': { color: '#C8955C', label: 'Lumi' },
   };
 
   // Fetch all schedules for the current month
@@ -108,7 +107,6 @@ export default function Calendar() {
 
   return (
     <div style={{ minHeight: '100vh', position: 'relative' }}>
-      <LivingBackground />
 
       <div
         style={{
@@ -136,7 +134,7 @@ export default function Calendar() {
               style={{
                 padding: '10px 20px',
                 backgroundColor: 'transparent',
-                border: '1px solid #2E2E2E',
+                border: '1px solid rgba(255,255,255,0.07)',
                 borderRadius: '12px',
                 color: '#A89880',
                 fontSize: '14px',
@@ -173,8 +171,8 @@ export default function Calendar() {
               onClick={prevMonth}
               style={{
                 padding: '10px 16px',
-                backgroundColor: '#242424',
-                border: '1px solid #2E2E2E',
+                backgroundColor: 'rgba(12,12,24,0.40)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+                border: '1px solid rgba(255,255,255,0.07)',
                 borderRadius: '8px',
                 color: '#F5F0E8',
                 fontSize: '18px',
@@ -200,8 +198,8 @@ export default function Calendar() {
               onClick={nextMonth}
               style={{
                 padding: '10px 16px',
-                backgroundColor: '#242424',
-                border: '1px solid #2E2E2E',
+                backgroundColor: 'rgba(12,12,24,0.40)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+                border: '1px solid rgba(255,255,255,0.07)',
                 borderRadius: '8px',
                 color: '#F5F0E8',
                 fontSize: '18px',
@@ -216,7 +214,7 @@ export default function Calendar() {
             onClick={() => navigate('/schedule')}
             style={{
               padding: '10px 20px',
-              backgroundColor: '#F5A623',
+              backgroundColor: '#C8955C',
               border: 'none',
               borderRadius: '12px',
               color: '#0D0D0D',
@@ -238,9 +236,9 @@ export default function Calendar() {
             marginBottom: '24px',
             flexWrap: 'wrap',
             padding: '16px',
-            backgroundColor: '#1A1A1A',
+            backgroundColor: 'rgba(8,8,18,0.32)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)',
             borderRadius: '12px',
-            border: '1px solid #2E2E2E',
+            border: '1px solid rgba(255,255,255,0.07)',
           }}
         >
           {Object.entries(categories).map(([key, cat]) => (
@@ -263,9 +261,9 @@ export default function Calendar() {
         {/* Calendar Grid */}
         <div
           style={{
-            backgroundColor: '#1A1A1A',
+            backgroundColor: 'rgba(8,8,18,0.32)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)',
             borderRadius: '16px',
-            border: '1px solid #2E2E2E',
+            border: '1px solid rgba(255,255,255,0.07)',
             padding: '24px',
           }}
         >
@@ -311,7 +309,7 @@ export default function Calendar() {
                     key={`empty-${index}`}
                     style={{
                       aspectRatio: '1',
-                      backgroundColor: '#242424',
+                      backgroundColor: 'rgba(12,12,24,0.40)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
                       borderRadius: '8px',
                       opacity: 0.5,
                     }}
@@ -403,9 +401,9 @@ export default function Calendar() {
           <div
             style={{
               marginTop: '24px',
-              backgroundColor: '#1A1A1A',
+              backgroundColor: 'rgba(8,8,18,0.32)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)',
               borderRadius: '16px',
-              border: '1px solid #2E2E2E',
+              border: '1px solid rgba(255,255,255,0.07)',
               padding: '24px',
             }}
           >
@@ -447,7 +445,7 @@ export default function Calendar() {
                         alignItems: 'center',
                         gap: '12px',
                         padding: '12px',
-                        backgroundColor: '#242424',
+                        backgroundColor: 'rgba(12,12,24,0.40)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
                         borderRadius: '8px',
                         borderLeft: `4px solid ${cat.color}`,
                       }}

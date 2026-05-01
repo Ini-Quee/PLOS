@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
-import LivingBackground from '../components/LivingBackground';
 
 /**
  * Content Planner Page
@@ -27,7 +26,7 @@ export default function ContentPlanner() {
     linkedin: { label: 'LinkedIn', icon: '💼', color: '#0A66C2' },
     twitter: { label: 'Twitter/X', icon: '🐦', color: '#1DA1F2' },
     instagram: { label: 'Instagram', icon: '📷', color: '#E4405F' },
-    blog: { label: 'Blog', icon: '✍️', color: '#F5A623' },
+    blog: { label: 'Blog', icon: '✍️', color: '#C8955C' },
   };
 
   useEffect(() => {
@@ -89,14 +88,13 @@ export default function ContentPlanner() {
 
   return (
     <div style={{ minHeight: '100vh', position: 'relative' }}>
-      <LivingBackground />
 
       <div style={{ position: 'relative', zIndex: 1, padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <button onClick={() => navigate('/dashboard')} style={{
-              padding: '10px 20px', backgroundColor: 'transparent', border: '1px solid #2E2E2E',
+              padding: '10px 20px', backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.07)',
               borderRadius: '12px', color: '#A89880', fontSize: '14px', cursor: 'pointer',
             }}>← Back</button>
             <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 700, fontFamily: "'DM Serif Display', serif", color: '#F5F0E8' }}>
@@ -104,7 +102,7 @@ export default function ContentPlanner() {
             </h1>
           </div>
           <button onClick={() => setShowAddModal(true)} style={{
-            padding: '12px 24px', backgroundColor: '#F5A623', border: 'none', borderRadius: '12px',
+            padding: '12px 24px', backgroundColor: '#C8955C', border: 'none', borderRadius: '12px',
             color: '#0D0D0D', fontSize: '14px', fontWeight: 600, cursor: 'pointer',
           }}>+ Schedule Post</button>
         </div>
@@ -114,8 +112,8 @@ export default function ContentPlanner() {
           <div style={{ textAlign: 'center', padding: '60px', color: '#A89880' }}>Loading...</div>
         ) : posts.length === 0 ? (
           <div style={{
-            textAlign: 'center', padding: '60px', backgroundColor: '#1A1A1A',
-            borderRadius: '16px', border: '1px solid #2E2E2E'
+            textAlign: 'center', padding: '60px', backgroundColor: 'rgba(8,8,18,0.32)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)',
+            borderRadius: '16px', border: '1px solid rgba(255,255,255,0.07)'
           }}>
             <p style={{ color: '#A89880', fontSize: '18px', fontFamily: "'DM Serif Display', serif" }}>
               No posts scheduled yet
@@ -125,7 +123,7 @@ export default function ContentPlanner() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {sortedDates.map((date) => (
               <div key={date} style={{
-                backgroundColor: '#1A1A1A', borderRadius: '16px', border: '1px solid #2E2E2E', padding: '24px'
+                backgroundColor: 'rgba(8,8,18,0.32)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.07)', padding: '24px'
               }}>
                 <h2 style={{
                   margin: '0 0 16px 0', color: '#A89880', fontSize: '16px',
@@ -141,7 +139,7 @@ export default function ContentPlanner() {
                     return (
                       <div key={post.id} style={{
                         display: 'flex', alignItems: 'flex-start', gap: '16px',
-                        padding: '16px', backgroundColor: '#242424', borderRadius: '12px',
+                        padding: '16px', backgroundColor: 'rgba(12,12,24,0.40)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', borderRadius: '12px',
                         borderLeft: `4px solid ${platform.color}`,
                         opacity: post.status === 'posted' ? 0.6 : 1
                       }}>
@@ -158,7 +156,7 @@ export default function ContentPlanner() {
                             {post.is_memorial && (
                               <span style={{
                                 padding: '2px 8px', backgroundColor: 'rgba(245, 166, 35, 0.2)',
-                                borderRadius: '4px', color: '#F5A623', fontSize: '12px'
+                                borderRadius: '4px', color: '#C8955C', fontSize: '12px'
                               }}>⭐ Memorial</span>
                             )}
                             {post.status === 'posted' && (
@@ -177,7 +175,7 @@ export default function ContentPlanner() {
                           {post.status === 'scheduled' && isPast && (
                             <div style={{ marginTop: '12px' }}>
                               <button onClick={() => markAsPosted(post.id)} style={{
-                                padding: '8px 16px', backgroundColor: '#F5A623', border: 'none',
+                                padding: '8px 16px', backgroundColor: '#C8955C', border: 'none',
                                 borderRadius: '8px', color: '#0D0D0D', fontSize: '12px',
                                 fontWeight: 600, cursor: 'pointer'
                               }}>
@@ -202,7 +200,7 @@ export default function ContentPlanner() {
             display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px'
           }}>
             <form onSubmit={addPost} style={{
-              backgroundColor: '#1A1A1A', borderRadius: '16px', border: '1px solid #2E2E2E',
+              backgroundColor: 'rgba(8,8,18,0.32)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.07)',
               padding: '24px', maxWidth: '500px', width: '100%'
             }}>
               <h2 style={{ margin: '0 0 20px 0', color: '#F5F0E8', fontFamily: "'DM Serif Display', serif" }}>
@@ -212,8 +210,8 @@ export default function ContentPlanner() {
                 value={form.platform}
                 onChange={(e) => setForm({ ...form, platform: e.target.value })}
                 style={{
-                  width: '100%', padding: '12px', marginBottom: '12px', backgroundColor: '#242424',
-                  border: '1px solid #2E2E2E', borderRadius: '8px', color: '#F5F0E8'
+                  width: '100%', padding: '12px', marginBottom: '12px', backgroundColor: 'rgba(12,12,24,0.40)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+                  border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', color: '#F5F0E8'
                 }}
               >
                 {Object.entries(platforms).map(([key, p]) => (
@@ -227,8 +225,8 @@ export default function ContentPlanner() {
                 rows={4}
                 required
                 style={{
-                  width: '100%', padding: '12px', marginBottom: '12px', backgroundColor: '#242424',
-                  border: '1px solid #2E2E2E', borderRadius: '8px', color: '#F5F0E8', resize: 'vertical'
+                  width: '100%', padding: '12px', marginBottom: '12px', backgroundColor: 'rgba(12,12,24,0.40)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+                  border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', color: '#F5F0E8', resize: 'vertical'
                 }}
               />
               <input
@@ -237,17 +235,17 @@ export default function ContentPlanner() {
                 onChange={(e) => setForm({ ...form, scheduled_for: e.target.value })}
                 required
                 style={{
-                  width: '100%', padding: '12px', marginBottom: '16px', backgroundColor: '#242424',
-                  border: '1px solid #2E2E2E', borderRadius: '8px', color: '#F5F0E8'
+                  width: '100%', padding: '12px', marginBottom: '16px', backgroundColor: 'rgba(12,12,24,0.40)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+                  border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', color: '#F5F0E8'
                 }}
               />
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button type="button" onClick={() => setShowAddModal(false)} style={{
-                  flex: 1, padding: '12px', backgroundColor: 'transparent', border: '1px solid #2E2E2E',
+                  flex: 1, padding: '12px', backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.07)',
                   borderRadius: '8px', color: '#A89880', cursor: 'pointer'
                 }}>Cancel</button>
                 <button type="submit" style={{
-                  flex: 1, padding: '12px', backgroundColor: '#F5A623', border: 'none',
+                  flex: 1, padding: '12px', backgroundColor: '#C8955C', border: 'none',
                   borderRadius: '8px', color: '#0D0D0D', fontWeight: 600, cursor: 'pointer'
                 }}>Schedule</button>
               </div>

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
-import LivingBackground from '../components/LivingBackground';
 
 export default function Contacts() {
   const navigate = useNavigate();
@@ -81,14 +80,13 @@ export default function Contacts() {
 
   return (
     <div style={{ minHeight: '100vh', position: 'relative' }}>
-      <LivingBackground />
 
       <div style={{ position: 'relative', zIndex: 1, padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <button onClick={() => navigate('/dashboard')} style={{
-              padding: '10px 20px', backgroundColor: 'transparent', border: '1px solid #2E2E2E',
+              padding: '10px 20px', backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.07)',
               borderRadius: '12px', color: '#A89880', fontSize: '14px', cursor: 'pointer',
             }}>← Back</button>
             <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 700, fontFamily: "'DM Serif Display', serif", color: '#F5F0E8' }}>
@@ -96,7 +94,7 @@ export default function Contacts() {
             </h1>
           </div>
           <button onClick={() => setShowAddModal(true)} style={{
-            padding: '12px 24px', backgroundColor: '#F5A623', border: 'none', borderRadius: '12px',
+            padding: '12px 24px', backgroundColor: '#C8955C', border: 'none', borderRadius: '12px',
             color: '#0D0D0D', fontSize: '14px', fontWeight: 600, cursor: 'pointer',
           }}>+ Add Contact</button>
         </div>
@@ -109,11 +107,11 @@ export default function Contacts() {
             { label: 'Sent This Week', value: stats.emails?.this_week || 0, icon: '📧' },
           ].map((stat, i) => (
             <div key={i} style={{
-              backgroundColor: '#1A1A1A', borderRadius: '12px', border: '1px solid #2E2E2E',
+              backgroundColor: 'rgba(8,8,18,0.32)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.07)',
               padding: '20px', textAlign: 'center'
             }}>
               <div style={{ fontSize: '24px', marginBottom: '8px' }}>{stat.icon}</div>
-              <div style={{ fontSize: '28px', fontWeight: 700, color: '#F5A623', marginBottom: '4px' }}>
+              <div style={{ fontSize: '28px', fontWeight: 700, color: '#C8955C', marginBottom: '4px' }}>
                 {stat.value}
               </div>
               <div style={{ fontSize: '12px', color: '#6B5F52', textTransform: 'uppercase' }}>{stat.label}</div>
@@ -126,8 +124,8 @@ export default function Contacts() {
           <div style={{ textAlign: 'center', padding: '60px', color: '#A89880' }}>Loading...</div>
         ) : contacts.length === 0 ? (
           <div style={{
-            textAlign: 'center', padding: '60px', backgroundColor: '#1A1A1A',
-            borderRadius: '16px', border: '1px solid #2E2E2E'
+            textAlign: 'center', padding: '60px', backgroundColor: 'rgba(8,8,18,0.32)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)',
+            borderRadius: '16px', border: '1px solid rgba(255,255,255,0.07)'
           }}>
             <p style={{ color: '#A89880', fontSize: '18px', fontFamily: "'DM Serif Display', serif" }}>
               No contacts yet
@@ -142,12 +140,12 @@ export default function Contacts() {
               <div
                 key={contact.id}
                 style={{
-                  backgroundColor: '#1A1A1A', borderRadius: '16px', border: '1px solid #2E2E2E',
+                  backgroundColor: 'rgba(8,8,18,0.32)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.07)',
                   padding: '20px', display: 'flex', alignItems: 'center', gap: '16px',
                 }}
               >
                 <div style={{
-                  width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#242424',
+                  width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(12,12,24,0.40)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: '20px'
                 }}>
@@ -167,7 +165,7 @@ export default function Contacts() {
                     setShowEmailModal(true);
                   }}
                   style={{
-                    padding: '8px 16px', backgroundColor: '#F5A623', border: 'none',
+                    padding: '8px 16px', backgroundColor: '#C8955C', border: 'none',
                     borderRadius: '8px', color: '#0D0D0D', fontSize: '12px', fontWeight: 600,
                     cursor: 'pointer'
                   }}
@@ -186,7 +184,7 @@ export default function Contacts() {
             display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px'
           }}>
             <form onSubmit={addContact} style={{
-              backgroundColor: '#1A1A1A', borderRadius: '16px', border: '1px solid #2E2E2E',
+              backgroundColor: 'rgba(8,8,18,0.32)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.07)',
               padding: '24px', maxWidth: '500px', width: '100%'
             }}>
               <h2 style={{ margin: '0 0 20px 0', color: '#F5F0E8', fontFamily: "'DM Serif Display', serif" }}>
@@ -199,8 +197,8 @@ export default function Contacts() {
                 placeholder="Name"
                 required
                 style={{
-                  width: '100%', padding: '12px', marginBottom: '12px', backgroundColor: '#242424',
-                  border: '1px solid #2E2E2E', borderRadius: '8px', color: '#F5F0E8'
+                  width: '100%', padding: '12px', marginBottom: '12px', backgroundColor: 'rgba(12,12,24,0.40)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+                  border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', color: '#F5F0E8'
                 }}
               />
               <input
@@ -210,17 +208,17 @@ export default function Contacts() {
                 placeholder="Email"
                 required
                 style={{
-                  width: '100%', padding: '12px', marginBottom: '16px', backgroundColor: '#242424',
-                  border: '1px solid #2E2E2E', borderRadius: '8px', color: '#F5F0E8'
+                  width: '100%', padding: '12px', marginBottom: '16px', backgroundColor: 'rgba(12,12,24,0.40)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+                  border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', color: '#F5F0E8'
                 }}
               />
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button type="button" onClick={() => setShowAddModal(false)} style={{
-                  flex: 1, padding: '12px', backgroundColor: 'transparent', border: '1px solid #2E2E2E',
+                  flex: 1, padding: '12px', backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.07)',
                   borderRadius: '8px', color: '#A89880', cursor: 'pointer'
                 }}>Cancel</button>
                 <button type="submit" style={{
-                  flex: 1, padding: '12px', backgroundColor: '#F5A623', border: 'none',
+                  flex: 1, padding: '12px', backgroundColor: '#C8955C', border: 'none',
                   borderRadius: '8px', color: '#0D0D0D', fontWeight: 600, cursor: 'pointer'
                 }}>Add Contact</button>
               </div>
@@ -235,7 +233,7 @@ export default function Contacts() {
             display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px'
           }}>
             <form onSubmit={sendEmail} style={{
-              backgroundColor: '#1A1A1A', borderRadius: '16px', border: '1px solid #2E2E2E',
+              backgroundColor: 'rgba(8,8,18,0.32)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.07)',
               padding: '24px', maxWidth: '600px', width: '100%'
             }}>
               <h2 style={{ margin: '0 0 20px 0', color: '#F5F0E8', fontFamily: "'DM Serif Display', serif" }}>
@@ -248,8 +246,8 @@ export default function Contacts() {
                 placeholder="Subject"
                 required
                 style={{
-                  width: '100%', padding: '12px', marginBottom: '12px', backgroundColor: '#242424',
-                  border: '1px solid #2E2E2E', borderRadius: '8px', color: '#F5F0E8'
+                  width: '100%', padding: '12px', marginBottom: '12px', backgroundColor: 'rgba(12,12,24,0.40)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+                  border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', color: '#F5F0E8'
                 }}
               />
               <textarea
@@ -259,17 +257,17 @@ export default function Contacts() {
                 rows={6}
                 required
                 style={{
-                  width: '100%', padding: '12px', marginBottom: '16px', backgroundColor: '#242424',
-                  border: '1px solid #2E2E2E', borderRadius: '8px', color: '#F5F0E8', resize: 'vertical'
+                  width: '100%', padding: '12px', marginBottom: '16px', backgroundColor: 'rgba(12,12,24,0.40)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+                  border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', color: '#F5F0E8', resize: 'vertical'
                 }}
               />
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button type="button" onClick={() => setShowEmailModal(false)} style={{
-                  flex: 1, padding: '12px', backgroundColor: 'transparent', border: '1px solid #2E2E2E',
+                  flex: 1, padding: '12px', backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.07)',
                   borderRadius: '8px', color: '#A89880', cursor: 'pointer'
                 }}>Cancel</button>
                 <button type="submit" disabled={sending} style={{
-                  flex: 1, padding: '12px', backgroundColor: '#F5A623', border: 'none',
+                  flex: 1, padding: '12px', backgroundColor: '#C8955C', border: 'none',
                   borderRadius: '8px', color: '#0D0D0D', fontWeight: 600, cursor: sending ? 'not-allowed' : 'pointer',
                   opacity: sending ? 0.6 : 1
                 }}>

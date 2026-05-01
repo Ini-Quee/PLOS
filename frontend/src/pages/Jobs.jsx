@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
-import LivingBackground from '../components/LivingBackground';
 
 /**
  * Jobs Page — Job Application Tracker
@@ -26,7 +25,7 @@ export default function Jobs() {
 
   const statusConfig = {
     applied: { color: '#3498DB', label: 'Applied', icon: '📤' },
-    interview: { color: '#F5A623', label: 'Interview', icon: '🗣️' },
+    interview: { color: '#C8955C', label: 'Interview', icon: '🗣️' },
     offer: { color: '#4CAF7D', label: 'Offer', icon: '🎉' },
     rejected: { color: '#6B5F52', label: 'Rejected', icon: '❌' },
     withdrawn: { color: '#6B5F52', label: 'Withdrawn', icon: '🚫' },
@@ -95,14 +94,13 @@ export default function Jobs() {
 
   return (
     <div style={{ minHeight: '100vh', position: 'relative' }}>
-      <LivingBackground />
 
       <div style={{ position: 'relative', zIndex: 1, padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <button onClick={() => navigate('/dashboard')} style={{
-              padding: '10px 20px', backgroundColor: 'transparent', border: '1px solid #2E2E2E',
+              padding: '10px 20px', backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.07)',
               borderRadius: '12px', color: '#A89880', fontSize: '14px', cursor: 'pointer',
             }}>← Back</button>
             <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 700, fontFamily: "'DM Serif Display', serif", color: '#F5F0E8' }}>
@@ -110,14 +108,14 @@ export default function Jobs() {
             </h1>
           </div>
           <button onClick={() => setShowAddModal(true)} style={{
-            padding: '12px 24px', backgroundColor: '#F5A623', border: 'none', borderRadius: '12px',
+            padding: '12px 24px', backgroundColor: '#C8955C', border: 'none', borderRadius: '12px',
             color: '#0D0D0D', fontSize: '14px', fontWeight: 600, cursor: 'pointer',
           }}>+ Add Application</button>
         </div>
 
         {/* Daily Goal Progress */}
         <div style={{
-          backgroundColor: '#1A1A1A', borderRadius: '16px', border: '1px solid #2E2E2E',
+          backgroundColor: 'rgba(8,8,18,0.32)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.07)',
           padding: '24px', marginBottom: '32px'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -130,14 +128,14 @@ export default function Jobs() {
               </p>
             </div>
             <div style={{
-              width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#242424',
+              width: '60px', height: '60px', borderRadius: '50%', backgroundColor: 'rgba(12,12,24,0.40)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               border: `3px solid ${todayCount >= dailyGoal ? '#4CAF7D' : '#F5A623'}`
             }}>
               <span style={{ fontSize: '24px' }}>{todayCount >= dailyGoal ? '✅' : '🎯'}</span>
             </div>
           </div>
-          <div style={{ height: '8px', backgroundColor: '#2E2E2E', borderRadius: '4px', overflow: 'hidden' }}>
+          <div style={{ height: '8px', backgroundColor: 'rgba(16,16,30,0.42)', borderRadius: '4px', overflow: 'hidden' }}>
             <div style={{
               height: '100%', width: `${progress}%`, backgroundColor: todayCount >= dailyGoal ? '#4CAF7D' : '#F5A623',
               borderRadius: '4px', transition: 'width 0.3s'
@@ -149,12 +147,12 @@ export default function Jobs() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px', marginBottom: '32px' }}>
           {[
             { label: 'Applied', value: stats.applied || 0, color: '#3498DB' },
-            { label: 'Interview', value: stats.interview || 0, color: '#F5A623' },
+            { label: 'Interview', value: stats.interview || 0, color: '#C8955C' },
             { label: 'Offers', value: stats.offer || 0, color: '#4CAF7D' },
             { label: 'Rejected', value: stats.rejected || 0, color: '#6B5F52' },
           ].map((stat, i) => (
             <div key={i} style={{
-              backgroundColor: '#1A1A1A', borderRadius: '12px', border: '1px solid #2E2E2E',
+              backgroundColor: 'rgba(8,8,18,0.32)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.07)',
               padding: '16px', textAlign: 'center'
             }}>
               <div style={{ fontSize: '24px', fontWeight: 700, color: stat.color, marginBottom: '4px' }}>
@@ -189,8 +187,8 @@ export default function Jobs() {
           <div style={{ textAlign: 'center', padding: '60px', color: '#A89880' }}>Loading...</div>
         ) : filteredJobs.length === 0 ? (
           <div style={{
-            textAlign: 'center', padding: '60px', backgroundColor: '#1A1A1A',
-            borderRadius: '16px', border: '1px solid #2E2E2E'
+            textAlign: 'center', padding: '60px', backgroundColor: 'rgba(8,8,18,0.32)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)',
+            borderRadius: '16px', border: '1px solid rgba(255,255,255,0.07)'
           }}>
             <p style={{ color: '#A89880', fontSize: '18px', fontFamily: "'DM Serif Display', serif" }}>
               No job applications yet
@@ -209,7 +207,7 @@ export default function Jobs() {
                   key={job.id}
                   style={{
                     display: 'flex', alignItems: 'center', padding: '16px',
-                    backgroundColor: '#1A1A1A', borderRadius: '12px',
+                    backgroundColor: 'rgba(8,8,18,0.32)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', borderRadius: '12px',
                     borderLeft: `4px solid ${status.color}`,
                   }}
                 >
@@ -227,7 +225,7 @@ export default function Jobs() {
                       value={job.status}
                       onChange={(e) => updateStatus(job.id, e.target.value)}
                       style={{
-                        padding: '6px 12px', backgroundColor: '#242424', border: '1px solid #2E2E2E',
+                        padding: '6px 12px', backgroundColor: 'rgba(12,12,24,0.40)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.07)',
                         borderRadius: '8px', color: '#F5F0E8', fontSize: '12px', cursor: 'pointer'
                       }}
                     >
@@ -254,7 +252,7 @@ export default function Jobs() {
             display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px'
           }}>
             <form onSubmit={addJob} style={{
-              backgroundColor: '#1A1A1A', borderRadius: '16px', border: '1px solid #2E2E2E',
+              backgroundColor: 'rgba(8,8,18,0.32)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.07)',
               padding: '24px', maxWidth: '500px', width: '100%'
             }}>
               <h2 style={{ margin: '0 0 20px 0', color: '#F5F0E8', fontFamily: "'DM Serif Display', serif" }}>
@@ -267,8 +265,8 @@ export default function Jobs() {
                 placeholder="Company name"
                 required
                 style={{
-                  width: '100%', padding: '12px', marginBottom: '12px', backgroundColor: '#242424',
-                  border: '1px solid #2E2E2E', borderRadius: '8px', color: '#F5F0E8'
+                  width: '100%', padding: '12px', marginBottom: '12px', backgroundColor: 'rgba(12,12,24,0.40)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+                  border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', color: '#F5F0E8'
                 }}
               />
               <input
@@ -278,16 +276,16 @@ export default function Jobs() {
                 placeholder="Role / Position"
                 required
                 style={{
-                  width: '100%', padding: '12px', marginBottom: '12px', backgroundColor: '#242424',
-                  border: '1px solid #2E2E2E', borderRadius: '8px', color: '#F5F0E8'
+                  width: '100%', padding: '12px', marginBottom: '12px', backgroundColor: 'rgba(12,12,24,0.40)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+                  border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', color: '#F5F0E8'
                 }}
               />
               <select
                 value={form.status}
                 onChange={(e) => setForm({ ...form, status: e.target.value })}
                 style={{
-                  width: '100%', padding: '12px', marginBottom: '16px', backgroundColor: '#242424',
-                  border: '1px solid #2E2E2E', borderRadius: '8px', color: '#F5F0E8'
+                  width: '100%', padding: '12px', marginBottom: '16px', backgroundColor: 'rgba(12,12,24,0.40)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+                  border: '1px solid rgba(255,255,255,0.07)', borderRadius: '8px', color: '#F5F0E8'
                 }}
               >
                 {Object.entries(statusConfig).map(([key, config]) => (
@@ -296,11 +294,11 @@ export default function Jobs() {
               </select>
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button type="button" onClick={() => setShowAddModal(false)} style={{
-                  flex: 1, padding: '12px', backgroundColor: 'transparent', border: '1px solid #2E2E2E',
+                  flex: 1, padding: '12px', backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.07)',
                   borderRadius: '8px', color: '#A89880', cursor: 'pointer'
                 }}>Cancel</button>
                 <button type="submit" style={{
-                  flex: 1, padding: '12px', backgroundColor: '#F5A623', border: 'none',
+                  flex: 1, padding: '12px', backgroundColor: '#C8955C', border: 'none',
                   borderRadius: '8px', color: '#0D0D0D', fontWeight: 600, cursor: 'pointer'
                 }}>Add Application</button>
               </div>

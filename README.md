@@ -1,240 +1,307 @@
-# PLOS — Personal Life Operating System
-### Powered by Lumi · Your AI Daily Life Companion
+<div align="center">
 
-> *"Most apps make you go to them. Lumi comes to you."*
+# PLOS
+### Personal Life Operating System
 
-**PLOS** is a free, open source AI companion that walks beside you through your entire day — waking you up, walking you through your morning, logging your workout when you speak to it, analysing your journal, tracking your goals, reminding you to post your content, and celebrating every win with you.
+**Powered by Lumi — Your AI Daily Life Conductor**
 
-Built in public. Zero-knowledge encrypted. Security-first architecture. Free forever.
+*"Most apps make you go to them. Lumi comes to you."*
+
+[![Build](https://img.shields.io/badge/build-passing-brightgreen?style=flat-square)](.)
+[![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
+[![Stack](https://img.shields.io/badge/stack-React%20%2B%20Node%20%2B%20PostgreSQL-blueviolet?style=flat-square)](.)
+[![AI](https://img.shields.io/badge/AI-Groq%20LLaMA%203.1-orange?style=flat-square)](.)
+[![Encrypted](https://img.shields.io/badge/data-zero--knowledge%20encrypted-success?style=flat-square)](.)
+
+</div>
 
 ---
 
-## What Is Lumi?
+## What Is PLOS?
 
-Lumi is not a chatbot. She is not a dashboard. She is not another journaling app.
+PLOS is not a productivity app. It is not a journal. It is not a planner.
 
-Lumi is a **voice-first daily companion** — the first person you talk to in the morning and the last thing you check at night. You speak to her. She speaks back. Everything you tell her — your workout, your thoughts, your plans, your feelings — gets documented, encrypted, and connected automatically.
+**PLOS is a life operating system.** It is the single place where your daily routine, your goals, your journal, your health, your finances, your reading, and your spiritual life all live — connected together, aware of each other, and guided by an AI companion called **Lumi** who is always one step ahead of your day.
+
+You do not navigate PLOS like an app. You talk to it. You tell Lumi what you want. She builds it, tracks it, documents it, and celebrates it — automatically, across every section, while asking your permission before touching anything.
+
+---
+
+## Lumi — The AI Conductor
 
 ```
-6:00am — Lumi: "Good morning Erica. Today is Friday, 10 April. 
-          Your first task is your workout. Ready?"
+Morning  →  Lumi:  "Good morning Erica. Today you have 15 blocks.
+                    Your workout is at 2 PM — prep gear at 1:50.
+                    You have a conflict at 10 AM. One tap to fix."
 
-8:30am — You: "Lumi I just finished. One hour twenty, three laps, 
-          burpees and squats."
+Task done →  You:  "Done with Bible reading."
+             Lumi: "Beautiful. What verse did you read today?
+                    Any insights from prayer? Want me to save
+                    this to your spiritual journal?"
 
-         Lumi: "One hour twenty. That is a choice you made at 6am 
-          and you kept it. Great job. Next up: meditate."
+Planning →   You:  "Plan my anniversary prep — some work Monday,
+                    some Friday, some Saturday for 6 weeks."
+             Lumi: "Here is what I'll set up — 6 schedule blocks
+                    across Mon/Fri/Sat. Should I go ahead? ✓"
 
-10:00pm — Lumi: "You completed 4 of 5 tasks today. You read 
-           10 pages. You journaled. You showed up. That's real."
+Night    →  Lumi:  "You completed 12 of 15 tasks today. You
+                    finished your workout, journaled, and hit
+                    your reading goal. 🏆 You just unlocked:
+                    '7-Day Reading Streak'. Want to add a
+                    milestone to your goals?"
 ```
 
----
-
-## Who Is This For?
-
-PLOS is for people who are **serious about building their life intentionally** — not just tracking it.
-
-- You want one place that connects your journal, schedule, goals, books, and content
-- You want an AI that remembers your commitments and holds you to them — warmly, not harshly  
-- You want your most private thoughts protected by real encryption, not a promise
-- You want something that feels personal, beautiful, and alive — not another clinical dashboard
+Lumi is **not passive**. She reads your journal, your schedule, your goals, your habits — and she acts. When you say you want something, she proposes it in writing before doing anything. You confirm. She executes.
 
 ---
 
-## Core Features
+## The Atmosphere System
 
-### 🎙️ Voice Journal
-Speak your day. Lumi transcribes it, encrypts it, and analyses it. Zero-knowledge architecture means the server **cannot read your entries** — only you can. The journal looks like a real book: open pages, handwriting fonts, your chosen environment surrounding it.
+PLOS does not have a static background. It has a **living atmosphere**.
 
-- Voice-to-text transcription via Web Speech API (Chrome/Edge, free)
-- AES-256-GCM client-side encryption before anything leaves your device
-- AI mood analysis, theme detection, and commitment extraction via Gemini
-- Journal entries automatically suggest calendar events
-- Study notes section — learn something, speak it, Lumi stores it and reads it back
-- Beautiful book-spread UI with font, pen colour, and background customisation
+The entire app reads your time of day, your geographic region, and your season — then wraps every page in an emotionally matched scene:
 
-### 🌅 Daily Check-In with Lumi
-Lumi greets you every morning with a spoken summary of your day. You check in by speaking. She marks things complete, reschedules what you skip, and holds you accountable — gently, not harshly.
-
-- Browser-native text-to-speech (no external API cost)
-- Three personality modes: calm and wise in the morning, energetic and celebratory when you achieve, firm but caring when you slip
-- Persistent amber orb on every page — tap to talk to Lumi from anywhere
-
-### 📅 Smart Life Scheduler
-Set recurring routines — prayer, workout, meditation, meals, study blocks. Lumi tracks your streaks and calls you out if you skip twice in a row.
-
-- Daily plan view with time blocks (05:00–23:00)
-- Conflict detection and smart rescheduling suggestions
-- Streak tracking with push notifications
-- Calendar events auto-created from journal entries
-
-### 📚 Book Tracker
-Tell Lumi what you're reading. She tracks your progress, checks what you read yesterday, and suggests what to pick up today based on your goals.
-
-### ✍️ Content Planner (Your Own Buffer)
-Write your LinkedIn and X posts inside PLOS. Schedule them. Lumi notifies you at the right time with a single tap to copy and post. No paid API. Works for every platform. Free forever.
-
-### 🎯 Project & Learning Tracker
-Track everything you're building, studying, and applying for. Job applications, certifications, courses, projects — all connected to your daily check-in with Lumi.
-
-### 🌟 Year Planning System
-Set annual goals. Break them into quarterly milestones, monthly themes, weekly priorities, and daily intentions. Every morning Lumi speaks your intention for the day.
-
-### 💌 Email Automation
-Send outreach emails from inside PLOS using your own Gmail. Lumi drafts, you approve, she sends and reports back. No subscription. No third-party platform.
-
----
-
-## Security Architecture
-
-PLOS is built as a **security portfolio piece** demonstrating enterprise-grade practices applied to a real consumer application. Every security decision is documented with the attack it prevents, the MITRE ATT&CK reference, and evidence it works.
-
-### CIA Triad Implementation
-
-**Confidentiality**
-- Zero-knowledge AES-256-GCM encryption for all journal content — the server stores only ciphertext
-- PBKDF2 key derivation from user password — encryption key never transmitted
-- TOTP-based MFA — second factor required for account access
-- JWT access tokens expire in 15 minutes
-
-**Integrity**  
-- Audit logging on every API action — who did what, when, from which IP
-- Refresh token rotation — each token single-use, prevents replay attacks
-- Parameterised queries throughout — SQL injection not possible
-- Input validation on all endpoints via express-validator
-
-**Availability**
-- Rate limiting — 5 login attempts per 15 minutes per IP (brute force protection)
-- Redis caching — reduced database load, faster response times
-- Graceful error handling — no silent crashes
-
-### Security Controls Table
-
-| Control | Implementation | Attack Prevented | MITRE ATT&CK |
-|---|---|---|---|
-| MFA (TOTP) | speakeasy + qrcode | Credential stuffing | T1078 |
-| JWT rotation | Custom middleware | Token replay | T1550.001 |
-| Rate limiting | express-rate-limit | Brute force | T1110 |
-| AES-256-GCM | Web Crypto API | Data breach | T1557 |
-| Row Level Security | PostgreSQL RLS | Broken access control | T1078 |
-| Audit logging | Custom middleware | Undetected intrusion | T1562 |
-| Input validation | express-validator | Injection attacks | T1190 |
-| CSP headers | Express middleware | XSS | T1059 |
-
-### Azure Security Demo
-PLOS is deployed to Azure to demonstrate cloud security skills:
-- **Azure Key Vault** — secrets management, no hardcoded credentials
-- **Managed Identity** — passwordless service-to-service authentication
-- **Azure Monitor** — SIEM-like alerting and anomaly detection
-- **Network Security Groups** — database not exposed to public internet
-- **Private Endpoints** — zero-trust networking
-- **Azure Policy** — compliance enforcement (HTTPS-only, encryption at rest)
-
-All Terraform infrastructure-as-code is in `/infrastructure/azure/terraform/`.  
-Full security documentation is in `/security/` — MITRE mappings, threat model, penetration test report.
-
----
-
-## Tech Stack
-
-| Layer | Technology | Why |
+| Time / Season | Scene | Particles |
 |---|---|---|
-| Frontend | React 18 + Tailwind CSS | Component-based, fast, PWA-capable |
-| Backend | Node.js + Express | Lightweight, widely understood |
-| Database | PostgreSQL | ACID compliance, Row Level Security |
-| Cache | Redis | Session storage, rate limiting |
-| Auth | Custom (bcrypt + JWT + TOTP) | Full control, portfolio demonstration |
-| Encryption | Web Crypto API (AES-256-GCM) | Client-side, zero-knowledge |
-| Voice Input | Web Speech API | Free, browser-native, no API cost |
-| Voice Output | SpeechSynthesis API | Free, browser-native, no API cost |
-| AI Analysis | Google Gemini 2.0 Flash | Free tier, runs client-side |
-| Hosting | Cloudflare Pages + Oracle Cloud | Free forever tiers |
-| Security Demo | Azure + Terraform | Enterprise security showcase |
+| Morning (any region) | Cozy coffee shop | — |
+| Morning (mountains) | Mountain mist | Rising mist |
+| Rain season (Nigeria/tropics) | Forest rain | Falling rain |
+| Harmattan (West Africa) | Savanna sunset | Dust drift |
+| Winter (USA/Europe) | Snowy pine forest | Snowfall |
+| Spring | Cherry blossoms | Falling petals |
+| Autumn | Forest path | Tumbling leaves |
+| Night | Starfield | Twinkling stars |
+| Fireplace (night, winter) | Cabin fireplace | Rising embers |
+
+Every panel, card, and sidebar is **glass** — transparent enough that the scene shows through, dark enough that text is always readable. The UI does not sit on top of the atmosphere. It lives inside it.
+
+Rain falling through your reading list. Snow drifting behind your goals. The app feels alive because it **is** alive.
 
 ---
 
-## Design System
+## Features
 
-PLOS uses **warm amber gold** (`#F5A623`) as its signature colour — the colour of morning light, of a candle, of a new day beginning. Dark background (`#0D0D0D`), warm cream text (`#F5F0E8`). Beautiful. Distinct. Nothing like any other productivity app.
+### Daily Planner
+- **Time-blocked schedule** with color-coded categories (Spiritual, Health, Work, Meals, Social, Sleep)
+- **Progress ring** that fills as you check off tasks
+- **Lock icons** — protect priority blocks (Bible, prayer, meditation) from being moved
+- **Conflict detection** — overlapping blocks are flagged, Lumi fixes them in one tap
+- **Now line** — real-time red line showing the current time in your timeline
+- **Night banner** — after 9 PM: "Plan tomorrow with Lumi before you sleep"
+- **Weekly view** — 7-day grid with completion %, category dots, workout plan, goals bars
+- **Plans tab** — workout schedule, meal plan with macros, medication tracker, sleep heatmap
 
-Fonts: `DM Serif Display` for Lumi's voice and headings · `Inter` for UI · `Caveat` for journal handwriting
+### Lumi AI Orchestration
+- **Chat mode** — talk to Lumi from any page, she responds in context
+- **Plan mode** — describe what you want built, Lumi proposes a full action plan before touching anything
+- **Cross-app execution** — one confirmation creates schedule blocks, journal entries, goal updates, and habit completions simultaneously
+- **Post-completion follow-up** — mark a task done, Lumi asks what you want to document
+- **Achievement celebrations** — goal reached → full-screen celebration with milestone emoji
+- **Auto page refresh** — after Lumi writes to a section, that page reloads its data automatically
+
+### Journal System
+- Six journal types: Personal, Spiritual, Budget, Habits, Goals, Health
+- Draggable stickers and sticky notes on journal pages
+- Voice dictation directly into journal fields
+- AI analysis of each entry (mood, summary, emotion)
+- Zero-knowledge encryption on all content
+
+### Goal Tracking
+- Year → Quarter → Month → Week → Day hierarchy
+- Progress percentage per goal
+- Achievement milestones with emoji badges
+- Lumi detects when you've reached a goal and asks to celebrate it
+
+### Health & Wellness
+- Workout plan with weekly schedule (Strength, Cardio, HIIT, Yoga, Rest)
+- Meal plan with calories and macros
+- Medication tracker with daily checkboxes
+- Sleep schedule with 21-night heatmap and quality score
 
 ---
 
-## Run Locally
+## Technical Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    FRONTEND (React + Vite)               │
+│                                                          │
+│  Atmosphere.jsx          ← Scene system (photos + CSS   │
+│  ├─ atmos.js               particles, Ken Burns, glass  │
+│  └─ Atmosphere.css         UI, palette-aware themes)    │
+│                                                          │
+│  LumiOrchestrator.jsx    ← Global AI overlay (plan      │
+│  └─ useLumi.js             review, achievements,        │
+│                            follow-ups, event bus)       │
+│                                                          │
+│  Pages: Dashboard, Schedule, Journal, Books,            │
+│         Goals, Settings, TalkToLumi, ...                │
+│  Layout: SidebarLayout (glass, palette-adaptive)        │
+└──────────────────────────┬──────────────────────────────┘
+                           │ REST API
+┌──────────────────────────▼──────────────────────────────┐
+│                   BACKEND (Node + Express)               │
+│                                                          │
+│  /api/lumi/message    ← Conversational AI (Groq)        │
+│  /api/lumi/plan       ← Cross-app action proposals      │
+│  /api/lumi/execute    ← Confirmed action execution      │
+│  /api/lumi/complete-task ← Post-completion follow-up    │
+│                                                          │
+│  lumiRouter.js        ← Groq LLaMA 3.1 integration     │
+│  lumiActions.js       ← DB writes across all sections  │
+│                                                          │
+│  /api/schedule        ← Daily planner CRUD             │
+│  /api/journal         ← Encrypted journal entries      │
+│  /api/goals           ← Year planning hierarchy        │
+└──────────────────────────┬──────────────────────────────┘
+                           │
+┌──────────────────────────▼──────────────────────────────┐
+│              PostgreSQL + Row-Level Security             │
+│  Zero-knowledge encryption on journal content           │
+│  User data is fully isolated at the database level      │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Stack
+| Layer | Technology |
+|---|---|
+| Frontend | React 18, Vite, Framer Motion |
+| Styling | Inline styles + CSS modules, no Tailwind runtime |
+| AI | Groq (LLaMA 3.1 8B Instant) |
+| Backend | Node.js, Express |
+| Database | PostgreSQL with RLS |
+| Auth | JWT (15m access + 7d refresh) |
+| Encryption | AES-256 on all journal content |
+| Voice | WebSpeech API + Whisper (optional) |
+
+---
+
+## Getting Started
+
+### Prerequisites
+- Node.js 18+
+- PostgreSQL 14+
+- A free [Groq API key](https://console.groq.com)
+
+### Installation
 
 ```bash
-git clone https://github.com/Ini-Quee/PLOS.git
+# Clone
+git clone https://github.com/YOUR_USERNAME/PLOS.git
 cd PLOS
-docker compose up
+
+# Backend
+cd backend
+cp .env.example .env
+# Fill in: DATABASE_URL, GROQ_API_KEY, JWT_SECRET
+npm install
+npm run migrate
+npm run dev
+
+# Frontend (new terminal)
+cd ../frontend
+npm install
+npm run dev
 ```
 
-The full stack starts: PostgreSQL, Redis, backend API, and frontend.
+Open `http://localhost:5173`
 
-**Environment variables required:**
+### Environment Variables
 
 ```env
 # backend/.env
-DATABASE_URL=postgresql://plos_user:password@localhost:5432/plos
-JWT_SECRET=your-secret-here
-JWT_REFRESH_SECRET=your-other-secret-here
-REDIS_URL=redis://localhost:6379
-
-# frontend/.env
-VITE_API_URL=http://localhost:3001
-VITE_GEMINI_API_KEY=your-gemini-key-from-aistudio.google.com
-```
-
-Get a free Gemini API key at: https://aistudio.google.com/app/apikey
-
----
-
-## Build Progress
-
-| Phase | Feature | Status |
-|---|---|---|
-| Phase 0 | Foundation & bug fixes | ✅ Complete |
-| Phase 1 | Lumi's voice system | 🔄 In progress |
-| Phase 2 | Voice journal (complete) | ⏳ Upcoming |
-| Phase 3 | Dashboard with real data | ⏳ Upcoming |
-| Phase 4 | Smart scheduler & calendar | ⏳ Upcoming |
-| Phase 5 | Projects, books, job tracker | ⏳ Upcoming |
-| Phase 6 | Content planner & year planning | ⏳ Upcoming |
-| Phase 7 | Email automation | ⏳ Upcoming |
-| Phase 8 | Security portfolio documentation | ⏳ Upcoming |
-
----
-
-## Project Structure
-
-```
-plos/
-├── frontend/          ← React PWA
-├── backend/           ← Node.js + Express API
-├── infrastructure/    ← Azure Terraform scripts
-├── security/          ← Security documentation and evidence
-└── AGENTS.md          ← Full build blueprint for AI agents
+PORT=3000
+DATABASE_URL=postgresql://user:pass@localhost:5432/plos
+JWT_SECRET=your-64-char-secret
+JWT_REFRESH_SECRET=your-other-64-char-secret
+GROQ_API_KEY=gsk_...
+FRONTEND_URL=http://localhost:5173
 ```
 
 ---
 
-## Why Open Source?
+## Changelog — What Was Built
 
-PLOS is free for everyone because the tools that help you build your life should not cost you your privacy or your money. The code is open so you can audit it, self-host it, and trust it.
+### Atmosphere System (complete rewrite)
+- Replaced static dark backgrounds with a living scene system
+- 12 hand-curated scenes matched to time of day, season, and region
+- CSS-only weather particles: rain, snow, harmattan dust, cherry petals, autumn leaves, embers, stars, mist
+- `useMemo`-seeded particle arrays — zero flicker on re-renders
+- Ken Burns slow zoom on every photo background
+- Glass UI — every card, sidebar, and panel uses `backdrop-filter: blur` so the scene shows through
+- `useAtmos()` context hook — any component reads the current scene's color palette
+- Sidebar and dashboard accent colors adapt to the active scene
 
-If you find it useful, star the repo. If you find a security issue, open a responsible disclosure via `SECURITY.md`.
+### Lumi Orchestration (new)
+- `POST /lumi/plan` — Lumi proposes cross-app actions before executing anything
+- `POST /lumi/execute` — confirmed batch execution across schedule, journal, goals, habits
+- `POST /lumi/complete-task` — post-completion follow-up with contextual journal prompts
+- `LumiOrchestrator.jsx` — global overlay: plan review modal, achievement celebrations, completion follow-ups
+- `useLumi` upgraded with `askLumiToPlan`, `confirmActions`, `completeTask`, achievement state, cross-app event bus
+- Lumi system prompt updated: proactive planner brain, conflict resolver, night-time planning, completion tracking
+
+### Daily Planner (full rebuild)
+- Full timeline with 15 blocks: Bible, Prayer, Meditation → Work → Meals → Workout → Sleep
+- Progress ring, conflict detection, lock icons, now-line
+- This Week tab: 7-day grid, goals bars, workout summary
+- My Plans tab: workout plan, meal plan, medication tracker, sleep heatmap
+
+### Bug Fixes
+- CORS: backend now accepts both `localhost:5173` and `localhost:5174`
+- Particle layer z-index fixed — particles now render above content
+- Removed all `console.log` debug statements from production code
+- Removed dead Unsplash Source API — replaced with Picsum Photos
+- Removed all `photo_query` fields — replaced with `photo_seed` for consistent images
+- `Math.random()` moved inside `useMemo` — eliminated particle flicker on re-render
+- LivingBackground removed from Journal, Books, Projects, Jobs, YearPlan, Calendar, Contacts, ContentPlanner, TalkToLumi
 
 ---
 
-## About the Builder
+## Security
 
-Built by **Erica Innocent Effiong** — building in public, learning cloud security, demonstrating that security is not an afterthought but a foundation.
-
-Follow the build: [LinkedIn](#) · [X/Twitter](#) · [GitHub](https://github.com/Ini-Quee/PLOS)
+- All journal entries are AES-256 encrypted before storage
+- JWT with 15-minute access tokens and 7-day refresh tokens
+- Row-Level Security on all PostgreSQL tables
+- CORS allowlist — only configured origins accepted
+- No third-party analytics or tracking
 
 ---
 
-*PLOS — Personal Life Operating System*  
-*Lumi — Your daily life companion*  
-*Open source. Security-first. Built in public.*
+## Roadmap
+
+- [ ] Mobile app (React Native)
+- [ ] Push notifications and alarm integration
+- [ ] Email reminders via SendGrid
+- [ ] Offline mode with local SQLite sync
+- [ ] Lumi voice output (text-to-speech responses)
+- [ ] Regional cultural scenes (40+ countries)
+- [ ] Budget tracker with bank sync
+- [ ] Habit streak leaderboard (opt-in)
+
+---
+
+## Philosophy
+
+PLOS was built on one belief: **your life deserves more than a to-do list.**
+
+Most productivity tools treat your life like a project. PLOS treats it like what it is — your actual life, with seasons and rhythms and quiet mornings and late nights and things that matter deeply to you specifically.
+
+The app changes with the weather outside your window. Lumi learns your routines. Your journal remembers what your goals tracker forgot. Everything connects.
+
+It is not an app. It is a practice.
+
+---
+
+## License
+
+MIT — free to use, fork, and build on.
+
+---
+
+<div align="center">
+
+Built with intention by **Erica Innocent Effiong**
+
+*PLOS — Personal Life Operating System*
+
+</div>

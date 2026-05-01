@@ -1,7 +1,7 @@
 /**
  * PLOS Cinematic Wallpaper - Scene Library
  * 40 professionally curated photographic scenes with motion design
- * Photos sourced from Unsplash Source API (free tier, requires attribution)
+ * Photos sourced from Picsum Photos (free, no API key required)
  */
 
 const SCENE_LIBRARY = {
@@ -10,7 +10,7 @@ const SCENE_LIBRARY = {
     id: "morning_coffee_garden",
     label: "Coffee Garden Morning",
     emoji: "☕",
-    photo_query: "coffee,garden,morning,window",
+    photo_seed: 42,
     photo_fallback_gradient: "linear-gradient(135deg, #8B4513 0%, #D2691E 40%, #F4A460 70%, #FFDEAD 100%)",
     time_of_day: ["dawn", "morning"],
     season: ["all"],
@@ -30,7 +30,7 @@ const SCENE_LIBRARY = {
     id: "morning_ocean_sunrise",
     label: "Ocean Sunrise",
     emoji: "🌅",
-    photo_query: "ocean,sunrise,golden,waves,beautiful",
+    photo_seed: 15,
     photo_fallback_gradient: "linear-gradient(180deg, #FF6B35 0%, #FFB347 30%, #87CEEB 70%, #006994 100%)",
     time_of_day: ["dawn", "morning"],
     season: ["all"],
@@ -49,7 +49,7 @@ const SCENE_LIBRARY = {
     id: "morning_mountain_mist",
     label: "Mountain Morning Mist",
     emoji: "⛰️",
-    photo_query: "mountain,fog,morning,peaceful,forest",
+    photo_seed: 87,
     photo_fallback_gradient: "linear-gradient(180deg, #BDC3C7 0%, #2C3E50 100%)",
     time_of_day: ["dawn", "morning"],
     season: ["spring", "summer"],
@@ -65,61 +65,109 @@ const SCENE_LIBRARY = {
   },
 
   // ═══ RAINY SCENES ═══
-  rain_window_cozy: {
-    id: "rain_window_cozy",
-    label: "Rainy Window Cafe",
+  rain_zen_garden: {
+    id: "rain_zen_garden",
+    label: "Zen Garden Rain",
     emoji: "🌧️",
-    photo_query: "rain,window,cozy,cafe,bokeh",
+    photo_url: "https://images.unsplash.com/photo-1753714054210-2c4c7b2c63fc",
+    photo_seed: 200,
     photo_fallback_gradient: "linear-gradient(135deg, #2C3E50 0%, #4A6741 50%, #1a2a1a 100%)",
     time_of_day: ["all"],
     season: ["rainy", "spring", "autumn"],
     particle_preset: "window_rain",
     ken_burns: {
-      start: "scale(1.03) translate(0%, 0%)",
-      end: "scale(1.06) translate(-0.5%, -0.5%)",
-      duration: 20
+      start: "scale(1.0) translate(0%, 0%)",
+      end: "scale(1.05) translate(-0.5%, -0.5%)",
+      duration: 30
     },
-    overlay_color: "rgba(44, 62, 80, 0.2)",
-    description: "Rain on cafe window, warm lights inside",
-    mood: "cozy, introspective, focused"
+    overlay_color: "rgba(44, 62, 80, 0.15)",
+    description: "Stone lantern in Japanese garden - zen, peaceful, traditional",
+    mood: "cozy, meditative, calm",
+    credit: "Niksa Leko (Unsplash)"
   },
 
-  rain_tropical_forest: {
-    id: "rain_tropical_forest",
-    label: "Tropical Rain Forest",
-    emoji: "🌿",
-    photo_query: "tropical,rainforest,rain,green,lush",
-    photo_fallback_gradient: "linear-gradient(180deg, #1a3a1a 0%, #2d5a2d 40%, #1a4a2a 100%)",
+  rain_temple_cherry: {
+    id: "rain_temple_cherry",
+    label: "Cherry Blossoms Temple",
+    emoji: "🌸",
+    photo_url: "https://images.unsplash.com/photo-1759604406026-173aedcc64da",
+    photo_seed: 334,
+    photo_fallback_gradient: "linear-gradient(135deg, #FFB7C5 0%, #4A6741 50%, #1a2a1a 100%)",
     time_of_day: ["all"],
-    season: ["rainy"],
-    particle_preset: "heavy_rain",
+    season: ["rainy", "spring"],
+    particle_preset: "cherry_petals",
     ken_burns: {
-      start: "scale(1.05) translate(0%, 0%)",
-      end: "scale(1.1) translate(-1%, 1%)",
-      duration: 22
-    },
-    overlay_color: "rgba(26, 58, 26, 0.2)",
-    description: "Nigerian/West African tropical rain",
-    mood: "refreshed, alive, earthy"
-  },
-
-  rain_city_night: {
-    id: "rain_city_night",
-    label: "City Rain at Night",
-    emoji: "🌃",
-    photo_query: "city,rain,night,lights,reflection,wet",
-    photo_fallback_gradient: "linear-gradient(180deg, #0a0a1a 0%, #1a1a3a 50%, #0a0f1a 100%)",
-    time_of_day: ["night", "blue_hour"],
-    season: ["rainy", "autumn", "winter"],
-    particle_preset: "night_rain",
-    ken_burns: {
-      start: "scale(1.04) translate(0%, 0%)",
-      end: "scale(1.09) translate(1%, 0%)",
+      start: "scale(1.0) translate(0%, 0%)",
+      end: "scale(1.02) translate(0%, -0.5%)",
       duration: 25
     },
-    overlay_color: "rgba(10, 10, 26, 0.25)",
-    description: "Neon reflections in wet city streets",
-    mood: "mysterious, deep, reflective"
+    overlay_color: "rgba(52, 73, 94, 0.15)",
+    description: "Close-up rain drops on glass with blurred background - calm, cozy vibes",
+    mood: "cozy, focused, serene",
+    video_credit: "Pixabay"
+  },
+
+  rain_city_street: {
+    id: "rain_city_street",
+    label: "City Street Rain",
+    emoji: "🌃",
+    video_url: "https://cdn.pixabay.com/video/2022/11/01/137209-768668856_large.mp4",
+    photo_seed: 456,
+    photo_fallback_gradient: "linear-gradient(180deg, #0a0a1a 0%, #1a1a3a 50%, #0a0f1a 100%)",
+    time_of_day: ["night", "blue_hour", "all"],
+    season: ["rainy", "autumn", "winter"],
+    particle_preset: null,
+    ken_burns: {
+      start: "scale(1.0) translate(0%, 0%)",
+      end: "scale(1.05) translate(0.5%, 0%)",
+      duration: 28
+    },
+    overlay_color: "rgba(10, 10, 26, 0.2)",
+    description: "Light rain on city street with reflections - no people, outdoor perspective",
+    mood: "calm, urban, introspective",
+    video_credit: "Pixabay"
+  },
+
+  rain_forest_path: {
+    id: "rain_forest_path",
+    label: "Forest Rain Path",
+    emoji: "🌲",
+    video_url: "https://cdn.pixabay.com/video/2021/06/27/79481-571116933_large.mp4",
+    photo_seed: 550,
+    photo_fallback_gradient: "linear-gradient(180deg, #1a3a1a 0%, #2d5a2d 40%, #1a4a2a 100%)",
+    time_of_day: ["all"],
+    season: ["rainy", "spring"],
+    particle_preset: null,
+    ken_burns: {
+      start: "scale(1.0) translate(0%, 0%)",
+      end: "scale(1.04) translate(0%, 1%)",
+      duration: 35
+    },
+    overlay_color: "rgba(26, 58, 26, 0.2)",
+    description: "Gentle rain through green forest - calm nature atmosphere, no people",
+    mood: "refreshed, peaceful, natural",
+    video_credit: "Pixabay"
+  },
+
+  rain_building_view: {
+    id: "rain_building_view",
+    label: "Rain Building View",
+    emoji: "🏢",
+    video_url: "https://cdn.pixabay.com/video/2020/04/29/37594-415534414_large.mp4",
+    photo_seed: 601,
+    photo_fallback_gradient: "linear-gradient(180deg, #2C3E50 0%, #34495E 50%, #1a1a2e 100%)",
+    time_of_day: ["all"],
+    season: ["rainy", "spring", "autumn"],
+    particle_preset: null,
+    ken_burns: {
+      start: "scale(1.0) translate(0%, 0%)",
+      end: "scale(1.03) translate(-1%, 0%)",
+      duration: 32
+    },
+    overlay_color: "rgba(44, 62, 80, 0.18)",
+    description: "Rain on buildings, architectural view - calm urban rain, no people",
+    mood: "cozy, contemplative, peaceful",
+    video_credit: "Pixabay"
   },
 
   // ═══ SUNSET / GOLDEN HOUR SCENES ═══
@@ -127,7 +175,7 @@ const SCENE_LIBRARY = {
     id: "sunset_beach",
     label: "Beach Sunset",
     emoji: "🏖️",
-    photo_query: "sunset,beach,ocean,golden,waves,beautiful",
+    photo_seed: 178,
     photo_fallback_gradient: "linear-gradient(180deg, #4A235A 0%, #C0392B 30%, #E67E22 60%, #F5A623 85%, #FFF3B0 100%)",
     time_of_day: ["golden_hour", "sunset"],
     season: ["all"],
@@ -146,7 +194,7 @@ const SCENE_LIBRARY = {
     id: "sunset_savanna",
     label: "African Savanna Sunset",
     emoji: "🦁",
-    photo_query: "africa,savanna,sunset,acacia,red,sky",
+    photo_seed: 290,
     photo_fallback_gradient: "linear-gradient(180deg, #1a0a05 0%, #7B241C 25%, #C0392B 45%, #E67E22 65%, #F5A623 85%, #FFF3B0 100%)",
     time_of_day: ["golden_hour", "sunset"],
     season: ["harmattan", "dry"],
@@ -166,7 +214,7 @@ const SCENE_LIBRARY = {
     id: "night_starfield",
     label: "Starry Night Sky",
     emoji: "✨",
-    photo_query: "stars,night,sky,milky,way,dark",
+    photo_seed: 512,
     photo_fallback_gradient: "linear-gradient(180deg, #020408 0%, #050D18 50%, #0D1B2A 100%)",
     time_of_day: ["night"],
     season: ["all"],
@@ -185,7 +233,7 @@ const SCENE_LIBRARY = {
     id: "night_cabin_fire",
     label: "Cozy Cabin Fireplace",
     emoji: "🔥",
-    photo_query: "fireplace,cabin,cozy,warm,wood,winter",
+    photo_seed: 67,
     photo_fallback_gradient: "linear-gradient(135deg, #1a0500 0%, #3d1100 40%, #7a2800 70%, #F5A623 100%)",
     time_of_day: ["night", "blue_hour"],
     season: ["winter", "harmattan"],
@@ -205,7 +253,7 @@ const SCENE_LIBRARY = {
     id: "cherry_blossom_japan",
     label: "Cherry Blossoms",
     emoji: "🌸",
-    photo_query: "cherry,blossom,japan,sakura,spring,pink",
+    photo_seed: 23,
     photo_fallback_gradient: "linear-gradient(180deg, #87CEEB 0%, #FFB7C5 50%, #FFC0CB 100%)",
     time_of_day: ["morning", "midday"],
     season: ["spring"],
@@ -224,7 +272,7 @@ const SCENE_LIBRARY = {
     id: "winter_snow_pine",
     label: "Snowy Pine Forest",
     emoji: "❄️",
-    photo_query: "snow,pine,forest,winter,white,peaceful",
+    photo_seed: 145,
     photo_fallback_gradient: "linear-gradient(180deg, #D5E8F0 0%, #A8C8D8 40%, #2C3E50 100%)",
     time_of_day: ["morning", "midday", "golden_hour"],
     season: ["winter"],
@@ -243,7 +291,7 @@ const SCENE_LIBRARY = {
     id: "christmas_warmth",
     label: "Christmas Evening",
     emoji: "🎄",
-    photo_query: "christmas,lights,bokeh,warm,cozy,holiday",
+    photo_seed: 389,
     photo_fallback_gradient: "linear-gradient(135deg, #1a0a00 0%, #3d1a00 40%, #8B0000 70%, #C41E3A 100%)",
     time_of_day: ["night", "blue_hour"],
     season: ["winter"],
@@ -263,7 +311,7 @@ const SCENE_LIBRARY = {
     id: "study_window_rain",
     label: "Study by Rain Window",
     emoji: "📚",
-    photo_query: "study,desk,window,rain,books,lamp,cozy",
+    photo_seed: 501,
     photo_fallback_gradient: "linear-gradient(135deg, #2C3E50 0%, #34495E 50%, #1a1a2e 100%)",
     time_of_day: ["morning", "midday", "golden_hour"],
     season: ["rainy", "autumn"],
@@ -282,7 +330,7 @@ const SCENE_LIBRARY = {
     id: "rooftop_city_morning",
     label: "Rooftop City Morning",
     emoji: "🏙️",
-    photo_query: "rooftop,city,morning,skyline,coffee,view",
+    photo_seed: 78,
     photo_fallback_gradient: "linear-gradient(180deg, #1B4F72 0%, #2E86C1 40%, #AED6F1 70%, #FEF9E7 100%)",
     time_of_day: ["dawn", "morning"],
     season: ["all"],
@@ -301,7 +349,7 @@ const SCENE_LIBRARY = {
     id: "meditation_zen_garden",
     label: "Zen Garden Peace",
     emoji: "🪷",
-    photo_query: "zen,garden,peaceful,japan,minimal,stone",
+    photo_seed: 234,
     photo_fallback_gradient: "linear-gradient(135deg, #4A4A4A 0%, #7a7a6a 50%, #c8c8b0 100%)",
     time_of_day: ["dawn", "morning"],
     season: ["spring", "summer"],
@@ -321,7 +369,7 @@ const SCENE_LIBRARY = {
     id: "autumn_forest_path",
     label: "Autumn Forest Walk",
     emoji: "🍂",
-    photo_query: "autumn,forest,path,orange,leaves,fall",
+    photo_seed: 650,
     photo_fallback_gradient: "linear-gradient(180deg, #8B4513 0%, #D2691E 40%, #F4A460 100%)",
     time_of_day: ["morning", "midday", "golden_hour"],
     season: ["autumn"],
@@ -340,7 +388,7 @@ const SCENE_LIBRARY = {
     id: "desert_dunes_sunset",
     label: "Desert Dunes Sunset",
     emoji: "🏜️",
-    photo_query: "desert,dunes,sunset,sahara,golden,sand",
+    photo_seed: 710,
     photo_fallback_gradient: "linear-gradient(180deg, #7B241C 0%, #E67E22 40%, #F5A623 70%, #FFDEAD 100%)",
     time_of_day: ["golden_hour", "sunset"],
     season: ["harmattan", "dry"],
@@ -359,7 +407,7 @@ const SCENE_LIBRARY = {
     id: "aurora_northern_lights",
     label: "Northern Lights",
     emoji: "🌌",
-    photo_query: "aurora,northern,lights,night,green,sky",
+    photo_seed: 770,
     photo_fallback_gradient: "linear-gradient(180deg, #0a1628 0%, #0d3b2e 40%, #1a4a3a 100%)",
     time_of_day: ["night"],
     season: ["winter"],
@@ -378,7 +426,7 @@ const SCENE_LIBRARY = {
     id: "lavender_fields_provence",
     label: "Lavender Fields",
     emoji: "💜",
-    photo_query: "lavender,fields,provence,purple,sunset,france",
+    photo_seed: 830,
     photo_fallback_gradient: "linear-gradient(180deg, #87CEEB 0%, #9b59b6 50%, #8e44ad 100%)",
     time_of_day: ["golden_hour", "sunset"],
     season: ["spring", "summer"],
@@ -397,7 +445,7 @@ const SCENE_LIBRARY = {
     id: "tropical_beach_palms",
     label: "Tropical Beach Paradise",
     emoji: "🌴",
-    photo_query: "tropical,beach,palms,turquoise,paradise,ocean",
+    photo_seed: 880,
     photo_fallback_gradient: "linear-gradient(180deg, #87CEEB 0%, #00BCD4 50%, #006994 100%)",
     time_of_day: ["morning", "midday"],
     season: ["dry", "summer"],
@@ -416,7 +464,7 @@ const SCENE_LIBRARY = {
     id: "tokyo_cyberpunk_night",
     label: "Tokyo Neon Night",
     emoji: "🗼",
-    photo_query: "tokyo,night,neon,cyberpunk,city,lights",
+    photo_seed: 930,
     photo_fallback_gradient: "linear-gradient(180deg, #0a0a1a 0%, #1a1a3a 40%, #ff0080 100%)",
     time_of_day: ["night", "blue_hour"],
     season: ["all"],
@@ -435,7 +483,7 @@ const SCENE_LIBRARY = {
     id: "scottish_highlands_mist",
     label: "Scottish Highlands",
     emoji: "🏴󐁧󐁢󐁳󐁣󐁴󐁿",
-    photo_query: "scotland,highlands,mist,castle,green,mountains",
+    photo_seed: 980,
     photo_fallback_gradient: "linear-gradient(180deg, #7F8C8D 0%, #2C3E50 50%, #1a2a1a 100%)",
     time_of_day: ["morning", "midday"],
     season: ["spring", "autumn"],

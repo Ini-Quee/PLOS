@@ -2,15 +2,15 @@
 
 /* ROOT VARIABLES */
 :root {
-  --bg: #0a0908;
-  --bg2: #111008;
-  --bg3: #1a1810;
+  --bg:     rgba(8, 7, 6, 0.0);
+  --bg2:    rgba(8, 7, 6, 0.30);
+  --bg3:    rgba(12, 10, 8, 0.40);
   --border: rgba(255, 255, 255, 0.07);
-  --muted: #6b6358;
-  --text: #e8e0d0;
-  --amber: #F5A623;
-  --amber2: #ffbe4d;
-  --j-color: #F5A623;
+  --muted:  #6b6358;
+  --text:   #e8e0d0;
+  --amber:  #C8955C;
+  --amber2: #DBA870;
+  --j-color: #C8955C;
 }
 
 /* TOP BAR */
@@ -54,6 +54,8 @@
   font-size: 12px;
   cursor: pointer;
   background: var(--bg2);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   color: var(--muted);
   transition: all 0.15s;
   font-family: 'DM Sans', sans-serif;
@@ -86,6 +88,8 @@
 
 .journal-panel {
   background: var(--bg2);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 12px;
@@ -251,6 +255,8 @@
   overflow: hidden;
   border: 1px solid var(--border);
   background: var(--bg2);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
 .date-nav {

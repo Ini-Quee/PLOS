@@ -1,23 +1,23 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Particles from '@tsparticles/react';
 import { loadSlim } from '@tsparticles/slim';
-import { getScenesByTimeAndSeason, getSceneById, getAllScenes } from '../lib/wallpaperScenes';
+import { getScenesByTimeAndSeason, getSceneById, getAllScenes } from '../lib/wallpaperScenes-local';
 import PARTICLE_PRESETS from '../lib/particlePresets';
 import './CinematicWallpaper.css';
 
-/**
- * PLOS Cinematic Wallpaper System
- * Professional photo-based animated background with particles
- * Features: Ken Burns effect, time/season awareness, Unsplash photos
- */
+const getPhotoUrl = (scene) => {
+  const seed = scene.photo_seed || 1;
+  return `https://picsum.photos/1920/1080?random=${seed}`;
+};
+
 export default function CinematicWallpaper() {
   const [currentScene, setCurrentScene] = useState(null);
   const [photoLoaded, setPhotoLoaded] = useState(false);
   const [photoUrl, setPhotoUrl] = useState('');
+  const [isVideo, setIsVideo] = useState(false);
   const [intensity, setIntensity] = useState('full');
   const [particlesInit, setParticlesInit] = useState(false);
 
-  // Detect performance mode
   const performanceMode = useMemo(() => {
     const savedMode = localStorage.getItem('plos_wallpaper_intensity');
     if (savedMode) return savedMode;
@@ -31,7 +31,6 @@ export default function CinematicWallpaper() {
     return 'full';
   }, []);
 
-  // Get current time of day
   const getTimeOfDay = useCallback(() => {
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 7) return 'dawn';
@@ -43,24 +42,20 @@ export default function CinematicWallpaper() {
     return 'night';
   }, []);
 
-  // Get season based on region
   const getSeason = useCallback(() => {
-    const month = new Date().getMonth() + 1; // 1-12
+    const month = new Date().getMonth() + 1;
     const offset = -(new Date().getTimezoneOffset() / 60);
 
-    // West Africa (UTC+0 to +1)
     if (offset >= 0 && offset <= 1) {
       return month >= 4 && month <= 10 ? 'rainy' : 'harmattan';
     }
 
-    // Northern Hemisphere (Europe/USA)
     if (month >= 3 && month <= 5) return 'spring';
     if (month >= 6 && month <= 8) return 'summer';
     if (month >= 9 && month <= 11) return 'autumn';
     return 'winter';
   }, []);
 
-  // Get time gradient overlay based on time of day
   const getTimeGradient = useCallback((timeOfDay) => {
     const gradients = {
       dawn: 'linear-gradient(180deg, rgba(74,25,66,0.3) 0%, rgba(255,107,53,0.2) 50%, rgba(255,179,71,0.15) 100%)',
@@ -74,17 +69,14 @@ export default function CinematicWallpaper() {
     return gradients[timeOfDay] || gradients.night;
   }, []);
 
-  // Initialize tsParticles
   const initParticles = useCallback(async (engine) => {
     await loadSlim(engine);
     setParticlesInit(true);
-    console.log('✨ Particles engine initialized');
   }, []);
 
   // Load scene
   useEffect(() => {
     const loadScene = () => {
-      // Check for manual scene selection
       const savedSceneId = localStorage.getItem('plos_wallpaper_scene');
       const savedIntensity = localStorage.getItem('plos_wallpaper_intensity');
 
@@ -97,50 +89,72 @@ export default function CinematicWallpaper() {
       let scene;
       if (savedSceneId && savedSceneId !== 'auto') {
         scene = getSceneById(savedSceneId);
-        console.log('🎬 Manual scene selected:', scene.label);
       } else {
-        // Auto-select based on time and season
         const timeOfDay = getTimeOfDay();
         const season = getSeason();
         const matchingScenes = getScenesByTimeAndSeason(timeOfDay, season);
         scene = matchingScenes[0] || getAllScenes()[0];
-        console.log(`🕐 Auto-selected scene for ${timeOfDay}/${season}:`, scene.label);
       }
 
       setCurrentScene(scene);
 
-      // Build Unsplash URL
-      const url = `https://source.unsplash.com/1920x1080/?${scene.photo_query}`;
-      setPhotoUrl(url);
-      setPhotoLoaded(false);
-
-      // Preload photo
-      const img = new Image();
-      img.onload = () => {
-        setPhotoLoaded(true);
-        console.log('📸 Photo loaded:', scene.label);
-      };
-      img.onerror = () => {
-        console.warn('⚠️ Photo failed to load, using fallback gradient');
-        setPhotoLoaded(true); // Still set to true to show fallback
-      };
-      img.src = url;
+      if (scene.video_url) {
+        fetch(scene.video_url, { method: 'HEAD' })
+          .then(response => {
+            if (response.ok) {
+              setIsVideo(true);
+              setPhotoUrl(scene.video_url);
+              setPhotoLoaded(true);
+            } else {
+              throw new Error('Video not found');
+            }
+          })
+          .catch(() => {
+            setIsVideo(false);
+            setPhotoLoaded(false);
+          });
+      } else {
+        setIsVideo(false);
+        setPhotoLoaded(false);
+      }
     };
 
     loadScene();
 
-    // Listen for scene changes
-    const handleSceneChange = () => {
-      console.log('🔄 Scene change detected');
-      loadScene();
-    };
-
+    const handleSceneChange = () => { loadScene(); };
     window.addEventListener('wallpaper-scene-changed', handleSceneChange);
-
     return () => {
       window.removeEventListener('wallpaper-scene-changed', handleSceneChange);
     };
   }, [getTimeOfDay, getSeason, performanceMode]);
+
+  // Preload photo (Picsum or local photo_url)
+  useEffect(() => {
+    if (!currentScene || isVideo) return;
+
+    setPhotoLoaded(false);
+
+    const url = currentScene.photo_url || getPhotoUrl(currentScene);
+    setPhotoUrl(url);
+
+    const img = new Image();
+    img.onload = () => setPhotoLoaded(true);
+    img.onerror = () => {
+      if (currentScene.photo_url && currentScene.photo_seed) {
+        const fallbackUrl = getPhotoUrl(currentScene);
+        setPhotoUrl(fallbackUrl);
+        const retry = new Image();
+        retry.onload = () => setPhotoLoaded(true);
+        retry.onerror = () => setPhotoLoaded(false);
+        retry.src = fallbackUrl;
+      } else {
+        setPhotoLoaded(false);
+      }
+    };
+    img.src = url;
+
+    return () => { img.onload = null; img.onerror = null; };
+  }, [currentScene, isVideo]);
 
   // Pause animations when tab hidden or battery low
   useEffect(() => {
@@ -157,7 +171,6 @@ export default function CinematicWallpaper() {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Check battery
     if ('getBattery' in navigator) {
       navigator.getBattery().then((battery) => {
         const checkBattery = () => {
@@ -189,7 +202,6 @@ export default function CinematicWallpaper() {
   const timeOfDay = getTimeOfDay();
   const timeGradient = getTimeGradient(timeOfDay);
 
-  // Minimal mode: only gradient
   if (intensity === 'minimal') {
     return (
       <div className="cinematic-root minimal-mode">
@@ -198,24 +210,54 @@ export default function CinematicWallpaper() {
           style={{ background: currentScene.photo_fallback_gradient }}
         />
         <div className="vignette-overlay" />
-        <PhotoCredit />
+        <PhotoCredit scene={currentScene} />
       </div>
     );
   }
 
   return (
     <div className="cinematic-root" data-intensity={intensity}>
-      {/* Layer 1: Photo with Ken Burns effect */}
-      <div
-        className={`ken-burns-photo ${photoLoaded ? 'loaded' : ''}`}
-        style={{
-          backgroundImage: photoLoaded ? `url(${photoUrl})` : 'none',
-          background: !photoLoaded ? currentScene.photo_fallback_gradient : undefined,
-          '--kb-start': currentScene.ken_burns.start,
-          '--kb-end': currentScene.ken_burns.end,
-          '--kb-duration': `${currentScene.ken_burns.duration}s`
-        }}
-      />
+      {/* Layer 1: Video or Photo with Ken Burns effect */}
+      {isVideo ? (
+        <video
+          className={`ken-burns-video ${photoLoaded ? 'loaded' : ''}`}
+          style={{
+            '--kb-start': currentScene.ken_burns?.start || 'scale(1.0) translate(0%, 0%)',
+            '--kb-end': currentScene.ken_burns?.end || 'scale(1.05) translate(0%, 0%)',
+            '--kb-duration': `${currentScene.ken_burns?.duration || 30}s`
+          }}
+          src={photoUrl}
+          autoPlay
+          loop
+          muted
+          playsInline
+        />
+      ) : (
+        <>
+          {/* Gradient shows instantly, always behind the photo */}
+          <div
+            className="ken-burns-photo"
+            style={{
+              background: currentScene.photo_fallback_gradient,
+              '--kb-start': currentScene.ken_burns.start,
+              '--kb-end': currentScene.ken_burns.end,
+              '--kb-duration': `${currentScene.ken_burns.duration}s`
+            }}
+          />
+          {/* Photo fades in over the gradient once loaded */}
+          <div
+            className="ken-burns-photo"
+            style={{
+              backgroundImage: photoLoaded && photoUrl ? `url(${photoUrl})` : 'none',
+              opacity: photoLoaded ? 1 : 0,
+              transition: 'opacity 1.5s ease',
+              '--kb-start': currentScene.ken_burns.start,
+              '--kb-end': currentScene.ken_burns.end,
+              '--kb-duration': `${currentScene.ken_burns.duration}s`
+            }}
+          />
+        </>
+      )}
 
       {/* Layer 2: Color grade overlay */}
       <div
@@ -241,15 +283,14 @@ export default function CinematicWallpaper() {
       <div className="vignette-overlay" />
 
       {/* Photo credit */}
-      <PhotoCredit />
+      <PhotoCredit scene={currentScene} />
     </div>
   );
 }
 
-/**
- * Unsplash attribution (required by free tier)
- */
-function PhotoCredit() {
+function PhotoCredit({ scene }) {
+  if (!scene || (!scene.credit && !scene.video_credit)) return null;
+
   return (
     <div
       style={{
@@ -265,7 +306,7 @@ function PhotoCredit() {
         pointerEvents: 'none'
       }}
     >
-      Photo: Unsplash
+      {scene.credit || scene.video_credit}
     </div>
   );
 }
