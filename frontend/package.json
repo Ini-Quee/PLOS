@@ -11,10 +11,15 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@tsparticles/engine": "^3.9.1",
+    "@tsparticles/react": "^3.0.0",
+    "@tsparticles/slim": "^3.9.1",
     "axios": "^1.14.0",
     "framer-motion": "^12.38.0",
+    "gsap": "^3.15.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "react-parallax": "^3.5.2",
     "react-router-dom": "^7.14.0"
   },
   "devDependencies": {

@@ -14,7 +14,7 @@
 }
 
 .living-background-layer {
-  position: absolute;
+  position: fixed;
   inset: 0;
   pointer-events: none;
 }
@@ -89,12 +89,13 @@
 }
 
 .snowflake {
-  position: absolute;
+  position: fixed;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.7) 60%, rgba(255,255,255,0.3) 100%);
   box-shadow: 0 0 10px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.5), inset 0 0 5px rgba(255,255,255,0.6);
   animation: snow-drift ease-in-out infinite;
   will-change: transform, opacity;
+  z-index: 2;
 }
 
 /* ─── TROPICAL RAIN - HEAVY VISIBLE DROPS ────────────────────────────────────── */
@@ -128,7 +129,7 @@
 }
 
 .rain-drop {
-  position: absolute;
+  position: fixed;
   width: 2px;
   height: 25px;
   background: linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(255,255,255,0.7));
@@ -139,7 +140,7 @@
 }
 
 .rain-ripple {
-  position: absolute;
+  position: fixed;
   bottom: 5%;
   width: 40px;
   height: 40px;
@@ -177,7 +178,7 @@
 }
 
 .autumn-leaf {
-  position: absolute;
+  position: fixed;
   width: 0;
   height: 0;
   border-left: 8px solid transparent;
@@ -218,7 +219,7 @@
 }
 
 .cherry-petal {
-  position: absolute;
+  position: fixed;
   width: 10px;
   height: 7px;
   border-radius: 50% 0 50% 0;
@@ -263,7 +264,7 @@
 }
 
 .firefly {
-  position: absolute;
+  position: fixed;
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -286,7 +287,7 @@
 }
 
 .star {
-  position: absolute;
+  position: fixed;
   background: white;
   clip-path: polygon(
     50% 0%,
@@ -321,7 +322,7 @@
 }
 
 .sun-ray {
-  position: absolute;
+  position: fixed;
   top: -50%;
   left: 50%;
   width: 2px;
@@ -366,7 +367,7 @@
 }
 
 .bird {
-  position: absolute;
+  position: fixed;
   animation: bird-fly linear infinite;
   will-change: transform;
 }
@@ -374,7 +375,7 @@
 .bird::before,
 .bird::after {
   content: '';
-  position: absolute;
+  position: fixed;
   width: 15px;
   height: 3px;
   background: rgba(0,0,0,0.6);
@@ -413,7 +414,7 @@
 }
 
 .cloud {
-  position: absolute;
+  position: fixed;
   animation: cloud-drift linear infinite;
   will-change: transform;
   filter: blur(1px);
@@ -422,7 +423,7 @@
 .cloud::before,
 .cloud::after {
   content: '';
-  position: absolute;
+  position: fixed;
   background: rgba(255,255,255,0.4);
   border-radius: 50%;
 }
@@ -461,7 +462,7 @@
 }
 
 .bokeh-circle {
-  position: absolute;
+  position: fixed;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(255,255,255,0.3), transparent 70%);
   animation: bokeh-float linear infinite;
@@ -489,7 +490,7 @@
 }
 
 .dust-particle {
-  position: absolute;
+  position: fixed;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(210, 180, 140, 0.7), rgba(210, 180, 140, 0.3));
   animation: dust-blow linear infinite;
@@ -497,7 +498,7 @@
 }
 
 .harmattan-haze {
-  position: absolute;
+  position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
@@ -521,7 +522,7 @@
 }
 
 .ocean-shimmer {
-  position: absolute;
+  position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
@@ -557,7 +558,7 @@
 }
 
 .mist-blob {
-  position: absolute;
+  position: fixed;
   bottom: 0;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(255, 255, 255, 0.15), transparent 60%);
@@ -580,7 +581,7 @@
 }
 
 .heat-shimmer-line {
-  position: absolute;
+  position: fixed;
   width: 100%;
   height: 2px;
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
@@ -606,7 +607,7 @@
 }
 
 .aurora-wave {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: -10%;
   right: -10%;

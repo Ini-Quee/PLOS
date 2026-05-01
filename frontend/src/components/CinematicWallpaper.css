@@ -1,0 +1,202 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+   PLOS Cinematic Wallpaper - Professional Motion Design
+   Real photos + Ken Burns + Particles + Time-aware gradients
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── ROOT CONTAINER ─────────────────────────────────────────────────────────── */
+
+.cinematic-root {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: #0D0D0D;
+}
+
+/* ─── KEN BURNS PHOTO LAYER ─────────────────────────────────────────────────── */
+
+.ken-burns-photo {
+  position: absolute;
+  inset: -5%; /* Extend beyond viewport for zoom effect */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transition: opacity 1.5s ease-in-out;
+  animation: kenBurns var(--kb-duration, 25s) ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+.ken-burns-photo.loaded {
+  opacity: 1;
+}
+
+/* Ken Burns animation - smooth zoom and pan */
+@keyframes kenBurns {
+  0% {
+    transform: var(--kb-start, scale(1.05) translate(0%, 0%));
+  }
+  100% {
+    transform: var(--kb-end, scale(1.12) translate(-2%, -1%));
+  }
+}
+
+/* ─── FALLBACK GRADIENT (minimal mode) ──────────────────────────────────────── */
+
+.fallback-gradient {
+  position: absolute;
+  inset: 0;
+  transition: background 2s ease-in-out;
+}
+
+/* ─── COLOR GRADE OVERLAY ───────────────────────────────────────────────────── */
+
+.color-grade-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  transition: background 2s ease-in-out;
+  pointer-events: none;
+}
+
+/* ─── TIME-OF-DAY GRADIENT OVERLAY ──────────────────────────────────────────── */
+
+.time-gradient-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  transition: background 3s ease-in-out;
+  pointer-events: none;
+}
+
+/* ─── PARTICLES LAYER ───────────────────────────────────────────────────────── */
+
+.particles-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.particles-layer canvas {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ─── VIGNETTE OVERLAY ──────────────────────────────────────────────────────── */
+
+.vignette-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 40%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+  opacity: 0.6;
+  pointer-events: none;
+  transition: opacity 1s ease-in-out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   PERFORMANCE MODES
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Minimal mode - gradient only, no animation */
+.cinematic-root.minimal-mode .ken-burns-photo {
+  display: none;
+}
+
+.cinematic-root.minimal-mode .particles-layer {
+  display: none;
+}
+
+/* Reduced mode - photo + Ken Burns, no particles */
+.cinematic-root[data-intensity="reduced"] .particles-layer {
+  display: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ANIMATION PAUSE STATES
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Pause Ken Burns when tab hidden */
+.cinematic-root.paused .ken-burns-photo {
+  animation-play-state: paused;
+}
+
+/* Pause when battery low */
+.cinematic-root.low-battery .ken-burns-photo {
+  animation-play-state: paused;
+}
+
+.cinematic-root.low-battery .particles-layer {
+  display: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   SCENE TRANSITIONS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Smooth fade between scenes */
+.cinematic-root.transitioning .ken-burns-photo {
+  opacity: 0;
+  transition: opacity 0.8s ease-out;
+}
+
+.cinematic-root.transitioning .particles-layer {
+  opacity: 0;
+  transition: opacity 0.5s ease-out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ACCESSIBILITY
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .ken-burns-photo {
+    animation: none !important;
+    transform: scale(1.05) !important;
+  }
+
+  .particles-layer {
+    display: none !important;
+  }
+
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   RESPONSIVE OPTIMIZATIONS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Reduce complexity on smaller screens */
+@media (max-width: 768px) {
+  .cinematic-root[data-intensity="full"] .particles-layer {
+    opacity: 0.7;
+  }
+
+  .ken-burns-photo {
+    animation-duration: calc(var(--kb-duration, 25s) * 1.5) !important;
+  }
+}
+
+/* Ultra-low-end devices */
+@media (max-width: 480px) {
+  .cinematic-root[data-intensity="full"] {
+    --intensity: reduced;
+  }
+
+  .particles-layer {
+    display: none;
+  }
+}

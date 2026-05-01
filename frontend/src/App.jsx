@@ -21,7 +21,7 @@ import Settings from './pages/Settings';
 import TalkToLumi from './pages/TalkToLumi';
 import ColorPreview from './pages/ColorPreview';
 import DesignSystemPreview from './pages/DesignSystemPreview';
-import LivingBackground from './components/LivingBackground';
+import CinematicWallpaper from './components/CinematicWallpaper';
 import { useState, useEffect } from 'react';
 
 function ProtectedRoute({ children }) {
@@ -277,42 +277,26 @@ function AppRoutes() {
 }
 
 export default function App() {
-  const [livingBackgroundEnabled, setLivingBackgroundEnabled] = useState(false);
-  const [backgroundTheme, setBackgroundTheme] = useState('auto');
-  const [motionIntensity, setMotionIntensity] = useState('full');
+  const [wallpaperEnabled, setWallpaperEnabled] = useState(true); // Always enabled by default
 
-  // Load Living Background settings from localStorage
   useEffect(() => {
-    const enabled = localStorage.getItem('plos_living_background') === 'true';
-    const theme = localStorage.getItem('plos_bg_theme') || 'auto';
-    const intensity = localStorage.getItem('plos_bg_intensity') || 'full';
+    // Check if user has disabled it
+    const disabled = localStorage.getItem('plos_wallpaper_disabled') === 'true';
+    setWallpaperEnabled(!disabled);
 
-    console.log('🎨 Living Background Settings:', { enabled, theme, intensity });
-
-    setLivingBackgroundEnabled(enabled);
-    setBackgroundTheme(theme);
-    setMotionIntensity(intensity);
-
-    // Add body class when Living Background is enabled
-    if (enabled) {
+    // Add body class for transparent background
+    if (!disabled) {
       document.body.classList.add('living-background-enabled');
-      console.log('✅ Living Background ENABLED - body class added');
-    } else {
-      document.body.classList.remove('living-background-enabled');
-      console.log('❌ Living Background DISABLED');
+      console.log('🎬 Cinematic Wallpaper enabled');
     }
   }, []);
 
   return (
     <BrowserRouter>
       <AuthProvider>
-        {livingBackgroundEnabled && (
-          <LivingBackground
-            theme={backgroundTheme}
-            enabled={true}
-            intensity={motionIntensity}
-          />
-        )}
+        {/* Cinematic Wallpaper - always renders in background */}
+        {wallpaperEnabled && <CinematicWallpaper />}
+
         <div style={{ position: 'relative', zIndex: 10 }}>
           <AppRoutes />
         </div>

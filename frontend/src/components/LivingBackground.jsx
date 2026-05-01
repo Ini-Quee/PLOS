@@ -276,7 +276,14 @@ function WeatherOverlay({ config }) {
   const { overlay_effect, particles, accent_color } = config;
   const effect = overlay_effect || particles;
 
-  if (!effect) return null;
+  console.log('🌨️ WeatherOverlay:', { overlay_effect, particles, effect, accent_color });
+
+  if (!effect) {
+    console.log('❌ No effect - WeatherOverlay returning null');
+    return null;
+  }
+
+  console.log('✅ Rendering weather effect:', effect);
 
   return (
     <div className="living-background-layer weather-overlay">

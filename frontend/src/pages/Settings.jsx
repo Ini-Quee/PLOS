@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import * as lumiVoice from '../lib/lumi-voice';
 import { THEME_LIBRARY } from '../lib/livingBackgroundConfig';
+import WallpaperPicker from '../components/WallpaperPicker';
+import { getSceneById } from '../lib/wallpaperScenes';
 
 /**
  * Settings Page — 8 sections per AGENTS.md Part 6.12
@@ -59,6 +61,10 @@ export default function Settings() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [checkInTime, setCheckInTime] = useState('07:00');
 
+  // Cinematic Wallpaper
+  const [showWallpaperPicker, setShowWallpaperPicker] = useState(false);
+  const [currentWallpaperScene, setCurrentWallpaperScene] = useState('auto');
+
   // Load voices on mount
   useEffect(() => {
     async function loadVoices() {
@@ -71,6 +77,10 @@ export default function Settings() {
       }
     }
     loadVoices();
+
+    // Load wallpaper scene
+    const savedScene = localStorage.getItem('plos_wallpaper_scene') || 'auto';
+    setCurrentWallpaperScene(savedScene);
   }, []);
 
   // Apply theme
@@ -425,7 +435,91 @@ export default function Settings() {
             )}
           </SettingsSection>
 
-          {/* Section 2: Appearance */}
+          {/* Section 2: My World (Cinematic Wallpaper) */}
+          <SettingsSection title="My World" icon="🌍">
+            <p
+              style={{
+                margin: '0 0 20px 0',
+                color: '#A89880',
+                fontSize: 14,
+                fontFamily: "'Inter', sans-serif",
+                lineHeight: 1.5
+              }}
+            >
+              Choose a cinematic background that matches your mood and moment.
+            </p>
+
+            {/* Current scene thumbnail */}
+            <div style={{ marginBottom: 24 }}>
+              <label
+                style={{
+                  display: 'block',
+                  marginBottom: 12,
+                  color: '#A89880',
+                  fontSize: 14,
+                  fontFamily: "'Inter', sans-serif",
+                  fontWeight: 500
+                }}
+              >
+                Currently Active World
+              </label>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 16,
+                  padding: 16,
+                  backgroundColor: '#242424',
+                  borderRadius: 12,
+                  border: '1px solid #2E2E2E'
+                }}
+              >
+                <div
+                  style={{
+                    width: 80,
+                    height: 50,
+                    borderRadius: 8,
+                    backgroundImage: currentWallpaperScene === 'auto'
+                      ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                      : `url(https://source.unsplash.com/400x300/?${getSceneById(currentWallpaperScene)?.photo_query || 'nature'})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    flexShrink: 0
+                  }}
+                />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 16, color: '#F5F0E8', fontWeight: 600, marginBottom: 4 }}>
+                    {currentWallpaperScene === 'auto' ? '🤖 Auto (Smart)' : `${getSceneById(currentWallpaperScene)?.emoji} ${getSceneById(currentWallpaperScene)?.label}`}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#6B5F52' }}>
+                    {currentWallpaperScene === 'auto' ? 'Matches time & season automatically' : getSceneById(currentWallpaperScene)?.description}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowWallpaperPicker(true)}
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: '#F5A623',
+                    border: 'none',
+                    borderRadius: 12,
+                    color: '#0D0D0D',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontFamily: "'Inter', sans-serif",
+                    transition: 'all 0.2s',
+                    flexShrink: 0
+                  }}
+                  onMouseEnter={(e) => { e.target.style.backgroundColor = '#E09415'; }}
+                  onMouseLeave={(e) => { e.target.style.backgroundColor = '#F5A623'; }}
+                >
+                  Change World
+                </button>
+              </div>
+            </div>
+          </SettingsSection>
+
+          {/* Section 3: Appearance */}
           <SettingsSection title="Appearance" icon="🎨">
             {/* Theme toggle */}
             <div style={{ marginBottom: '24px' }}>
@@ -1406,6 +1500,17 @@ export default function Settings() {
           </SettingsSection>
         </div>
       </div>
+
+      {/* Wallpaper Picker Modal */}
+      <WallpaperPicker
+        isOpen={showWallpaperPicker}
+        onClose={() => {
+          setShowWallpaperPicker(false);
+          // Refresh current scene
+          const savedScene = localStorage.getItem('plos_wallpaper_scene') || 'auto';
+          setCurrentWallpaperScene(savedScene);
+        }}
+      />
     </div>
   );
 }
