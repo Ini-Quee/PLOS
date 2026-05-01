@@ -17,6 +17,7 @@ const contentRoutes = require('./src/routes/content');
 const goalsRoutes = require('./src/routes/goals');
 const contactsRoutes = require('./src/routes/contacts');
 const lumiRoutes = require('./src/routes/lumi');
+const budgetRoutes = require('./src/routes/budget');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -77,6 +78,7 @@ app.use('/api/content', contentRoutes);
 app.use('/api/goals', goalsRoutes);
 app.use('/api/contacts', contactsRoutes);
 app.use('/api/lumi', lumiRoutes);
+app.use('/api/budget', budgetRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({

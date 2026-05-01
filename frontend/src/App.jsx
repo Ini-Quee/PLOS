@@ -19,6 +19,7 @@ import Contacts from './pages/Contacts';
 import MfaSetup from './pages/MfaSetup';
 import Settings from './pages/Settings';
 import TalkToLumi from './pages/TalkToLumi';
+import Budget from './pages/Budget';
 import ColorPreview from './pages/ColorPreview';
 import DesignSystemPreview from './pages/DesignSystemPreview';
 import Atmosphere from './components/Atmosphere';
@@ -249,6 +250,16 @@ function AppRoutes() {
             <ProtectedRoute>
               <AnimatedRoute>
                 <Contacts />
+              </AnimatedRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/budget"
+          element={
+            <ProtectedRoute>
+              <AnimatedRoute>
+                <Budget />
               </AnimatedRoute>
             </ProtectedRoute>
           }
