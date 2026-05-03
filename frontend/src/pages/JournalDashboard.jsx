@@ -1,111 +1,43 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import SidebarLayout, { C } from '../components/layout/SidebarLayout';
 import SeasonalBookBackground from '../components/journal/SeasonalBookBackground';
+import CreateBookWizard from '../components/journal/CreateBookWizard';
 import { initializeSeasonDetection, getCachedSeason, SEASONS } from '../lib/seasonDetection';
 import { getBookTheme, BOOK_TYPES } from '../lib/bookThemes';
+import api from '../lib/api';
 
-// ─── Journal Data ───────────────────────────────────────────────────────────────
-const JOURNALS = [
-  {
-    id: 1,
-    title: 'Everyday Life',
-    subtitle: 'Thoughts & moments',
-    emoji: '🌿',
-    color: '#5a7a5a',
-    spine: '#3d5c3d',
-    accent: '#7fb87f',
-    entries: 47,
-    lastActive: 'Today',
-    streak: 14,
-    type: 'personal',
-    completedDays: [1, 2, 3, 5, 6, 8, 9, 10, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22, 23, 24, 26],
-  },
-  {
-    id: 2,
-    title: 'Bible & Faith',
-    subtitle: 'Scripture & reflection',
-    emoji: '✝️',
-    color: '#7a5a3a',
-    spine: '#5c3d1e',
-    accent: '#F5A623',
-    entries: 31,
-    lastActive: 'Yesterday',
-    streak: 9,
-    type: 'spiritual',
-    completedDays: [1, 3, 5, 7, 9, 11, 13, 14, 15, 16, 17, 19, 21, 22, 24, 26],
-  },
-  {
-    id: 3,
-    title: 'Goals & Vision',
-    subtitle: 'Dreams I am building',
-    emoji: '🎯',
-    color: '#3a4a7a',
-    spine: '#1e2d5c',
-    accent: '#9b7fe8',
-    entries: 18,
-    lastActive: '3 days ago',
-    streak: 3,
-    type: 'goals',
-    completedDays: [2, 5, 9, 12, 15, 17, 19, 22, 24, 26],
-  },
-  {
-    id: 4,
-    title: 'My Business',
-    subtitle: 'PLOS build journal',
-    emoji: '💡',
-    color: '#7a6a3a',
-    spine: '#5c4e1e',
-    accent: '#ffbe4d',
-    entries: 22,
-    lastActive: 'Today',
-    streak: 7,
-    type: 'business',
-    completedDays: [1, 2, 4, 5, 7, 8, 9, 11, 14, 15, 17, 18, 20, 22, 23, 24, 26],
-  },
-  {
-    id: 5,
-    title: 'Mental Health',
-    subtitle: 'How I really feel',
-    emoji: '🌸',
-    color: '#7a3a5a',
-    spine: '#5c1e3d',
-    accent: '#e87f9b',
-    entries: 12,
-    lastActive: '1 week ago',
-    streak: 0,
-    type: 'wellness',
-    completedDays: [3, 7, 10, 14, 17, 19, 22],
-  },
-  {
-    id: 6,
-    title: 'Budget Diary',
-    subtitle: 'Money & spending',
-    emoji: '💰',
-    color: '#3a7a6a',
-    spine: '#1e5c4e',
-    accent: '#00c9a7',
-    entries: 34,
-    lastActive: 'Today',
-    streak: 11,
-    type: 'budget',
-    completedDays: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26],
-  },
+// ─── Default journal book definitions (visual templates — no fake entry counts) ──
+const JOURNAL_TEMPLATES = [
+  { id: 'personal',  title: 'Everyday Life',  subtitle: 'Thoughts & moments',   emoji: '🌿', color: '#5a7a5a', spine: '#3d5c3d', accent: '#7fb87f',  type: 'personal'  },
+  { id: 'spiritual', title: 'Bible & Faith',   subtitle: 'Scripture & reflection',emoji: '✝️', color: '#7a5a3a', spine: '#5c3d1e', accent: '#F5A623',  type: 'spiritual' },
+  { id: 'goals',     title: 'Goals & Vision',  subtitle: 'Dreams I am building',  emoji: '🎯', color: '#3a4a7a', spine: '#1e2d5c', accent: '#9b7fe8',  type: 'goals'     },
+  { id: 'business',  title: 'My Business',     subtitle: 'Build journal',          emoji: '💡', color: '#7a6a3a', spine: '#5c4e1e', accent: '#ffbe4d',  type: 'business'  },
+  { id: 'wellness',  title: 'Mental Health',   subtitle: 'How I really feel',      emoji: '🌸', color: '#7a3a5a', spine: '#5c1e3d', accent: '#e87f9b',  type: 'wellness'  },
+  { id: 'budget',    title: 'Budget Diary',    subtitle: 'Money & spending',       emoji: '💰', color: '#3a7a6a', spine: '#1e5c4e', accent: '#00c9a7',  type: 'budget'    },
 ];
 
 const filters = ['all', 'personal', 'spiritual', 'goals', 'business', 'wellness', 'budget'];
 
 // ─── Mini Calendar Component ────────────────────────────────────────────────────
 function MiniCal({ completedDays, accent }) {
-  const cells = [...Array(3).fill(null), ...Array.from({ length: 27 }, (_, i) => i + 1)];
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const todayNum = now.getDate();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDow = new Date(year, month, 1).getDay(); // 0=Sun
+  const monthLabel = now.toLocaleDateString('en-NG', { month: 'long', year: 'numeric' });
+
+  const cells = [...Array(firstDow).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
   return (
     <div style={{ marginTop: 12 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2 }}>
         {cells.map((d, i) => {
           if (!d) return <div key={i} style={{ aspectRatio: '1' }} />;
           const done = completedDays.includes(d);
-          const isToday = d === 27;
+          const isToday = d === todayNum;
           return (
             <div
               key={i}
@@ -119,7 +51,7 @@ function MiniCal({ completedDays, accent }) {
           );
         })}
       </div>
-      <div style={{ fontSize: 9, color: C.muted, marginTop: 5, textAlign: 'right' }}>April 2026</div>
+      <div style={{ fontSize: 9, color: C.muted, marginTop: 5, textAlign: 'right' }}>{monthLabel}</div>
     </div>
   );
 }
@@ -268,10 +200,11 @@ function BookCard({ journal, onClick, delay, currentSeason }) {
 }
 
 // ─── New Journal Card Component ─────────────────────────────────────────────────
-function NewJournalCard() {
+function NewJournalCard({ onClick }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
+      onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -324,29 +257,30 @@ function NewJournalCard() {
 function OpenJournal({ journal, onClose }) {
   const navigate = useNavigate();
   const [tab, setTab] = useState('entries');
+  const [entries, setEntries] = useState([]);
+  const [loadingEntries, setLoadingEntries] = useState(true);
 
-  const entries = [
-    {
-      date: 'Today, Apr 27',
-      preview: 'Feeling a lot better today. Got back to working on PLOS and made real progress...',
-      words: 312,
-      mood: '😊',
-    },
-    {
-      date: 'Apr 25',
-      preview: 'Been sick for a few days. Hard to focus but I am still thinking about the app...',
-      words: 188,
-      mood: '😔',
-    },
-    {
-      date: 'Apr 23',
-      preview: 'Fixed the PostgreSQL bug today. 63 locations across 8 files. Unbelievable.',
-      words: 445,
-      mood: '💪',
-    },
-  ];
+  useEffect(() => {
+    setLoadingEntries(true);
+    api.get('/journal/entries?limit=20')
+      .then(res => {
+        const all = res.data?.entries || [];
+        setEntries(all);
+      })
+      .catch(() => setEntries([]))
+      .finally(() => setLoadingEntries(false));
+  }, [journal.type]);
 
-  const cells = [...Array(3).fill(null), ...Array.from({ length: 27 }, (_, i) => i + 1)];
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const todayNum = now.getDate();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDow = new Date(year, month, 1).getDay();
+  const monthLabel = now.toLocaleDateString('en-NG', { month: 'long', year: 'numeric' });
+
+  const writtenDays = entries.map(e => new Date(e.recorded_at).getDate());
+  const cells = [...Array(firstDow).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
 
   return (
     <div
@@ -508,9 +442,18 @@ function OpenJournal({ journal, onClose }) {
                   </div>
                 </div>
               </div>
-              {entries.map((e, i) => (
+              {loadingEntries ? (
+                <div style={{ textAlign: 'center', padding: '32px 0', color: C.muted, fontSize: 12 }}>Loading entries…</div>
+              ) : entries.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                  <div style={{ fontSize: 28, marginBottom: 8 }}>✍️</div>
+                  <div style={{ fontSize: 13, color: C.warm, marginBottom: 4 }}>No entries yet</div>
+                  <div style={{ fontSize: 11, color: C.muted }}>Write your first entry to see it here.</div>
+                </div>
+              ) : entries.map((e, i) => (
                 <div
                   key={i}
+                  onClick={() => navigate(`/journal/page?id=${e.id}`)}
                   style={{
                     background: C.bg3,
                     border: `1px solid ${C.border2}`,
@@ -521,13 +464,14 @@ function OpenJournal({ journal, onClose }) {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: journal.accent }}>{e.date}</div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: journal.accent }}>
+                      {new Date(e.recorded_at).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' })}
+                    </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <span style={{ fontSize: 14 }}>{e.mood}</span>
-                      <span style={{ fontSize: 10, color: C.muted }}>{e.words} words</span>
+                      {e.word_count > 0 && <span style={{ fontSize: 10, color: C.muted }}>{e.word_count} words</span>}
                     </div>
                   </div>
-                  <div style={{ fontSize: 12, color: C.warm, lineHeight: 1.6, opacity: 0.8 }}>{e.preview}</div>
+                  <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic' }}>Entry is encrypted — tap to read</div>
                 </div>
               ))}
             </div>
@@ -535,7 +479,7 @@ function OpenJournal({ journal, onClose }) {
 
           {tab === 'calendar' && (
             <div>
-              <div style={{ fontSize: 13, color: C.warm, marginBottom: 16 }}>April 2026 — your writing activity</div>
+              <div style={{ fontSize: 13, color: C.warm, marginBottom: 16 }}>{monthLabel} — your writing activity</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6, marginBottom: 8 }}>
                 {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
                   <div key={i} style={{ fontSize: 10, color: C.muted, textAlign: 'center' }}>
@@ -546,8 +490,8 @@ function OpenJournal({ journal, onClose }) {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6 }}>
                 {cells.map((d, i) => {
                   if (!d) return <div key={i} style={{ aspectRatio: '1' }} />;
-                  const done = journal.completedDays.includes(d);
-                  const isToday = d === 27;
+                  const done = writtenDays.includes(d);
+                  const isToday = d === todayNum;
                   return (
                     <div
                       key={i}
@@ -570,9 +514,12 @@ function OpenJournal({ journal, onClose }) {
               </div>
               <div style={{ marginTop: 20, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
                 {[
-                  [journal.completedDays.length, 'days written'],
-                  [journal.streak, 'day streak'],
-                  [journal.entries, 'total entries'],
+                  [writtenDays.length, 'days written this month'],
+                  [entries.length, 'total entries loaded'],
+                  [entries.filter(e => {
+                    const d = new Date(e.recorded_at);
+                    return d.getMonth() === month && d.getFullYear() === year;
+                  }).length, 'entries this month'],
                 ].map(([v, l], i) => (
                   <div
                     key={i}
@@ -616,17 +563,17 @@ function OpenJournal({ journal, onClose }) {
                   <div style={{ fontSize: 12, fontWeight: 600, color: '#9b7fe8' }}>Lumi&apos;s analysis</div>
                 </div>
                 <div style={{ fontSize: 12, color: C.warm, lineHeight: 1.7 }}>
-                  You write most consistently in the mornings, especially on weekdays. Your entries are longer when
-                  you have had a breakthrough or solved a problem. This month you skipped 6 days — all were weekends.
-                  Your mood scores are higher in entries where you mention building or creating.
+                  {entries.length === 0
+                    ? 'Write a few entries and Lumi will start surfacing patterns in your writing — consistency, mood trends, and what topics energise you most.'
+                    : `You have ${entries.length} entries loaded. Keep writing — Lumi learns your patterns over time and will share insights here.`}
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 {[
-                  ['📝', 'Avg. entry length', '287 words'],
-                  ['⏰', 'Most active time', '9–11am'],
-                  ['😊', 'Top mood', 'Determined 💪'],
-                  ['🔤', 'Most used word', '"Build"'],
+                  ['📝', 'Total entries', entries.length || '—'],
+                  ['📅', 'Days written this month', writtenDays.length || '—'],
+                  ['🔥', 'Recent streak', entries.length > 0 ? 'Check History' : '—'],
+                  ['✍️', 'Latest entry', entries[0] ? new Date(entries[0].recorded_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' }) : '—'],
                 ].map(([icon, label, value], i) => (
                   <div
                     key={i}
@@ -656,6 +603,78 @@ export default function JournalDashboard() {
   const navigate = useNavigate();
   const [openJournal, setOpenJournal] = useState(null);
   const [filter, setFilter] = useState('all');
+  const [showWizard, setShowWizard] = useState(false);
+  const [customJournals, setCustomJournals] = useState([]);
+
+  // Load custom journal types created by the user
+  useEffect(() => {
+    api.get('/journal/pages/types').then(res => setCustomJournals(res.data?.types || [])).catch(() => {});
+  }, []);
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchDate, setSearchDate] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const searchTimerRef = useRef(null);
+
+  const runSearch = useCallback(async (q, date) => {
+    if (!q && !date) { setSearchResults([]); return; }
+    setSearching(true);
+    try {
+      const params = new URLSearchParams({ limit: 50 });
+      if (q) params.set('q', q);
+      if (date) params.set('date', date);
+      const res = await api.get(`/journal/pages?${params}`);
+      setSearchResults(res.data?.entries || []);
+    } catch {
+      setSearchResults([]);
+    }
+    setSearching(false);
+  }, []);
+
+  useEffect(() => {
+    clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => runSearch(searchQuery, searchDate), 400);
+  }, [searchQuery, searchDate, runSearch]);
+
+  // Daily entries from Lumi — the cross-posted narrative of each day
+  const [dailyEntries, setDailyEntries] = useState([]);
+  const [showDailyEntry, setShowDailyEntry] = useState(null);
+
+  useEffect(() => {
+    api.get('/lumi/daily-entries?limit=14')
+      .then(res => setDailyEntries(res.data?.entries || []))
+      .catch(() => {});
+  }, []);
+
+  // Real stats loaded from API — merged onto the visual templates
+  const [journalStats, setJournalStats] = useState({});
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  useEffect(() => {
+    api.get('/journal/entries?limit=200')
+      .then(res => {
+        const allEntries = res.data?.entries || [];
+        const now = new Date();
+        const stats = {};
+        allEntries.forEach(e => {
+          const d = new Date(e.recorded_at);
+          const daysAgo = Math.floor((now - d) / (1000 * 60 * 60 * 24));
+          // We don't have journal_type per entry in the encrypted schema;
+          // count everything toward the library total
+          if (!stats._total) stats._total = { count: 0, days: new Set(), latestDaysAgo: null };
+          stats._total.count++;
+          stats._total.days.add(d.toDateString());
+          if (stats._total.latestDaysAgo === null || daysAgo < stats._total.latestDaysAgo) {
+            stats._total.latestDaysAgo = daysAgo;
+          }
+        });
+        setJournalStats(stats);
+      })
+      .catch(() => setJournalStats({}))
+      .finally(() => setStatsLoading(false));
+  }, []);
 
   // Season detection state
   const [currentSeason, setCurrentSeason] = useState(null);
@@ -691,7 +710,22 @@ export default function JournalDashboard() {
     return getBookTheme(activeBookType, currentSeason);
   }, [activeBookType, currentSeason]);
 
-  const filtered = filter === 'all' ? JOURNALS : JOURNALS.filter((j) => j.type === filter);
+  // Merge visual templates with real stats
+  const JOURNALS = JOURNAL_TEMPLATES.map(t => ({
+    ...t,
+    entries: journalStats._total?.count || 0,
+    streak: 0,
+    lastActive: journalStats._total?.latestDaysAgo === 0 ? 'Today' : journalStats._total?.latestDaysAgo === 1 ? 'Yesterday' : journalStats._total?.latestDaysAgo != null ? `${journalStats._total.latestDaysAgo} days ago` : 'No entries yet',
+    completedDays: [],
+  }));
+
+  const filtered = filter === 'all' ? JOURNALS : JOURNAL_TEMPLATES.filter((j) => j.type === filter).map(t => ({
+    ...t,
+    entries: journalStats._total?.count || 0,
+    streak: 0,
+    lastActive: journalStats._total?.latestDaysAgo === 0 ? 'Today' : journalStats._total?.latestDaysAgo === 1 ? 'Yesterday' : journalStats._total?.latestDaysAgo != null ? `${journalStats._total.latestDaysAgo} days ago` : 'No entries yet',
+    completedDays: [],
+  }));
 
   return (
     <>
@@ -746,8 +780,8 @@ export default function JournalDashboard() {
             </div>
               <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1 }}>My Library</div>
               <div style={{ fontSize: 12, color: C.muted, marginTop: 6 }}>
-                {JOURNALS.length} journals · {JOURNALS.reduce((a, j) => a + j.entries, 0)} total entries ·{' '}
-                {JOURNALS.filter((j) => j.lastActive === 'Today').length} updated today
+                {JOURNAL_TEMPLATES.length} journals · {statsLoading ? '…' : (journalStats._total?.count || 0)} total entries
+                {journalStats._total?.latestDaysAgo === 0 ? ' · updated today' : ''}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -765,6 +799,7 @@ export default function JournalDashboard() {
                 🎙 Quick voice entry
               </div>
               <div
+                onClick={() => setShowWizard(true)}
                 style={{
                   background: 'rgba(245,166,35,0.12)',
                   border: `1px solid ${C.amber}40`,
@@ -815,8 +850,129 @@ export default function JournalDashboard() {
           </div>
         </div>
 
-      {/* Bookshelf grid */}
-      <div
+      {/* Search bar + date picker */}
+      <div style={{ padding: '12px 32px 0', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <input
+          type="text"
+          placeholder="🔍 Search your journals…"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          style={{
+            flex: 1, minWidth: 200, padding: '9px 14px', borderRadius: 10,
+            background: 'rgba(255,255,255,0.05)', border: `1px solid ${C.border2}`,
+            color: C.text, fontSize: 13, fontFamily: 'inherit', outline: 'none',
+          }}
+        />
+        <input
+          type="date"
+          value={searchDate}
+          onChange={e => setSearchDate(e.target.value)}
+          style={{
+            padding: '9px 12px', borderRadius: 10,
+            background: 'rgba(255,255,255,0.05)', border: `1px solid ${C.border2}`,
+            color: C.text, fontSize: 13, fontFamily: 'inherit', outline: 'none',
+            colorScheme: 'dark',
+          }}
+        />
+        {(searchQuery || searchDate) && (
+          <button
+            onClick={() => { setSearchQuery(''); setSearchDate(''); setSearchResults([]); }}
+            style={{
+              padding: '9px 14px', borderRadius: 10, border: `1px solid ${C.border2}`,
+              background: 'transparent', color: C.muted, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
+      {/* Search results */}
+      {(searchQuery || searchDate) && (
+        <div style={{ padding: '12px 32px 0' }}>
+          {searching ? (
+            <div style={{ fontSize: 12, color: C.muted }}>Searching…</div>
+          ) : searchResults.length === 0 ? (
+            <div style={{ fontSize: 12, color: C.muted }}>No entries found.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ fontSize: 11, color: C.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}
+              </div>
+              {searchResults.map((entry, i) => {
+                const snippet = JSON.stringify(entry.fields || {})
+                  .replace(/[{}"]/g, '').replace(/:/g, ': ').slice(0, 120);
+                return (
+                  <div
+                    key={entry.id || i}
+                    onClick={() => navigate(`/journal/page?type=${entry.journal_type}&template=${encodeURIComponent(entry.template_name)}&date=${entry.entry_date}`)}
+                    style={{
+                      padding: '10px 14px', borderRadius: 10, cursor: 'pointer',
+                      background: 'rgba(255,255,255,0.04)', border: `1px solid ${C.border2}`,
+                      display: 'flex', alignItems: 'baseline', gap: 12,
+                    }}
+                  >
+                    <div style={{ fontSize: 11, color: C.amber, fontWeight: 600, flexShrink: 0 }}>
+                      {new Date(entry.entry_date + 'T00:00:00').toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </div>
+                    <div style={{ fontSize: 11, color: C.muted, flexShrink: 0, textTransform: 'capitalize' }}>
+                      {entry.journal_type} · {entry.template_name}
+                    </div>
+                    <div style={{ fontSize: 12, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {snippet}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Daily Life entries from Lumi — shown when filter is 'all' or 'personal' */}
+      {!searchQuery && !searchDate && (filter === 'all' || filter === 'personal') && dailyEntries.length > 0 && (
+        <div style={{ padding: '0 32px 4px' }}>
+          <div style={{ fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>
+            📖 Daily Life — Lumi's log of your days
+          </div>
+          <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 8 }}>
+            {dailyEntries.map((entry, i) => {
+              const d = new Date(entry.entry_date + 'T00:00:00');
+              const isToday = entry.entry_date === new Date().toISOString().slice(0, 10);
+              const secs = entry.sections || {};
+              const expCount = (secs.expenses || []).length;
+              const workoutCount = (secs.workouts || []).length;
+              const lifeCount = (secs.life_notes || []).length;
+              return (
+                <div key={entry.id || i}
+                  onClick={() => setShowDailyEntry(entry)}
+                  style={{
+                    flexShrink: 0, width: 160, background: isToday ? 'rgba(200,149,92,0.12)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${isToday ? 'rgba(200,149,92,0.3)' : C.border}`,
+                    borderRadius: 12, padding: '12px 14px', cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: isToday ? C.amber : C.text, marginBottom: 4 }}>
+                    {isToday ? 'Today' : d.toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' })}
+                  </div>
+                  {entry.mood && <div style={{ fontSize: 10, color: C.muted, marginBottom: 6, fontStyle: 'italic' }}>{entry.mood}</div>}
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {expCount > 0 && <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 10, background: 'rgba(232,164,80,0.15)', color: C.amber }}>₦ {expCount} item{expCount > 1 ? 's' : ''}</span>}
+                    {workoutCount > 0 && <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 10, background: 'rgba(0,212,170,0.12)', color: '#00d4aa' }}>💪</span>}
+                    {lifeCount > 0 && <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 10, background: 'rgba(165,180,252,0.12)', color: '#a5b4fc' }}>📝 {lifeCount}</span>}
+                  </div>
+                  <div style={{ fontSize: 10, color: C.muted, marginTop: 6, lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                    {entry.narrative?.split('\n')[0] || '—'}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Bookshelf grid — hidden during search */}
+      {!searchQuery && !searchDate && <div
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))',
@@ -827,8 +983,64 @@ export default function JournalDashboard() {
         {filtered.map((j, i) => (
           <BookCard key={j.id} journal={j} onClick={setOpenJournal} delay={i * 0.06} currentSeason={currentSeason} />
         ))}
-        <NewJournalCard />
-      </div>
+        {customJournals.map((cj, i) => (
+          <BookCard
+            key={cj.id}
+            journal={{
+              id: cj.type_key,
+              title: cj.label,
+              subtitle: `${(cj.templates || []).length} section${(cj.templates || []).length !== 1 ? 's' : ''}`,
+              emoji: cj.emoji || '📓',
+              color: cj.color || '#7C3AED',
+              spine: cj.color ? cj.color + 'bb' : '#5a3aed',
+              accent: cj.color || '#a5b4fc',
+              type: cj.type_key,
+              entries: 0, streak: 0, lastActive: 'No entries yet', completedDays: [],
+            }}
+            onClick={(j) => navigate(`/journal/page?type=${j.type}`)}
+            delay={(filtered.length + i) * 0.06}
+            currentSeason={currentSeason}
+          />
+        ))}
+        <NewJournalCard onClick={() => setShowWizard(true)} />
+      </div>}
+
+      {/* Daily Entry Modal */}
+      {showDailyEntry && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}
+          onClick={e => e.target===e.currentTarget && setShowDailyEntry(null)}>
+          <div style={{ background: C.bg2, border: `1px solid ${C.border}`, borderRadius: 20, width: '100%', maxWidth: 620, maxHeight: '80vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '20px 24px', borderBottom: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 700 }}>
+                  {new Date(showDailyEntry.entry_date + 'T00:00:00').toLocaleDateString('en-NG', { weekday:'long', day:'numeric', month:'long', year:'numeric' })}
+                </div>
+                {showDailyEntry.mood && <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>Mood: {showDailyEntry.mood}</div>}
+              </div>
+              <button onClick={() => setShowDailyEntry(null)} style={{ background:'none', border:'none', color: C.muted, fontSize:20, cursor:'pointer', padding:'2px 6px' }}>×</button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+              {showDailyEntry.narrative?.split('\n').filter(Boolean).map((line, i) => (
+                <div key={i} style={{ fontSize: 13, color: C.text, lineHeight: 1.8, marginBottom: 6, padding: '6px 0', borderBottom: `1px solid ${C.border2}` }}>
+                  {line}
+                </div>
+              ))}
+              {/* Structured data */}
+              {(showDailyEntry.sections?.expenses || []).length > 0 && (
+                <div style={{ marginTop: 16 }}>
+                  <div style={{ fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Expenses</div>
+                  {showDailyEntry.sections.expenses.map((e, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '5px 0', borderBottom: `1px solid ${C.border2}` }}>
+                      <span>{e.category}{e.note ? ` — ${e.note}` : ''}</span>
+                      <span style={{ color: C.amber, fontWeight: 600 }}>{e.currency || '₦'}{Number(e.amount).toLocaleString('en-NG')}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
         {/* Active theme indicator */}
         {theme && (
@@ -874,10 +1086,10 @@ export default function JournalDashboard() {
           }}
         >
           {[
-            [JOURNALS.reduce((a, j) => a + j.streak, 0), 'combined streak days', C.amber],
-            [JOURNALS.reduce((a, j) => a + j.entries, 0), 'total entries written', C.teal],
-            [JOURNALS.filter((j) => j.lastActive === 'Today').length, 'journals active today', C.purple],
-            [JOURNALS.length, 'books in library', C.rose],
+            [statsLoading ? '…' : (journalStats._total?.days?.size || 0), 'days written total', C.amber],
+            [statsLoading ? '…' : (journalStats._total?.count || 0), 'total entries written', C.teal],
+            [journalStats._total?.latestDaysAgo === 0 ? '✓' : '—', 'written today', C.purple],
+            [JOURNAL_TEMPLATES.length, 'books in library', C.rose],
           ].map(([v, l, c], i) => (
             <div key={i}>
               <div style={{ fontSize: 20, fontWeight: 700, color: c }}>{v}</div>
@@ -902,8 +1114,19 @@ export default function JournalDashboard() {
         </div>
       </SidebarLayout>
 
-      {/* Modal */}
+      {/* Journal detail modal */}
       {openJournal && <OpenJournal journal={openJournal} onClose={() => setOpenJournal(null)} />}
+
+      {/* Create book wizard */}
+      {showWizard && (
+        <CreateBookWizard
+          onClose={() => setShowWizard(false)}
+          onCreated={(newType) => {
+            setCustomJournals(prev => [...prev, newType]);
+            setShowWizard(false);
+          }}
+        />
+      )}
     </>
   );
 }

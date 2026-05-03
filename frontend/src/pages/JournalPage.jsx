@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import './JournalPage.css';
+import api from '../lib/api';
 
 // ─── JOURNAL DATA ─────────────────────────────────────────────────────────────
 const JOURNALS = {
@@ -22,11 +23,11 @@ const JOURNALS = {
     bgClass: 'bg-budget',
     templates: ['Blank Page', 'Daily Expenses', 'Weekly Budget', 'Income Tracker', 'Savings Goal', 'Bills Planner', 'Spending Review']
   },
-  habit: {
-    label: '🔥 Habits',
-    color: '#F87171',
-    bgClass: 'bg-habit',
-    templates: ['Blank Page', 'Habit Tracker', 'Streak Log', 'Routine Planner', 'Morning Ritual', '21-Day Challenge', 'Accountability Log']
+  wellness: {
+    label: '🌸 Wellness',
+    color: '#22B8CF',
+    bgClass: 'bg-wellness',
+    templates: ['Blank Page', 'Daily Wellness', 'Mood Tracker', 'Symptoms Diary', 'Fitness Log', 'Habit Tracker', 'Sleep Log']
   },
   goals: {
     label: '🎯 Goals',
@@ -34,11 +35,11 @@ const JOURNALS = {
     bgClass: 'bg-goals',
     templates: ['Blank Page', 'Year Vision', 'Quarterly Plan', 'Weekly Wins', 'Project Board', 'Milestone Log', 'Vision Map']
   },
-  health: {
-    label: '🌸 Health',
-    color: '#22B8CF',
-    bgClass: 'bg-health',
-    templates: ['Blank Page', 'Daily Wellness', 'Mood Tracker', 'Symptoms Diary', 'Fitness Log', 'Mental Health', 'Sleep Log']
+  business: {
+    label: '💡 Business',
+    color: '#F5A623',
+    bgClass: 'bg-business',
+    templates: ['Blank Page', 'Morning Pages', 'Brain Dump', 'Project Board', 'Milestone Log', 'Vision Map', 'Accountability Log']
   }
 };
 
@@ -46,9 +47,9 @@ const STICKERS = {
   personal: ['📝', '💌', '🌸', '☀️', '🌙', '💭', '🦋', '🌿', '✨', '❤️', '🎵', '🌈', '📸', '🕊️', '🌺', '💐', '🌻', '🎉', '🥰', '🍃'],
   spiritual: ['🙏', '✝️', '📖', '🕯️', '🌟', '🕊️', '💜', '⭐', '🌅', '🌿', '🙌', '💫', '🌸', '📿', '✨', '🌙', '🫶', '📜', '🌾', '🏛️'],
   budget: ['💰', '💳', '📊', '🏦', '💵', '🎯', '📈', '🛒', '🏠', '✅', '🔐', '💡', '🎁', '📉', '🌱', '💎', '🏆', '🧾', '💸', '🪙'],
-  habit: ['💪', '🔥', '⚡', '🏃', '🎯', '✅', '🌟', '🏆', '📅', '⏰', '🥗', '💧', '🧘', '😴', '🎽', '🍎', '🧠', '📝', '🌅', '🦁'],
+  wellness: ['💊', '🩺', '🧘', '💧', '🥗', '❤️', '🌡️', '🏃', '😴', '🧬', '🍎', '💪', '🌿', '🩹', '🧠', '🌸', '⚕️', '🥦', '🫶', '🫁'],
   goals: ['🎯', '🚀', '🏆', '⭐', '💡', '🌟', '🗺️', '🧭', '🔑', '💪', '📋', '✅', '🏅', '🌱', '🎉', '💫', '🔥', '🎊', '🌈', '🦅'],
-  health: ['💊', '🩺', '🧘', '💧', '🥗', '❤️', '🌡️', '🏃', '😴', '🧬', '🍎', '💪', '🌿', '🩹', '🧠', '🌸', '⚕️', '🥦', '🫶', '🫁']
+  business: ['💡', '📊', '🏢', '🤝', '💰', '📈', '🚀', '🔑', '💼', '📋', '✅', '🏆', '🎯', '💫', '🌟', '🔥', '⚡', '🎊', '🦅', '💎']
 };
 
 const ALL_STICKERS = ['😊', '😢', '😤', '🤩', '😌', '🥺', '😴', '🤔', '❤️', '💔', '✨', '🔥', '💯', '🎉', '🌸', '🌿', '🍃', '☀️', '🌙', '⭐', '🎵', '📸', '🎨', '📝', '💌', '🌈', '🦋', '🕊️', '🌺', '🌻', '🙏', '💪', '🏆', '🎯', '🚀', '💡', '🔑', '🌟', '💫', '✅', '📖', '🍎', '💧', '🥗', '😴', '🧘', '❤️‍🔥', '🫶', '🌊', '🏔️', '🦋', '🎪', '🌄', '🌠', '🎭', '🌊', '⛰️', '🌻', '🦚', '🌺'];
@@ -57,14 +58,25 @@ const ALL_STICKERS = ['😊', '😢', '😤', '🤩', '😌', '🥺', '😴', '�
 export default function JournalPage() {
   const [searchParams] = useSearchParams();
   const initialType = searchParams.get('type') || 'personal';
+  const initialTemplate = searchParams.get('template') || null;
+  const initialDate = searchParams.get('date') || null;
+
+  // Resolve template index from ?template= query param
+  const resolvedTmplIndex = (() => {
+    if (!initialTemplate || !JOURNALS[initialType]) return 0;
+    const idx = JOURNALS[initialType].templates.findIndex(
+      t => t.toLowerCase() === decodeURIComponent(initialTemplate).toLowerCase()
+    );
+    return idx >= 0 ? idx : 0;
+  })();
 
   const [journal, setJournal] = useState(initialType);
-  const [tmpl, setTmpl] = useState(0);
+  const [tmpl, setTmpl] = useState(resolvedTmplIndex);
   const [paper, setPaper] = useState('lined');
   const [pageColor, setPageColor] = useState('#fdf8ef'); // Custom page color
-  const [accent, setAccent] = useState(JOURNALS[initialType].color);
+  const [accent, setAccent] = useState(JOURNALS[initialType]?.color || '#F5A623');
   const [items, setItems] = useState([]);
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(initialDate ? new Date(initialDate + 'T00:00:00') : new Date());
   const [water, setWater] = useState(3);
   const [mood, setMood] = useState(null);
   const [lumiInput, setLumiInput] = useState('');
@@ -78,8 +90,105 @@ export default function JournalPage() {
   const [activeField, setActiveField] = useState(null);
   const [isFloatingListening, setIsFloatingListening] = useState(false);
 
-  const canvasRef = useRef(null);
-  const recognitionRef = useRef(null);
+  const canvasRef       = useRef(null);
+  const recognitionRef  = useRef(null);
+
+  // ── Live page fields: loaded from API, saved on blur ──────────────────────────
+  // pageFields holds the current named-field values for the active template.
+  // Lumi writes here via the API; the user edits here; both paths autosave.
+  const [pageFields, setPageFields]     = useState({});
+  const [pageEntryId, setPageEntryId]   = useState(null);  // UUID from DB (null = new)
+  const [fieldsDirty, setFieldsDirty]   = useState(false);
+  const saveTimerRef = useRef(null);
+
+  const templateName = JOURNALS[journal]?.templates[tmpl] || 'Blank Page';
+  const todayISO = currentDate.toISOString().slice(0, 10);
+
+  // Load fields whenever journal type or template changes
+  const loadPageFields = useCallback(async () => {
+    try {
+      const res = await api.get('/journal/pages', {
+        params: { journal_type: journal, template_name: templateName, date: todayISO },
+      });
+      const entry = res.data?.entries?.[0];
+      if (entry) {
+        setPageFields(entry.fields || {});
+        setPageEntryId(entry.id);
+      } else if (journal === 'budget' && templateName === 'Daily Expenses') {
+        // Pre-populate from budget_entries for today (two-way sync)
+        try {
+          const budgetRes = await api.get('/budget/entries', { params: { days: 1, type: 'expense', limit: 50 } });
+          const today = new Date().toISOString().slice(0, 10);
+          const todayEntries = (budgetRes.data?.entries || []).filter(e => e.entry_date === today);
+          if (todayEntries.length > 0) {
+            const rows = todayEntries.map(e => ({
+              description: e.note || e.category || '',
+              category: e.category || 'other',
+              amount: String(e.amount),
+            }));
+            setPageFields({ rows });
+          } else {
+            setPageFields({});
+          }
+        } catch {
+          setPageFields({});
+        }
+        setPageEntryId(null);
+      } else {
+        setPageFields({});
+        setPageEntryId(null);
+      }
+    } catch {
+      // offline / not yet created — start empty
+      setPageFields({});
+      setPageEntryId(null);
+    }
+  }, [journal, templateName, todayISO]);
+
+  useEffect(() => { loadPageFields(); }, [loadPageFields]);
+
+  // Autosave debounced — fires 1.5s after last keystroke
+  const saveFields = useCallback(async (fields) => {
+    try {
+      const res = await api.post('/journal/pages', {
+        journal_type: journal,
+        template_name: templateName,
+        entry_date: todayISO,
+        fields,
+        source: 'user',
+      });
+      setPageEntryId(res.data?.entry?.id || null);
+      setFieldsDirty(false);
+    } catch (err) {
+      console.error('Page fields save error:', err.message);
+    }
+  }, [journal, templateName, todayISO]);
+
+  // Helper called by every textarea/input in templates
+  const setField = useCallback((key, value) => {
+    setPageFields(prev => {
+      const next = { ...prev, [key]: value };
+      // Debounced save
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => saveFields(next), 1500);
+      setFieldsDirty(true);
+      return next;
+    });
+  }, [saveFields]);
+
+  // Helper for array fields (e.g. Daily Expenses rows, Habit Tracker checks)
+  const setFieldRow = useCallback((key, index, subKey, value) => {
+    setPageFields(prev => {
+      const arr = Array.isArray(prev[key]) ? [...prev[key]] : [];
+      if (!arr[index]) arr[index] = {};
+      arr[index] = { ...arr[index], [subKey]: value };
+      const next = { ...prev, [key]: arr };
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => saveFields(next), 1500);
+      setFieldsDirty(true);
+      return next;
+    });
+  }, [saveFields]);
 
   // Update accent color when journal type changes
   useEffect(() => {
@@ -310,15 +419,73 @@ export default function JournalPage() {
     recognition.start();
   };
 
-  // ─── LUMI AI ──────────────────────────────────────────────────────────────────
+  // ─── LUMI AI — routes through backend with full shared context ───────────────
   const sendToLumi = async () => {
-    if (!lumiInput.trim()) return;
-    setLumiResponse('Lumi is thinking...');
-    // TODO: Call /api/lumi/message endpoint
-    setTimeout(() => {
-      setLumiResponse(`I heard you say: "${lumiInput}". I'll help you add that to your ${journal} journal.`);
-      setLumiInput('');
-    }, 1000);
+    const msg = lumiInput.trim();
+    if (!msg) return;
+    setLumiInput('');
+    setLumiResponse('✨ Lumi is thinking…');
+
+    try {
+      const { default: api } = await import('../lib/api');
+
+      // Route through the main /lumi/message endpoint.
+      // The backend calls buildUserContext() before answering, so this Lumi instance
+      // sees the exact same budget entries, habits, and schedule as TalkToLumi does.
+      const res = await api.post('/lumi/message', {
+        text: msg,
+        source: 'journal',
+      });
+      const data = res.data;
+      const reply = data.message || "I'm here. Tell me more.";
+      setLumiResponse(reply);
+
+      // If Lumi logged budget entries, add green sticky notes for each one
+      if (data.savedItems?.length > 0) {
+        data.savedItems.forEach((item, i) => {
+          if (item.type === 'budget_entry') {
+            setItems(prev => [...prev, {
+              type: 'sticky',
+              color: '#A5D6A7',
+              x: 50 + Math.random() * 100,
+              y: 80 + i * 60 + Math.random() * 40,
+              text: `💰 ${item.label}`,
+              id: Date.now() + i,
+            }]);
+          }
+          if (item.type === 'workout_note') {
+            setItems(prev => [...prev, {
+              type: 'sticky',
+              color: '#B3E5FC',
+              x: 60 + Math.random() * 100,
+              y: 160 + i * 60 + Math.random() * 40,
+              text: `💪 ${item.label}`,
+              id: Date.now() + i + 100,
+            }]);
+          }
+        });
+      }
+
+      // If Lumi needs confirmation (journal draft), add a yellow sticky draft
+      if (data.needsConfirmation && data.pendingState?.content) {
+        setItems(prev => [...prev, {
+          type: 'sticky',
+          color: '#FFF9C4',
+          x: 60 + Math.random() * 80,
+          y: 120 + Math.random() * 80,
+          text: `📝 Draft: ${data.pendingState.content.slice(0, 180)}`,
+          id: Date.now() + 200,
+        }]);
+      }
+    } catch (err) {
+      const status = err?.response?.status;
+      if (status === 401) {
+        setLumiResponse('Session expired — please log in again.');
+      } else {
+        setLumiResponse("I'm having trouble connecting. Check your network and try again.");
+        console.error('Journal Lumi error:', err);
+      }
+    }
   };
 
   const toggleVoice = () => {
@@ -348,23 +515,26 @@ export default function JournalPage() {
     recognition.start();
   };
 
-  // ─── SAVE ─────────────────────────────────────────────────────────────────────
+  // ─── SAVE — flushes pageFields + mood/water immediately ─────────────────────
   const savePage = async () => {
-    const data = {
-      journal_type: journal,
-      template: JOURNALS[journal].templates[tmpl],
-      paper_style: paper,
-      accent_color: accent,
-      items: items,
-      date: currentDate.toISOString(),
-      content: '', // TODO: Extract content from textareas
-      mood,
-      water
+    const fields = {
+      ...pageFields,
+      ...(mood ? { mood } : {}),
+      ...(water ? { water } : {}),
     };
-
-    console.log('Saving page:', data);
-    // TODO: POST /api/journal/entries
-    alert('Page saved! (API integration pending)');
+    clearTimeout(saveTimerRef.current);
+    await saveFields(fields);
+    // Visual confirmation without a blocking alert
+    const toast = document.createElement('div');
+    toast.textContent = '✓ Page saved';
+    Object.assign(toast.style, {
+      position:'fixed', bottom:'24px', left:'50%', transform:'translateX(-50%)',
+      background:'rgba(0,212,170,0.15)', border:'1px solid rgba(0,212,170,0.3)',
+      color:'#00d4aa', padding:'10px 22px', borderRadius:'10px', fontSize:'13px',
+      fontWeight:'600', zIndex:'9999', fontFamily:'DM Sans, sans-serif',
+    });
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2200);
   };
 
   // ─── COLOR HELPERS ────────────────────────────────────────────────────────────
@@ -393,7 +563,8 @@ export default function JournalPage() {
   // ─── RENDER TEMPLATE CONTENT ──────────────────────────────────────────────────
   const renderTemplateContent = () => {
     const isDark = paper === 'dark';
-    const templateName = JOURNALS[journal].templates[tmpl];
+    // templateName is already in state — use the state version (not a local re-derive)
+    const _templateName = JOURNALS[journal].templates[tmpl];
 
     // Blank page for all journal types
     if (tmpl === 0) {
@@ -417,23 +588,41 @@ export default function JournalPage() {
       );
     }
 
-    // Template-specific content
-    switch (journal) {
-      case 'personal':
-        return renderPersonalTemplate(templateName, isDark);
-      case 'spiritual':
-        return renderSpiritualTemplate(templateName, isDark);
-      case 'budget':
-        return renderBudgetTemplate(templateName, isDark);
-      case 'habit':
-        return renderHabitTemplate(templateName, isDark);
-      case 'goals':
-        return renderGoalsTemplate(templateName, isDark);
-      case 'health':
-        return renderHealthTemplate(templateName, isDark);
-      default:
-        return null;
-    }
+    // Template-specific content — wrapped with Lumi indicator if AI-populated
+    const templateContent = (() => {
+      switch (journal) {
+        case 'personal':  return renderPersonalTemplate(_templateName, isDark);
+        case 'spiritual': return renderSpiritualTemplate(_templateName, isDark);
+        case 'budget':    return renderBudgetTemplate(_templateName, isDark);
+        case 'wellness':  return renderWellnessTemplate(_templateName, isDark);
+        case 'goals':     return renderGoalsTemplate(_templateName, isDark);
+        case 'business':  return renderGoalsTemplate(_templateName, isDark);
+        default:          return null;
+      }
+    })();
+
+    const hasLumiContent = Object.keys(pageFields).length > 0;
+    const labelColor = getLabelColor();
+
+    return (
+      <>
+        {hasLumiContent && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10,
+            padding: '6px 12px', borderRadius: 8,
+            background: 'rgba(165,180,252,0.08)',
+            border: '1px solid rgba(165,180,252,0.15)',
+          }}>
+            <span style={{ fontSize: 13 }}>✨</span>
+            <span style={{ fontSize: 11, color: 'rgba(165,180,252,0.8)', fontStyle: 'italic' }}>
+              Lumi filled this page from your conversation
+              {fieldsDirty ? ' · saving…' : ' · saved'}
+            </span>
+          </div>
+        )}
+        {templateContent}
+      </>
+    );
   };
 
   // ─── TEMPLATE RENDERERS (PERSONAL) ────────────────────────────────────────────
@@ -442,19 +631,30 @@ export default function JournalPage() {
     const labelColor = getLabelColor();
 
     if (name === 'Classic Diary') {
+      const highlights = Array.isArray(pageFields.highlights) ? pageFields.highlights : ['', '', ''];
       return (
         <>
           {renderHeader('Classic Diary', isDark)}
           {renderMoods(isDark)}
           {renderDivider(isDark)}
           {renderLabel("Today's entry", labelColor)}
-          <textarea className="tf" placeholder="Dear journal, today I..." rows="6" style={{ minHeight: '120px', color: textColor }} />
+          <textarea className="tf" placeholder="Dear journal, today I..." rows="6"
+            style={{ minHeight: '120px', color: textColor }}
+            value={pageFields.entry || ''}
+            onChange={e => setField('entry', e.target.value)} />
           {renderDivider(isDark)}
           {renderLabel('3 highlights', labelColor)}
-          {[1, 2, 3].map(i => (
+          {[0, 1, 2].map(i => (
             <div key={i} className="bullet-row">
               <span style={{ color: accent, fontSize: '18px' }}>★</span>
-              <textarea className="tf" placeholder={`Highlight ${i}...`} rows="1" style={{ minHeight: '30px', color: textColor }} />
+              <textarea className="tf" placeholder={`Highlight ${i+1}...`} rows="1"
+                style={{ minHeight: '30px', color: textColor }}
+                value={highlights[i] || ''}
+                onChange={e => {
+                  const next = [...highlights];
+                  next[i] = e.target.value;
+                  setField('highlights', next);
+                }} />
             </div>
           ))}
           {renderDivider(isDark)}
@@ -580,18 +780,30 @@ export default function JournalPage() {
           {renderHeader('Daily Devotion', isDark)}
           <div className="verse-box" style={{ borderLeft: `3px solid ${accent}`, background: boxBg }}>
             <div style={{ fontSize: '10px', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px', color: labelColor }}>Today's verse</div>
-            <textarea className="tf" placeholder="Type or paste your verse here..." rows="2" style={{ minHeight: '50px', color: textColor }} />
+            <textarea className="tf" placeholder="Type or paste your verse here..." rows="2"
+              style={{ minHeight: '50px', color: textColor }}
+              value={pageFields.verse || ''}
+              onChange={e => setField('verse', e.target.value)} />
           </div>
           {renderLabel('What this means to me', labelColor)}
-          <textarea className="tf" placeholder="Reflection..." rows="4" style={{ minHeight: '90px', color: textColor }} />
+          <textarea className="tf" placeholder="Reflection..." rows="4"
+            style={{ minHeight: '90px', color: textColor }}
+            value={pageFields.meaning || ''}
+            onChange={e => setField('meaning', e.target.value)} />
           {renderDivider(isDark)}
           {renderLabel('How I will live this today', labelColor)}
-          <textarea className="tf" placeholder="Application..." rows="3" style={{ minHeight: '70px', color: textColor }} />
+          <textarea className="tf" placeholder="Application..." rows="3"
+            style={{ minHeight: '70px', color: textColor }}
+            value={pageFields.application || ''}
+            onChange={e => setField('application', e.target.value)} />
           {renderDivider(isDark)}
           <div style={{ background: 'rgba(0,0,0,.04)', borderRadius: '8px', padding: '10px' }}>
             {renderLabel('Prayer', labelColor)}
           </div>
-          <textarea className="tf" placeholder="Lord, today I pray..." rows="3" style={{ minHeight: '70px', color: textColor }} />
+          <textarea className="tf" placeholder="Lord, today I pray..." rows="3"
+            style={{ minHeight: '70px', color: textColor }}
+            value={pageFields.prayer || ''}
+            onChange={e => setField('prayer', e.target.value)} />
         </>
       );
     }
@@ -627,41 +839,67 @@ export default function JournalPage() {
         <>
           {renderHeader('Bible Study', isDark)}
           {renderLabel('Passage', labelColor)}
-          <textarea className="tf" placeholder="Book · Chapter · Verses" rows="1" style={{ minHeight: '32px', color: textColor }} />
+          <textarea className="tf" placeholder="Book · Chapter · Verses" rows="1"
+            style={{ minHeight: '32px', color: textColor }}
+            value={pageFields.passage || ''}
+            onChange={e => setField('passage', e.target.value)} />
           {renderDivider(isDark)}
           {renderLabel('Study notes', labelColor)}
-          <textarea className="tf" placeholder="What I'm reading and learning..." rows="10" style={{ minHeight: '200px', color: textColor }} />
+          <textarea className="tf" placeholder="What I'm reading and learning..." rows="10"
+            style={{ minHeight: '200px', color: textColor }}
+            value={pageFields.study_notes || ''}
+            onChange={e => setField('study_notes', e.target.value)} />
           {renderDivider(isDark)}
           {renderLabel('Summary in my own words', labelColor)}
-          <textarea className="tf" placeholder="This passage is about..." rows="2" style={{ minHeight: '50px', color: textColor }} />
+          <textarea className="tf" placeholder="This passage is about..." rows="2"
+            style={{ minHeight: '50px', color: textColor }}
+            value={pageFields.summary || ''}
+            onChange={e => setField('summary', e.target.value)} />
         </>
       );
     }
 
     if (name === 'Sermon Notes') {
+      const points = Array.isArray(pageFields.points) ? pageFields.points : ['', '', ''];
       return (
         <>
           {renderHeader('Sermon Notes', isDark)}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
             <div>
               {renderLabel('Speaker', labelColor)}
-              <textarea className="tf" placeholder="..." rows="1" style={{ minHeight: '30px', color: textColor }} />
+              <textarea className="tf" placeholder="..." rows="1"
+                style={{ minHeight: '30px', color: textColor }}
+                value={pageFields.speaker || ''}
+                onChange={e => setField('speaker', e.target.value)} />
             </div>
             <div>
               {renderLabel('Scripture', labelColor)}
-              <textarea className="tf" placeholder="..." rows="1" style={{ minHeight: '30px', color: textColor }} />
+              <textarea className="tf" placeholder="..." rows="1"
+                style={{ minHeight: '30px', color: textColor }}
+                value={pageFields.scripture || ''}
+                onChange={e => setField('scripture', e.target.value)} />
             </div>
           </div>
           {renderLabel('Main points', labelColor)}
-          {[1, 2, 3].map(i => (
+          {[0, 1, 2].map(i => (
             <div key={i} className="bullet-row">
-              <span style={{ color: accent, fontWeight: 700, fontSize: '14px' }}>{i}.</span>
-              <textarea className="tf" placeholder={`Point ${i}...`} rows="1" style={{ minHeight: '30px', color: textColor }} />
+              <span style={{ color: accent, fontWeight: 700, fontSize: '14px' }}>{i+1}.</span>
+              <textarea className="tf" placeholder={`Point ${i+1}...`} rows="1"
+                style={{ minHeight: '30px', color: textColor }}
+                value={points[i] || ''}
+                onChange={e => {
+                  const next = [...points];
+                  next[i] = e.target.value;
+                  setField('points', next);
+                }} />
             </div>
           ))}
           {renderDivider(isDark)}
           {renderLabel('What I will do with this', labelColor)}
-          <textarea className="tf" placeholder="My response and application..." rows="3" style={{ minHeight: '70px', color: textColor }} />
+          <textarea className="tf" placeholder="My response and application..." rows="3"
+            style={{ minHeight: '70px', color: textColor }}
+            value={pageFields.application || ''}
+            onChange={e => setField('application', e.target.value)} />
         </>
       );
     }
@@ -712,6 +950,11 @@ export default function JournalPage() {
     const labelColor = getLabelColor();
 
     if (name === 'Daily Expenses') {
+      const rows = Array.isArray(pageFields.rows) ? pageFields.rows : Array(6).fill({});
+      const totalSpent = rows.reduce((s, r) => {
+        const n = parseFloat((r?.amount||'').replace(/[₦,]/g,''));
+        return isNaN(n) ? s : s + n;
+      }, 0);
       return (
         <>
           {renderHeader('Daily Expenses', isDark)}
@@ -724,11 +967,20 @@ export default function JournalPage() {
               </tr>
             </thead>
             <tbody>
-              {[1, 2, 3, 4, 5, 6].map(i => (
+              {Array.from({ length: Math.max(rows.length, 6) }, (_, i) => (
                 <tr key={i}>
-                  <td><input type="text" placeholder="..." style={{ width: '100%', background: 'transparent', border: 'none', fontFamily: "'Caveat', cursive", fontSize: '15px', color: textColor }} /></td>
-                  <td><input type="text" placeholder="..." style={{ width: '100%', background: 'transparent', border: 'none', fontFamily: "'Caveat', cursive", fontSize: '15px', color: textColor }} /></td>
-                  <td><input type="text" placeholder="₦..." style={{ width: '100%', background: 'transparent', border: 'none', fontFamily: "'Caveat', cursive", fontSize: '15px', color: textColor }} /></td>
+                  <td><input type="text" placeholder="..."
+                    value={rows[i]?.description || ''}
+                    onChange={e => setFieldRow('rows', i, 'description', e.target.value)}
+                    style={{ width: '100%', background: 'transparent', border: 'none', fontFamily: "'Caveat', cursive", fontSize: '15px', color: textColor }} /></td>
+                  <td><input type="text" placeholder="food / transport / etc"
+                    value={rows[i]?.category || ''}
+                    onChange={e => setFieldRow('rows', i, 'category', e.target.value)}
+                    style={{ width: '100%', background: 'transparent', border: 'none', fontFamily: "'Caveat', cursive", fontSize: '15px', color: textColor }} /></td>
+                  <td><input type="text" placeholder="₦..."
+                    value={rows[i]?.amount || ''}
+                    onChange={e => setFieldRow('rows', i, 'amount', e.target.value)}
+                    style={{ width: '100%', background: 'transparent', border: 'none', fontFamily: "'Caveat', cursive", fontSize: '15px', color: textColor }} /></td>
                 </tr>
               ))}
             </tbody>
@@ -740,7 +992,9 @@ export default function JournalPage() {
               <div className="stat-lbl">Income</div>
             </div>
             <div className="stat-box">
-              <div className="stat-num" style={{ color: '#F87171' }}>₦0</div>
+              <div className="stat-num" style={{ color: '#F87171' }}>
+                {totalSpent > 0 ? `₦${totalSpent.toLocaleString('en-NG')}` : '₦0'}
+              </div>
               <div className="stat-lbl">Spent</div>
             </div>
             <div className="stat-box">
@@ -855,8 +1109,8 @@ export default function JournalPage() {
     return null;
   };
 
-  // ─── TEMPLATE RENDERERS (HABIT, GOALS, HEALTH) ───────────────────────────────
-  const renderHabitTemplate = (name, isDark) => {
+  // ─── TEMPLATE RENDERERS (WELLNESS covers health + habit, GOALS, BUSINESS) ──────
+  const renderWellnessTemplate = (name, isDark) => {
     const textColor = getTextColor();
     const labelColor = getLabelColor();
 
@@ -895,19 +1149,6 @@ export default function JournalPage() {
       );
     }
 
-    return renderGenericTemplate(name, isDark, textColor, labelColor);
-  };
-
-  const renderGoalsTemplate = (name, isDark) => {
-    const textColor = getTextColor();
-    const labelColor = getLabelColor();
-    return renderGenericTemplate(name, isDark, textColor, labelColor);
-  };
-
-  const renderHealthTemplate = (name, isDark) => {
-    const textColor = getTextColor();
-    const labelColor = getLabelColor();
-
     if (name === 'Daily Wellness') {
       return (
         <>
@@ -917,10 +1158,16 @@ export default function JournalPage() {
           {renderWater()}
           {renderDivider(isDark)}
           {renderLabel('How my body feels today', labelColor)}
-          <textarea className="tf" placeholder="Energy level, aches, overall wellness..." rows="3" style={{ minHeight: '70px', color: textColor }} />
+          <textarea className="tf" placeholder="Energy level, aches, overall wellness..." rows="3"
+            style={{ minHeight: '70px', color: textColor }}
+            value={pageFields.body_feeling || ''}
+            onChange={e => setField('body_feeling', e.target.value)} />
           {renderDivider(isDark)}
           {renderLabel('What I did for my health today', labelColor)}
-          <textarea className="tf" placeholder="Exercise, meals, rest..." rows="3" style={{ minHeight: '70px', color: textColor }} />
+          <textarea className="tf" placeholder="Exercise, meals, rest..." rows="3"
+            style={{ minHeight: '70px', color: textColor }}
+            value={pageFields.health_actions || ''}
+            onChange={e => setField('health_actions', e.target.value)} />
         </>
       );
     }
@@ -940,6 +1187,12 @@ export default function JournalPage() {
       );
     }
 
+    return renderGenericTemplate(name, isDark, textColor, labelColor);
+  };
+
+  const renderGoalsTemplate = (name, isDark) => {
+    const textColor = getTextColor();
+    const labelColor = getLabelColor();
     return renderGenericTemplate(name, isDark, textColor, labelColor);
   };
 
@@ -1177,7 +1430,7 @@ export default function JournalPage() {
           <div className="page-area" style={{ position: 'relative' }}>
             <div
               ref={canvasRef}
-              className={`page-canvas tex-${paper}`}
+              className={`page-canvas tex-${paper}${paper === 'dark' || pageColor === '#1a1a2e' ? ' page-dark' : ''}`}
               style={{ backgroundColor: pageColor, position: 'relative' }}
             >
               {/* Margin line */}

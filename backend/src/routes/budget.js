@@ -4,6 +4,7 @@ const { pool } = require('../db/connection');
 const { authenticate } = require('../middleware/authenticate');
 const { validateInput } = require('../middleware/validateInput');
 const { rateLimiter } = require('../middleware/rateLimiter');
+const { auditLog } = require('../middleware/auditLog');
 
 const router = express.Router();
 router.use(authenticate);
@@ -138,22 +139,64 @@ router.get('/entries', async (req, res) => {
 });
 
 // ─── POST /budget/entries ──────────────────────────────────────────────────────
+// Side-effect: if type='expense', the new row is merged into the budget/Daily Expenses
+// journal page entry for that date (two-way sync).
 router.post(
   '/entries',
   rateLimiter(200, 900, 'budget_create'),
   validateInput(entrySchema),
+  auditLog('budget_entry_create', 'budget_entries'),
   async (req, res) => {
     const uid = req.user.id;
     const { type, amount, currency, category, note, entry_date, source } = req.body;
+    const eDate = entry_date || new Date().toISOString().slice(0, 10);
     try {
       const result = await pool.query(
         `INSERT INTO budget_entries (user_id, type, amount, currency, category, note, entry_date, source)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
          RETURNING id, type, amount, currency, category, note, entry_date, source, created_at`,
         [uid, type, amount, currency || '₦', category || 'other', note || null,
-         entry_date || new Date().toISOString().slice(0, 10), source || 'manual']
+         eDate, source || 'manual']
       );
-      res.status(201).json({ entry: result.rows[0] });
+      const entry = result.rows[0];
+
+      // ── Budget two-way sync: budget_entries → journal Daily Expenses ────────
+      // Only sync expenses (not income) and skip journal-sourced entries to avoid loops.
+      if (type === 'expense' && source !== 'journal') {
+        const newRow = {
+          description: note || category || 'Expense',
+          category:    category || 'other',
+          amount:      String(amount),
+        };
+
+        // Load today's existing journal page fields (if any)
+        const existing = await pool.query(
+          `SELECT id, fields FROM journal_page_entries
+           WHERE user_id=$1 AND journal_type='budget' AND template_name='Daily Expenses' AND entry_date=$2
+           LIMIT 1`,
+          [uid, eDate]
+        ).catch(() => ({ rows: [] }));
+
+        const existingRows = Array.isArray(existing.rows[0]?.fields?.rows)
+          ? existing.rows[0].fields.rows
+          : [];
+
+        const mergedRows = [...existingRows, newRow];
+
+        await pool.query(
+          `INSERT INTO journal_page_entries
+             (user_id, journal_type, template_name, entry_date, fields, source)
+           VALUES ($1,'budget','Daily Expenses',$2,$3::jsonb,'budget_app')
+           ON CONFLICT (user_id, journal_type, template_name, entry_date)
+           DO UPDATE SET
+             fields     = $3::jsonb,
+             source     = 'budget_app',
+             updated_at = NOW()`,
+          [uid, eDate, JSON.stringify({ rows: mergedRows })]
+        ).catch(err => console.warn('[Budget sync→journal]', err.message));
+      }
+
+      res.status(201).json({ entry });
     } catch (err) {
       console.error('Budget create error:', err);
       res.status(500).json({ error: 'Failed to save entry' });
@@ -162,7 +205,7 @@ router.post(
 );
 
 // ─── DELETE /budget/entries/:id ────────────────────────────────────────────────
-router.delete('/entries/:id', async (req, res) => {
+router.delete('/entries/:id', auditLog('budget_entry_delete', 'budget_entries'), async (req, res) => {
   const uid = req.user.id;
   try {
     const result = await pool.query(
@@ -178,10 +221,10 @@ router.delete('/entries/:id', async (req, res) => {
 });
 
 // ─── PUT /budget/goals ─────────────────────────────────────────────────────────
-// Upserts a goal row. Send { month, category, limit_amount } or { month, declared_income }
 router.put(
   '/goals',
   validateInput(goalSchema),
+  auditLog('budget_goal_upsert', 'budget_goals'),
   async (req, res) => {
     const uid = req.user.id;
     const { month, declared_income, category, limit_amount } = req.body;

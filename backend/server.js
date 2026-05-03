@@ -7,6 +7,7 @@ const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 
 const { runMigrations } = require('./src/db/connection');
+const { globalAuditLog } = require('./src/middleware/auditLog');
 const authRoutes = require('./src/routes/auth');
 const journalRoutes = require('./src/routes/journal');
 const scheduleRoutes = require('./src/routes/schedule');
@@ -18,6 +19,11 @@ const goalsRoutes = require('./src/routes/goals');
 const contactsRoutes = require('./src/routes/contacts');
 const lumiRoutes = require('./src/routes/lumi');
 const budgetRoutes = require('./src/routes/budget');
+const savingsRoutes = require('./src/routes/savings');
+const journalPagesRoutes = require('./src/routes/journalPages');
+const lifeAuditRoutes = require('./src/routes/lifeAudit');
+const oauthRoutes     = require('./src/routes/oauth');
+const gmailRoutes     = require('./src/routes/gmail');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -69,6 +75,10 @@ app.use(cookieParser());
 app.use(morgan('combined'));
 
 app.use('/api/auth', authRoutes);
+
+// Global audit log — captures every mutation across all routes
+app.use('/api', globalAuditLog);
+
 app.use('/api/journal', journalRoutes);
 app.use('/api/schedule', scheduleRoutes);
 app.use('/api/projects', projectsRoutes);
@@ -79,6 +89,11 @@ app.use('/api/goals', goalsRoutes);
 app.use('/api/contacts', contactsRoutes);
 app.use('/api/lumi', lumiRoutes);
 app.use('/api/budget', budgetRoutes);
+app.use('/api/savings', savingsRoutes);
+app.use('/api/journal/pages', journalPagesRoutes);
+app.use('/api/lumi/life-audit', lifeAuditRoutes);
+app.use('/api/oauth',  oauthRoutes);
+app.use('/api/gmail',  gmailRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({

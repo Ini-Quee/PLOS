@@ -16,64 +16,7 @@ const CAT = {
   personal:  { bg:'rgba(139,92,246,0.15)', border:'#c4b5fd', label:'Personal'  },
 };
 
-const DEMO_TASKS = [
-  { id:1,  hour:5,  min:0,  dur:30,  title:'Bible Reading',         sub:'Open your heart. 2 chapters today.',            cat:'spiritual', locked:true,  done:false, section:'Morning Routine' },
-  { id:2,  hour:5,  min:35, dur:15,  title:'Morning Prayer',        sub:'Gratitude + intention setting.',                cat:'spiritual', locked:true,  done:false, section:'Morning Routine' },
-  { id:3,  hour:6,  min:0,  dur:20,  title:'Meditation',            sub:'Breathwork · mindfulness · silence.',           cat:'health',    locked:true,  done:false, section:'Morning Routine' },
-  { id:4,  hour:7,  min:0,  dur:30,  title:'Breakfast',             sub:'Oats + banana + black coffee. Log food.',       cat:'meal',      locked:false, done:false, section:'Morning Routine' },
-  { id:5,  hour:8,  min:0,  dur:120, title:'Deep Work Block',       sub:'High-priority tasks. Notifications off.',       cat:'work',      locked:false, done:false, section:'Morning'         },
-  { id:6,  hour:10, min:0,  dur:5,   title:'Hydration Check',       sub:'500ml water. Log in tracker.',                 cat:'health',    locked:false, done:false, section:'Mid-Morning'     },
-  { id:7,  hour:10, min:0,  dur:45,  title:'Reading',               sub:'⚠️ Conflict with Hydration Check.',             cat:'conflict',  locked:false, done:false, section:'Mid-Morning'     },
-  { id:8,  hour:13, min:0,  dur:45,  title:'Lunch',                 sub:'Brown rice + grilled chicken + salad.',         cat:'meal',      locked:false, done:false, section:'Afternoon'       },
-  { id:9,  hour:14, min:0,  dur:90,  title:'Workout',               sub:'Strength — Upper Body. Prep gear at 1:50 PM.', cat:'health',    locked:false, done:false, section:'Afternoon'       },
-  { id:10, hour:16, min:0,  dur:30,  title:'Budget Review',         sub:'Update expense log. Check savings goal.',       cat:'work',      locked:false, done:false, section:'Late Afternoon'  },
-  { id:11, hour:17, min:0,  dur:30,  title:'Reading (rescheduled)', sub:'Personal development. 20 pages min.',           cat:'work',      locked:false, done:false, section:'Late Afternoon'  },
-  { id:12, hour:19, min:0,  dur:30,  title:'Dinner',                sub:'Sweet potato + salmon + broccoli.',             cat:'meal',      locked:false, done:false, section:'Evening'         },
-  { id:13, hour:20, min:0,  dur:20,  title:'Family / Social Time',  sub:'Be present. Put phone down.',                  cat:'social',    locked:false, done:false, section:'Evening'         },
-  { id:14, hour:21, min:30, dur:15,  title:'Turn Off Wi-Fi',        sub:'Digital detox. Prepare mind for rest.',        cat:'health',    locked:true,  done:false, section:'Night'           },
-  { id:15, hour:22, min:0,  dur:0,   title:'Sleep',                 sub:'Target 8 hours. Bedtime protected.',           cat:'sleep',     locked:true,  done:false, section:'Night'           },
-];
-
-const WORKOUT_PLAN = [
-  { day:'MON', type:'Strength', detail:'Upper Body — Chest, Shoulders, Triceps', time:'2:00 PM', cls:'str', done:false },
-  { day:'TUE', type:'Cardio',   detail:'30min run — moderate pace',              time:'7:00 AM', cls:'car', done:false },
-  { day:'WED', type:'Strength', detail:'Lower Body — Quads, Glutes, Hamstrings', time:'2:00 PM', cls:'str', done:true  },
-  { day:'THU', type:'HIIT',     detail:'25min circuit — full body',              time:'7:00 AM', cls:'hit', done:true  },
-  { day:'FRI', type:'Strength', detail:'Upper Body — Back, Biceps, Core',       time:'2:00 PM', cls:'str', done:false },
-  { day:'SAT', type:'Yoga',     detail:'Flexibility + mobility, 40min',          time:'8:00 AM', cls:'yog', done:false },
-  { day:'SUN', type:'Rest',     detail:'Active recovery — light walk',           time:'—',       cls:'rst', done:false },
-];
-
-const MEALS = [
-  { time:'Breakfast', food:'Oats with banana + peanut butter, black coffee', cals:'420 kcal'  },
-  { time:'Snack',     food:'Apple + almond butter (2 tbsp)',                  cals:'190 kcal'  },
-  { time:'Lunch',     food:'Brown rice + grilled chicken breast + green salad',cals:'550 kcal' },
-  { time:'Snack 2',   food:'Greek yogurt + honey + walnuts',                  cals:'220 kcal'  },
-  { time:'Dinner',    food:'Sweet potato + baked salmon + steamed broccoli',  cals:'480 kcal'  },
-];
-
-const MEDS_DEFAULT = [
-  { name:'Vitamin D3',          time:'8:00 AM',  dose:'1 capsule',  color:'#fbbf24', done:false },
-  { name:'Omega 3 Fish Oil',    time:'8:00 AM',  dose:'2 capsules', color:'#6ee7b7', done:false },
-  { name:'Magnesium Glycinate', time:'10:00 PM', dose:'1 tablet',   color:'#a5b4fc', done:false },
-];
-
-const WEEK_DAYS = [
-  { name:'Mon', num:27, pct:82,   dots:['#6ee7b7','#a5b4fc','#fbbf24','#6ee7b7'], today:false },
-  { name:'Tue', num:28, pct:65,   dots:['#fbbf24','#6ee7b7','#2dd4bf'],           today:false },
-  { name:'Wed', num:29, pct:91,   dots:['#6ee7b7','#a5b4fc','#fbbf24','#2dd4bf'], today:false },
-  { name:'Thu', num:30, pct:78,   dots:['#a5b4fc','#6ee7b7','#fbbf24'],           today:false },
-  { name:'Fri', num:1,  pct:null, dots:['#a5b4fc','#6ee7b7','#fbbf24'],           today:true  },
-  { name:'Sat', num:2,  pct:null, dots:[],                                         today:false },
-  { name:'Sun', num:3,  pct:null, dots:[],                                         today:false },
-];
-
-const GOALS = [
-  { title:'Read 24 books this year',        pct:62, color:'#6ee7b7' },
-  { title:'Daily Bible reading — 365 days', pct:34, color:'#a5b4fc' },
-  { title:'Lose 8kg by June',               pct:45, color:'#C8955C' },
-  { title:'Save ₦50,000',                   pct:30, color:'#2dd4bf' },
-];
+// No hardcoded demo data — all content comes from the API
 
 const SECTIONS_ORDER = ['Morning Routine','Morning','Mid-Morning','Afternoon','Late Afternoon','Evening','Night'];
 
@@ -114,10 +57,8 @@ function ProgressRing({ pct, done, total, palette }) {
       </div>
       <div style={{ display:'flex', flexWrap:'wrap', gap:7, flex:1 }}>
         {[
-          [`${done} / ${total} done`, 'rgba(230,168,23,0.3)',  palette.accent],
-          ['3 locked',                'rgba(110,231,183,0.3)', '#6ee7b7'     ],
-          ['6 streak days',           'rgba(165,180,252,0.3)', '#a5b4fc'     ],
-          ['1 conflict',              'rgba(248,113,113,0.3)', '#f87171'     ],
+          [`${done} / ${total} done`,                          'rgba(230,168,23,0.3)',  palette.accent],
+          [`${tasks.filter(t=>t.locked).length} locked`,       'rgba(110,231,183,0.3)', '#6ee7b7'     ],
         ].map(([label, bc, tc]) => (
           <div key={label} style={{ background:'rgba(0,0,0,0.18)', border:`1px solid ${bc}`, borderRadius:20, padding:'5px 11px', fontSize:11, color:tc }}><b>{label}</b></div>
         ))}
@@ -228,176 +169,78 @@ function Timeline({ tasks, onToggleDone, onToggleLock, onSelect }) {
 // ─── Week tab ─────────────────────────────────────────────────────────────────
 function WeekTab({ palette }) {
   const G = { background:'rgba(0,0,0,0.22)', backdropFilter:'blur(16px)', border:`1px solid ${palette.border}`, borderRadius:14 };
+  const now = new Date();
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const weekDays = Array.from({ length:7 }, (_, i) => {
+    const d = new Date(now);
+    const diff = i - now.getDay();
+    d.setDate(now.getDate() + diff);
+    return { name: dayNames[d.getDay()], num: d.getDate(), today: d.toDateString() === now.toDateString() };
+  });
+
+  const weekLabel = (() => {
+    const start = new Date(now); start.setDate(now.getDate() - now.getDay());
+    const end   = new Date(start); end.setDate(start.getDate() + 6);
+    return `${start.toLocaleDateString('en-NG',{month:'short',day:'numeric'})} – ${end.toLocaleDateString('en-NG',{month:'short',day:'numeric',year:'numeric'})}`;
+  })();
+
   return (
     <div style={{ animation:'fadeUp 0.35s ease' }}>
-      <div style={{ fontSize:10, fontWeight:700, letterSpacing:'2px', textTransform:'uppercase', color:'rgba(255,255,255,0.28)', marginBottom:12 }}>Week of April 27 – May 3, 2026</div>
+      <div style={{ fontSize:10, fontWeight:700, letterSpacing:'2px', textTransform:'uppercase', color:'rgba(255,255,255,0.28)', marginBottom:12 }}>Week of {weekLabel}</div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:8, marginBottom:24 }}>
-        {WEEK_DAYS.map(d => (
-          <div key={d.name} style={{ ...G, borderRadius:12, padding:'12px 8px', textAlign:'center', borderColor: d.today ? palette.accent : palette.border }}>
+        {weekDays.map(d => (
+          <div key={d.name + d.num} style={{ ...G, borderRadius:12, padding:'12px 8px', textAlign:'center', borderColor: d.today ? palette.accent : palette.border }}>
             <div style={{ fontSize:10, fontWeight:700, color: d.today ? palette.accent : 'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.5px' }}>{d.name}</div>
             <div style={{ fontSize:22, fontWeight:600, color:'#e8f0e9', margin:'4px 0 2px' }}>{d.num}</div>
-            <div style={{ fontSize:10, color:'rgba(255,255,255,0.28)' }}>{d.pct ? `${d.pct}%` : d.today ? 'In prog' : '—'}</div>
-            <div style={{ display:'flex', justifyContent:'center', gap:3, marginTop:7, flexWrap:'wrap' }}>
-              {d.dots.map((c, i) => <div key={i} style={{ width:5, height:5, borderRadius:'50%', background:c }} />)}
-            </div>
+            <div style={{ fontSize:10, color:'rgba(255,255,255,0.28)' }}>{d.today ? 'Today' : '—'}</div>
           </div>
         ))}
       </div>
-      <div style={{ fontSize:14, fontWeight:600, color:'#e8f0e9', marginBottom:12 }}>Workout Plan</div>
-      <div style={{ ...G, padding:'14px 18px', marginBottom:20 }}>
-        {WORKOUT_PLAN.map((w, i) => {
-          const wt = WTYPE[w.cls] || WTYPE.rst;
-          return (
-            <div key={w.day} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 0', borderBottom: i < WORKOUT_PLAN.length-1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
-              <div style={{ width:30, fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.28)', textTransform:'uppercase', flexShrink:0 }}>{w.day}</div>
-              <span style={{ fontSize:11, padding:'3px 10px', borderRadius:20, background:wt.bg, color:wt.color, fontWeight:500, whiteSpace:'nowrap' }}>{wt.label}</span>
-              <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', flex:1 }}>{w.detail}</div>
-              <div style={{ fontSize:11, color:'rgba(255,255,255,0.28)' }}>{w.time}</div>
-            </div>
-          );
-        })}
-      </div>
-      <div style={{ fontSize:14, fontWeight:600, color:'#e8f0e9', marginBottom:12 }}>Goals Progress</div>
-      <div style={{ ...G, padding:'14px 18px' }}>
-        {GOALS.map(g => (
-          <div key={g.title} style={{ marginBottom:14 }}>
-            <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
-              <span style={{ fontSize:13, color:'#e8f0e9' }}>{g.title}</span>
-              <span style={{ fontSize:12, fontWeight:600, color:g.color }}>{g.pct}%</span>
-            </div>
-            <div style={{ height:5, background:'rgba(255,255,255,0.07)', borderRadius:3, overflow:'hidden' }}>
-              <div style={{ height:'100%', borderRadius:3, background:g.color, width:`${g.pct}%`, transition:'width 0.8s ease' }} />
-            </div>
-          </div>
-        ))}
+      <div style={{ ...G, padding:'32px 18px', textAlign:'center' }}>
+        <div style={{ fontSize:28, marginBottom:10 }}>📅</div>
+        <div style={{ fontSize:14, fontWeight:600, color:'#e8f0e9', marginBottom:6 }}>No weekly plan yet</div>
+        <div style={{ fontSize:12, color:'rgba(255,255,255,0.35)' }}>Ask Lumi to build your week, or add tasks on the Today tab.</div>
       </div>
     </div>
   );
 }
 
 // ─── Plans tab ────────────────────────────────────────────────────────────────
-function PlansTab({ meds, onToggleMed, workout, onToggleWorkout, palette }) {
-  const G   = { background:'rgba(0,0,0,0.22)', backdropFilter:'blur(16px)', border:`1px solid ${palette.border}`, borderRadius:14, overflow:'hidden', marginBottom:14 };
-  const HDR = { padding:'14px 18px 12px', borderBottom:`1px solid ${palette.border}`, display:'flex', alignItems:'center', gap:10 };
-  const heatData = [0,0.3,0.6,1,0.8,0.9,1,0.7,1,1,0.5,0.8,1,1,0.3,0.6,0.9,1,0.8,0.7,1];
-
+function PlansTab({ palette, onLifeAudit }) {
+  const navigate = useNavigate();
+  const G = { background:'rgba(0,0,0,0.22)', backdropFilter:'blur(16px)', border:`1px solid ${palette.border}`, borderRadius:14, overflow:'hidden', marginBottom:14 };
   return (
     <div style={{ animation:'fadeUp 0.35s ease' }}>
-      {/* Workout */}
-      <div style={G}>
-        <div style={HDR}>
-          <span style={{ fontSize:20 }}>🏋️</span>
-          <div style={{ flex:1 }}>
-            <div style={{ fontSize:15, fontWeight:600, color:'#e8f0e9' }}>Workout Plan</div>
-            <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginTop:2 }}>Weekly training schedule</div>
-          </div>
-          <span style={{ fontSize:11, padding:'4px 12px', borderRadius:20, background:'rgba(110,231,183,0.15)', color:'#6ee7b7', fontWeight:500 }}>Active</span>
+      {/* Life audit CTA */}
+      <div style={{ ...G, padding:'28px 24px', borderColor:'rgba(200,149,92,0.3)', background:'linear-gradient(135deg,rgba(200,149,92,0.08),rgba(139,92,246,0.06))', marginBottom:14 }}>
+        <div style={{ fontSize:24, marginBottom:10 }}>✨</div>
+        <div style={{ fontSize:15, fontWeight:700, color:'#e8f0e9', marginBottom:6 }}>Plan your entire life with Lumi</div>
+        <div style={{ fontSize:13, color:'rgba(255,255,255,0.45)', lineHeight:1.65, maxWidth:340, marginBottom:18 }}>
+          Lumi will interview you across 8 areas — morning routine, work, meals, health, faith, family, creative work, and sleep — then build your complete weekly schedule in one session.
         </div>
-        <div style={{ padding:'14px 18px' }}>
-          {workout.map((w, i) => {
-            const wt = WTYPE[w.cls] || WTYPE.rst;
-            return (
-              <div key={w.day} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 0', borderBottom: i < workout.length-1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
-                <div style={{ width:30, fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.28)', textTransform:'uppercase', flexShrink:0 }}>{w.day}</div>
-                <span style={{ fontSize:11, padding:'3px 10px', borderRadius:20, background:wt.bg, color:wt.color, fontWeight:500 }}>{wt.label}</span>
-                <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', flex:1 }}>{w.detail}</div>
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.28)' }}>{w.time}</div>
-                <span onClick={() => onToggleWorkout(i)} style={{ fontSize:15, cursor:'pointer' }}>{w.done ? '✅' : '⬜'}</span>
-              </div>
-            );
-          })}
+        <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+          <button
+            onClick={() => navigate('/talk-to-lumi')}
+            style={{ padding:'10px 20px', borderRadius:24, border:'none', background:'rgba(200,149,92,0.85)', color:'#000', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+            Start Life Audit →
+          </button>
+          <a href="https://claude.ai" target="_blank" rel="noopener noreferrer"
+            style={{ padding:'10px 20px', borderRadius:24, border:'1px solid rgba(165,180,252,0.3)', background:'rgba(139,92,246,0.12)', color:'#a5b4fc', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit', textDecoration:'none', display:'inline-block' }}>
+            ✨ Plan with Claude AI
+          </a>
         </div>
       </div>
 
-      {/* Meals */}
-      <div style={G}>
-        <div style={HDR}>
-          <span style={{ fontSize:20 }}>🍽️</span>
-          <div style={{ flex:1 }}>
-            <div style={{ fontSize:15, fontWeight:600, color:'#e8f0e9' }}>Today's Meal Plan</div>
-            <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginTop:2 }}>Calories · Macros · Hydration</div>
-          </div>
-          <span style={{ fontSize:11, padding:'4px 12px', borderRadius:20, background:'rgba(200,149,92,0.12)', color:'#C8955C', fontWeight:500 }}>1,860 kcal</span>
+      <div style={{ ...G, padding:'24px', textAlign:'center' }}>
+        <div style={{ fontSize:28, marginBottom:10 }}>📋</div>
+        <div style={{ fontSize:14, fontWeight:600, color:'#e8f0e9', marginBottom:6 }}>Recurring Plans</div>
+        <div style={{ fontSize:13, color:'rgba(255,255,255,0.35)', lineHeight:1.6, maxWidth:320, margin:'0 auto 16px' }}>
+          Tell Lumi about your workout routine, meals, Bible study, or anything you do regularly — it'll appear here.
         </div>
-        <div style={{ padding:'14px 18px' }}>
-          {MEALS.map((m, i) => (
-            <div key={m.time} style={{ display:'flex', gap:10, padding:'8px 0', borderBottom: i < MEALS.length-1 ? '1px solid rgba(255,255,255,0.06)' : 'none', alignItems:'flex-start' }}>
-              <span style={{ fontSize:11, padding:'3px 10px', borderRadius:20, background:'rgba(124,90,10,0.22)', color:'#fbbf24', fontWeight:500, whiteSpace:'nowrap', flexShrink:0, marginTop:1 }}>{m.time}</span>
-              <div>
-                <div style={{ fontSize:12, color:'#e8f0e9' }}>{m.food}</div>
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.28)', marginTop:2 }}>{m.cals}</div>
-              </div>
-            </div>
-          ))}
-          <div style={{ display:'flex', gap:20, marginTop:14, paddingTop:12, borderTop:'1px solid rgba(255,255,255,0.06)' }}>
-            {[['1,860','total kcal','#fbbf24'],['145g','protein','#6ee7b7'],['8','glasses water','#93c5fd']].map(([v,l,c]) => (
-              <div key={l} style={{ textAlign:'center' }}>
-                <div style={{ fontSize:18, fontWeight:700, color:c }}>{v}</div>
-                <div style={{ fontSize:10, color:'rgba(255,255,255,0.28)' }}>{l}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Meds */}
-      <div style={G}>
-        <div style={HDR}>
-          <span style={{ fontSize:20 }}>💊</span>
-          <div style={{ flex:1 }}>
-            <div style={{ fontSize:15, fontWeight:600, color:'#e8f0e9' }}>Medication Schedule</div>
-            <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginTop:2 }}>Daily medication tracker</div>
-          </div>
-          <span style={{ fontSize:11, padding:'4px 12px', borderRadius:20, background:'rgba(76,63,145,0.2)', color:'#a5b4fc', fontWeight:500 }}>{meds.filter(m=>m.done).length}/{meds.length} today</span>
-        </div>
-        <div style={{ padding:'14px 18px' }}>
-          {meds.map((m, i) => (
-            <div key={m.name} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 0', borderBottom: i < meds.length-1 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
-              <div style={{ width:8, height:8, borderRadius:'50%', background:m.color, flexShrink:0 }} />
-              <div style={{ fontSize:13, color:'#e8f0e9', flex:1 }}>{m.name}</div>
-              <div style={{ fontSize:11, color:'rgba(255,255,255,0.28)' }}>{m.time}</div>
-              <div style={{ fontSize:11, background:'rgba(255,255,255,0.08)', padding:'2px 8px', borderRadius:8, color:'rgba(255,255,255,0.5)' }}>{m.dose}</div>
-              <span onClick={() => onToggleMed(i)} style={{ fontSize:16, cursor:'pointer' }}>{m.done ? '✅' : '⬜'}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Sleep */}
-      <div style={G}>
-        <div style={HDR}>
-          <span style={{ fontSize:20 }}>🌙</span>
-          <div style={{ flex:1 }}>
-            <div style={{ fontSize:15, fontWeight:600, color:'#e8f0e9' }}>Sleep Schedule</div>
-            <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginTop:2 }}>Target 8h · Bedtime 10:00 PM</div>
-          </div>
-          <span style={{ fontSize:11, padding:'4px 12px', borderRadius:20, background:'rgba(15,45,82,0.22)', color:'#93c5fd', fontWeight:500 }}>6-day streak</span>
-        </div>
-        <div style={{ padding:'14px 18px' }}>
-          <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:'rgba(255,255,255,0.28)', marginBottom:4 }}>
-            <span>Bedtime</span><span style={{ color:'#93c5fd', fontWeight:500 }}>10:00 PM</span>
-          </div>
-          <div style={{ height:7, background:'rgba(255,255,255,0.07)', borderRadius:4, overflow:'hidden', margin:'6px 0' }}>
-            <div style={{ height:'100%', borderRadius:4, background:'#93c5fd', width:'75%' }} />
-          </div>
-          <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:'rgba(255,255,255,0.28)' }}>
-            <span>Wake up</span><span style={{ color:'#93c5fd', fontWeight:500 }}>5:00 AM · 7h target</span>
-          </div>
-          <div style={{ display:'flex', gap:20, margin:'14px 0 10px' }}>
-            {[['6','streak days','#93c5fd'],['7.2h','avg this week','#6ee7b7'],['82%','quality score','#C8955C']].map(([v,l,c]) => (
-              <div key={l}>
-                <div style={{ fontSize:22, fontWeight:700, color:c }}>{v}</div>
-                <div style={{ fontSize:10, color:'rgba(255,255,255,0.28)' }}>{l}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ fontSize:10, color:'rgba(255,255,255,0.28)', marginBottom:6 }}>Last 21 nights</div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:3 }}>
-            {heatData.map((v, i) => (
-              <div key={i} style={{ height:10, borderRadius:2, background:`rgba(147,197,253,${v===0?0.08:0.15+v*0.7})` }} />
-            ))}
-          </div>
-        </div>
+        <button onClick={() => navigate('/talk-to-lumi')}
+          style={{ padding:'9px 20px', borderRadius:20, border:'1px solid rgba(165,180,252,0.22)', background:'rgba(165,180,252,0.08)', cursor:'pointer', fontSize:12, color:'#a5b4fc', fontFamily:'inherit' }}>
+          ✨ Ask Lumi to set up a routine
+        </button>
       </div>
     </div>
   );
@@ -412,7 +255,7 @@ function LumiPanel({ open, onClose, messages, onSend, loading, palette }) {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [messages, open]);
 
-  const QUICK = ['Fix 10AM conflict','Plan my evening','What did I do yesterday?','Plan tomorrow night'];
+  const QUICK = ['Plan my entire week','Fix a conflict','Plan my evening','What\'s next?'];
 
   function submit() {
     const msg = input.trim();
@@ -482,38 +325,59 @@ export default function Schedule() {
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab]     = useState('today');
-  const [tasks, setTasks]             = useState(DEMO_TASKS);
-  const [workout, setWorkout]         = useState(WORKOUT_PLAN.map(w => ({ ...w })));
-  const [meds, setMeds]               = useState(MEDS_DEFAULT.map(m => ({ ...m })));
+  const [tasks, setTasks]             = useState([]);
+  const [loadingTasks, setLoadingTasks] = useState(true);
   const [lumiOpen, setLumiOpen]       = useState(false);
   const [lumiLoading, setLumiLoading] = useState(false);
-  const [lumiMsgs, setLumiMsgs]       = useState([
-    { from:'lumi', text:"Good morning! You have 15 blocks today. Your Workout starts at 2:00 PM — prep gear at 1:50 PM. You also have a conflict at 10 AM I can fix in one tap." }
-  ]);
+  const [lumiMsgs, setLumiMsgs]       = useState([]);
 
   const now = new Date();
   const dateLabel = now.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
   const showNightBanner = now.getHours() >= 21;
 
-  // Try API, fall back to demo silently
+  // Load schedule from API
   useEffect(() => {
-    api.get('/schedule/today').then(res => {
-      const rows = res.data?.schedules || [];
-      if (rows.length > 0) {
-        setTasks(rows.map(r => ({
-          id: r.id,
-          hour: parseInt((r.start_time || '08:00').split(':')[0]),
-          min:  parseInt((r.start_time || '08:00').split(':')[1]),
-          dur:  r.duration_minutes || 60,
-          title: r.title,
-          sub:   r.notes || '',
-          cat:   r.category || 'personal',
-          locked: r.is_high_priority || false,
-          done:   r.completed || false,
-          section: 'Morning',
-        })));
-      }
-    }).catch(() => {});
+    api.get('/schedule/today')
+      .then(res => {
+        const rows = res.data?.schedules || [];
+        setTasks(rows.map(r => {
+          const h = parseInt((r.start_time || '08:00').split(':')[0]);
+          let section;
+          if (h < 7)        section = 'Morning Routine';
+          else if (h < 9)   section = 'Morning';
+          else if (h < 12)  section = 'Mid-Morning';
+          else if (h < 14)  section = 'Afternoon';
+          else if (h < 17)  section = 'Late Afternoon';
+          else if (h < 20)  section = 'Evening';
+          else              section = 'Night';
+          return {
+            id: r.id,
+            hour: h,
+            min:  parseInt((r.start_time || '08:00').split(':')[1] || '0'),
+            dur:  r.duration_minutes || 60,
+            title: r.title,
+            sub:   r.description || '',
+            cat:   r.category || 'personal',
+            locked: r.is_high_priority || false,
+            done:   r.completed || false,
+            reminder_minutes: r.reminder_minutes ?? 10,
+            section,
+          };
+        }));
+      })
+      .catch(() => {})
+      .finally(() => setLoadingTasks(false));
+
+    // Load a real Lumi greeting based on current context
+    api.post('/lumi/message', { text: "What's on my schedule today? Give me a quick briefing.", source: 'planner' })
+      .then(res => {
+        if (res.data?.message) {
+          setLumiMsgs([{ from: 'lumi', text: res.data.message }]);
+        }
+      })
+      .catch(() => {
+        setLumiMsgs([{ from: 'lumi', text: "Hey! Tell me what you want to work on today and I'll help you plan it." }]);
+      });
   }, []);
 
   const done  = tasks.filter(t => t.done).length;
@@ -579,13 +443,15 @@ export default function Schedule() {
         <div style={{ padding:'20px 28px 0', flexShrink:0 }}>
           <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:12 }}>
             <div>
-              <div style={{ fontSize:27, fontWeight:700, color:'#e8f0e9', letterSpacing:'-0.5px' }}>Today's Plan</div>
+              <div style={{ fontSize:27, fontWeight:700, color:'#e8f0e9', letterSpacing:'-0.5px' }}>Planner</div>
               <div style={{ fontSize:13, color:'rgba(255,255,255,0.38)', marginTop:3 }}>{dateLabel}</div>
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <div style={{ ...GLASS, borderRadius:20, padding:'5px 12px', fontSize:12, color:'rgba(255,255,255,0.42)' }}>
-                Yesterday: <span style={{ color:'#6ee7b7', fontWeight:500 }}>78%</span> ✓
-              </div>
+              {pct > 0 && (
+                <div style={{ ...GLASS, borderRadius:20, padding:'5px 12px', fontSize:12, color:'rgba(255,255,255,0.42)' }}>
+                  Today: <span style={{ color:'#6ee7b7', fontWeight:500 }}>{pct}%</span>
+                </div>
+              )}
               <div style={{ background:'rgba(200,149,92,0.12)', border:'1px solid rgba(200,149,92,0.25)', borderRadius:20, padding:'5px 12px', fontSize:12, fontWeight:500, color:palette.accent }}>
                 Day {now.getDate()} of {now.toLocaleDateString('en-US',{month:'long'})}
               </div>
@@ -610,45 +476,45 @@ export default function Schedule() {
                 <div style={{ background:'linear-gradient(135deg,rgba(15,45,82,0.5),rgba(76,63,145,0.25))', border:'1px solid rgba(147,197,253,0.18)', borderRadius:13, padding:'14px 16px', marginBottom:16, display:'flex', alignItems:'center', gap:12 }}>
                   <span style={{ fontSize:20 }}>🌙</span>
                   <div style={{ flex:1, fontSize:13, color:'rgba(255,255,255,0.6)', lineHeight:1.5 }}>
-                    Almost bedtime. <strong style={{ color:'#93c5fd' }}>Plan tomorrow with Lumi</strong> before you sleep — 2 minutes.
+                    Almost bedtime. <strong style={{ color:'#93c5fd' }}>Plan tomorrow with Lumi</strong> before you sleep.
                   </div>
                   <button onClick={() => openLumi("Let's plan tomorrow")} style={{ background:'rgba(147,197,253,0.12)', border:'1px solid rgba(147,197,253,0.28)', borderRadius:20, padding:'6px 14px', cursor:'pointer', fontSize:12, color:'#93c5fd', fontFamily:'inherit', whiteSpace:'nowrap' }}>Plan Tomorrow ↗</button>
                 </div>
               )}
 
-              <div onClick={() => openLumi('Fix my 10:00 AM conflict')} style={{ background:'rgba(239,68,68,0.12)', border:'1px solid rgba(248,113,113,0.22)', borderRadius:10, padding:'10px 14px', marginBottom:12, display:'flex', alignItems:'center', gap:10, fontSize:12, color:'#f87171', cursor:'pointer' }}>
-                ⚠️ Conflict at <strong style={{ margin:'0 4px' }}>10:00 AM</strong> — Reading overlaps Hydration Check. Tap to fix with Lumi ↗
-              </div>
-
-              <ProgressRing pct={pct} done={done} total={total} palette={palette} />
+              {total > 0 && <ProgressRing pct={pct} done={done} total={total} palette={palette} />}
 
               <div onClick={() => openLumi('')} style={{ background:'linear-gradient(135deg,rgba(76,63,145,0.18),rgba(15,94,94,0.18))', border:'1px solid rgba(165,180,252,0.18)', borderRadius:14, padding:'14px 16px', marginBottom:18, display:'flex', alignItems:'flex-start', gap:12, cursor:'pointer' }}>
                 <div style={{ width:34, height:34, borderRadius:'50%', background:'rgba(165,180,252,0.15)', border:'1px solid rgba(165,180,252,0.3)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:17, flexShrink:0 }}>✨</div>
                 <div>
                   <div style={{ fontSize:13, color:'rgba(255,255,255,0.62)', lineHeight:1.55 }}>
-                    <strong style={{ color:'#a5b4fc' }}>Good morning!</strong> You have <span style={{ color:palette.accent }}>{total} blocks</span> today.
-                    Your <span style={{ color:palette.accent }}>Workout</span> starts at 2:00 PM — prep at 1:50 PM.
-                    Conflict at 10 AM — one tap to fix.
+                    <strong style={{ color:'#a5b4fc' }}>Lumi is ready.</strong>{' '}
+                    {total > 0
+                      ? <>You have <span style={{ color:palette.accent }}>{total} tasks</span> today — {done} done so far.</>
+                      : <>No tasks yet. Ask Lumi to plan your day.</>}
                   </div>
-                  <div style={{ fontSize:11, color:'rgba(165,180,252,0.55)', marginTop:6 }}>Tap to talk to Lumi → plan your day, fix conflicts, reschedule tasks</div>
+                  <div style={{ fontSize:11, color:'rgba(165,180,252,0.55)', marginTop:6 }}>Tap to talk to Lumi → plan your day, fix conflicts, reschedule</div>
                 </div>
               </div>
 
-              <Timeline tasks={tasks} onToggleDone={toggleDone} onToggleLock={toggleLock} onSelect={selectTask} />
+              {loadingTasks ? (
+                <div style={{ textAlign:'center', padding:'48px 0', color:'rgba(255,255,255,0.28)', fontSize:13 }}>Loading your plan…</div>
+              ) : total === 0 ? (
+                <div style={{ textAlign:'center', padding:'60px 20px' }}>
+                  <div style={{ fontSize:36, marginBottom:12 }}>📅</div>
+                  <div style={{ fontSize:16, fontWeight:600, color:'#e8f0e9', marginBottom:8 }}>No tasks yet today</div>
+                  <div style={{ fontSize:13, color:'rgba(255,255,255,0.35)', marginBottom:20 }}>Ask Lumi to build your day, or add a task below.</div>
+                  <button onClick={() => openLumi('Plan my day')} style={{ background:'rgba(165,180,252,0.12)', border:'1px solid rgba(165,180,252,0.28)', borderRadius:24, padding:'10px 24px', cursor:'pointer', fontSize:13, color:'#a5b4fc', fontFamily:'inherit', fontWeight:500 }}>✨ Plan my day with Lumi</button>
+                </div>
+              ) : (
+                <Timeline tasks={tasks} onToggleDone={toggleDone} onToggleLock={toggleLock} onSelect={selectTask} />
+              )}
             </div>
           )}
 
           {activeTab === 'week'  && <WeekTab palette={palette} />}
 
-          {activeTab === 'plans' && (
-            <PlansTab
-              meds={meds}
-              onToggleMed={i => setMeds(prev => prev.map((m, mi) => mi===i ? { ...m, done:!m.done } : m))}
-              workout={workout}
-              onToggleWorkout={i => setWorkout(prev => prev.map((w, wi) => wi===i ? { ...w, done:!w.done } : w))}
-              palette={palette}
-            />
-          )}
+          {activeTab === 'plans' && <PlansTab palette={palette} onLifeAudit={() => openLumi('Lumi, let\'s plan my entire life and weekly schedule.')} />}
         </div>
       </div>
 

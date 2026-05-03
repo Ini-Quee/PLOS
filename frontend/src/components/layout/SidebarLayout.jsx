@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getCachedSeason, SEASONS, setSeasonOverride } from '../../lib/seasonDetection';
 import { useAtmos } from '../Atmosphere';
+import AlarmBar from '../AlarmBar';
 
 // ─── Base design tokens (palette values get layered on top via useAtmos) ───────
 export const C = {
@@ -26,23 +27,25 @@ export const C = {
 // ─── Navigation Items ──────────────────────────────────────────────────────────
 export const NAV_ITEMS = {
   main: [
-    { icon: '◈', label: 'Dashboard', path: '/dashboard' },
-    { icon: '📅', label: "Today's Plan", path: '/schedule' },
-    { icon: '📖', label: 'Journal', path: '/journal' },
+    { icon: '◈',  label: 'Dashboard',    path: '/dashboard'       },
+    { icon: '📅', label: 'Planner',      path: '/schedule'        },
+    { icon: '📖', label: 'Journal',      path: '/journal'         },
   ],
   life: [
-    { icon: '💰', label: 'Budget', path: '/budget' },
-    { icon: '🔥', label: 'Habits', path: '/habits' },
-    { icon: '🎯', label: 'Goals', path: '/goals' },
-    { icon: '📚', label: 'Reading', path: '/books' },
+    { icon: '💰', label: 'Budget',       path: '/budget'          },
+    { icon: '🔥', label: 'Habits',       path: '/habits'          },
+    { icon: '🎯', label: 'Goals',        path: '/year-plan'       },
+    { icon: '📚', label: 'Reading',      path: '/books'           },
+    { icon: '📣', label: 'Content',      path: '/content-planner' },
   ],
   pro: [
-    { icon: '✨', label: 'Talk to Lumi', path: '/talk-to-lumi' },
-    { icon: '🩺', label: 'Health', path: '/health' },
+    { icon: '✨', label: 'Talk to Lumi', path: '/talk-to-lumi'    },
+    { icon: '📋', label: 'Projects',     path: '/projects'        },
+    { icon: '📇', label: 'Contacts',     path: '/contacts'        },
   ],
   security: [
-    { icon: '🔐', label: 'Privacy settings', path: '/settings/privacy' },
-    { icon: '🛡️', label: 'Encryption: ON', path: null },
+    { icon: '⚙️', label: 'Settings',    path: '/settings'        },
+    { icon: '🛡️', label: 'Encryption: ON', path: null            },
   ],
 };
 
@@ -476,7 +479,10 @@ export default function SidebarLayout({ children, customStyles = {} }) {
         }}
       >
         <Sidebar />
-        <div style={{ flex: 1, overflow: 'auto', position: 'relative', zIndex: 1 }}>{children}</div>
+        <div style={{ flex: 1, overflow: 'auto', position: 'relative', zIndex: 1 }}>
+          <AlarmBar />
+          {children}
+        </div>
       </div>
     </>
   );

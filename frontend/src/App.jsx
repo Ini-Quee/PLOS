@@ -282,6 +282,12 @@ function AppRoutes() {
           path="/design-system"
           element={<AnimatedRoute><DesignSystemPreview /></AnimatedRoute>}
         />
+        {/* Habits — redirect to wellness journal until dedicated page is built */}
+        <Route path="/habits" element={<Navigate to="/journal/page?type=wellness&template=Habit+Tracker" replace />} />
+        {/* Health — redirect to wellness journal */}
+        <Route path="/health" element={<Navigate to="/journal/page?type=wellness" replace />} />
+        {/* Settings/privacy — redirect to settings */}
+        <Route path="/settings/privacy" element={<Navigate to="/settings" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </AnimatePresence>

@@ -4,7 +4,10 @@ const { authenticate } = require('../middleware/authenticate');
 const {
   routeLumiInput,
   confirmAndSave,
-  getConversationHistory
+  confirmJournalPageWrite,
+  buildUserContext,
+  clearConvHistory,
+  getConversationHistory,
 } = require('../services/lumiRouter');
 const { executeActions, getUserFullContext } = require('../services/lumiActions');
 const { pool } = require('../db/connection');
@@ -26,8 +29,8 @@ router.post('/message', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Text is required' });
     }
 
-    // Get user's context (but don't let it dictate rigid routing)
-    const context = await getUserContext(userId);
+    // Build rich context from the real database — shared across all Lumi instances
+    const context = await buildUserContext(userId);
 
     // Route through Lumi - she will converse, analyze, then suggest
     const result = await routeLumiInput(userId, text, context);
@@ -53,9 +56,16 @@ router.post('/message', authenticate, async (req, res) => {
       message: result.lumiResponse,
       route: result.route,
       saved: result.saved || false,
+      savedItems: result.savedItems || [],
       savedData: result.savedData,
       needsConfirmation: result.needsConfirmation || false,
       pendingState: result.pendingState || null,
+      needsJournalPreview: result.needsJournalPreview || false,
+      pendingJournalPage: result.pendingJournalPage || null,
+      needsRecurringPlan: result.needsRecurringPlan || false,
+      recurringPlanText: result.recurringPlanText || null,
+      needsEmailPreview: result.needsEmailPreview || false,
+      pendingEmail: result.pendingEmail || null,
       context: {
         scheduleSummary: context.scheduleSummary,
         habitSummary: context.habitSummary,
@@ -65,10 +75,46 @@ router.post('/message', authenticate, async (req, res) => {
     });
   } catch (error) {
     console.error('Lumi message error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to process message',
       message: "I'm here and listening. Tell me what's on your mind."
     });
+  }
+});
+
+/**
+ * POST /api/lumi/confirm-journal-page
+ * User confirmed the journal page preview — save it to journal_page_entries.
+ */
+router.post('/confirm-journal-page', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { pendingJournalPage } = req.body;
+
+    if (!pendingJournalPage?.journal_type || !pendingJournalPage?.template_name || !pendingJournalPage?.fields) {
+      return res.status(400).json({ error: 'Missing journal page data' });
+    }
+
+    const result = await confirmJournalPageWrite(userId, pendingJournalPage);
+
+    if (!result.success) {
+      return res.status(500).json({ error: result.error || 'Failed to save journal page' });
+    }
+
+    const JOURNAL_LABELS = {
+      personal: 'Everyday Life', spiritual: 'Bible & Faith', goals: 'Goals & Vision',
+      business: 'My Business', wellness: 'Wellness', budget: 'Budget Diary',
+    };
+    const label = JOURNAL_LABELS[pendingJournalPage.journal_type] || pendingJournalPage.journal_type;
+
+    res.json({
+      success: true,
+      entry: result.entry,
+      message: `Saved to your ${pendingJournalPage.template_name} page in the ${label} journal ✓`,
+    });
+  } catch (error) {
+    console.error('Lumi confirm-journal-page error:', error);
+    res.status(500).json({ error: 'Failed to save journal page' });
   }
 });
 
@@ -145,7 +191,7 @@ router.post('/voice', authenticate, upload.single('audio'), async (req, res) => 
     }
 
     // Get user's context
-    const context = await getUserContext(userId);
+    const context = await buildUserContext(userId);
 
     // Route the transcribed text through Lumi
     const result = await routeLumiInput(userId, transcript, context);
@@ -189,6 +235,60 @@ router.post('/voice', authenticate, upload.single('audio'), async (req, res) => 
       error: 'Failed to process voice input',
       message: "I had trouble with that. What were you trying to tell me?"
     });
+  }
+});
+
+/**
+ * GET /api/lumi/daily-entries
+ * Returns the Lumi-written daily journal narrative entries.
+ * Used by the Journal page to show the user a full narrative of each day.
+ * Query params: limit (default 30), offset (default 0)
+ */
+router.get('/daily-entries', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const limit  = Math.min(parseInt(req.query.limit)  || 30, 90);
+    const offset = parseInt(req.query.offset) || 0;
+
+    const result = await pool.query(
+      `SELECT id, entry_date, narrative, sections, mood, created_at, updated_at
+       FROM lumi_daily_entries
+       WHERE user_id = $1
+       ORDER BY entry_date DESC
+       LIMIT $2 OFFSET $3`,
+      [userId, limit, offset]
+    );
+
+    res.json({
+      entries: result.rows.map(r => ({
+        ...r,
+        sections: r.sections || {},
+      })),
+      limit,
+      offset,
+    });
+  } catch (err) {
+    console.error('Lumi daily-entries error:', err);
+    res.status(500).json({ error: 'Failed to fetch daily entries' });
+  }
+});
+
+/**
+ * GET /api/lumi/daily-entries/today
+ * Returns just today's daily entry — used by Dashboard and Journal page header.
+ */
+router.get('/daily-entries/today', authenticate, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, entry_date, narrative, sections, mood, updated_at
+       FROM lumi_daily_entries
+       WHERE user_id = $1 AND entry_date = CURRENT_DATE`,
+      [req.user.id]
+    );
+    res.json({ entry: result.rows[0] || null });
+  } catch (err) {
+    console.error('Lumi today entry error:', err);
+    res.status(500).json({ error: 'Failed to fetch today entry' });
   }
 });
 
@@ -238,11 +338,9 @@ router.post('/chat', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Text is required' });
     }
 
-    // Get conversation history for context
-    const history = await getConversationHistory(userId, 10);
-    
-    // Simple chat response - no routing, just conversation
-    const result = await routeLumiInput(userId, text, { mode: 'chat_only' });
+    // Use the same rich context as /message so the AI knows the user's real data
+    const context = await buildUserContext(userId);
+    const result = await routeLumiInput(userId, text, context);
 
     // Save to history
     await pool.query(
@@ -267,75 +365,34 @@ router.post('/chat', authenticate, async (req, res) => {
 });
 
 /**
- * Helper: Get user context for smarter responses
+ * DELETE /api/lumi/memory
+ * Clears Lumi's Redis conversation memory for this user.
+ * Called when the user taps "Clear" in TalkToLumi.
  */
-async function getUserContext(userId) {
-  const context = {
-    scheduleSummary: '',
-    habitSummary: '',
-    budgetSummary: '',
-    journalSummary: '',
-  };
-
+router.delete('/memory', authenticate, async (req, res) => {
   try {
-    // Today's schedule count
-    const scheduleResult = await pool.query(
-      `SELECT COUNT(*) as count FROM schedules WHERE user_id = $1 AND start_time::date = CURRENT_DATE`,
-      [userId]
-    );
-    const scheduleCount = parseInt(scheduleResult.rows[0]?.count) || 0;
-    context.scheduleSummary = scheduleCount > 0 
-      ? `You have ${scheduleCount} task${scheduleCount !== 1 ? 's' : ''} today` 
-      : 'No tasks scheduled today';
-
-    // Habit completion for today
-    const habitResult = await pool.query(
-      `SELECT 
-        COUNT(*) FILTER (WHERE completed = true) as completed,
-        COUNT(*) as total
-       FROM habit_completions 
-       WHERE user_id = $1 AND date = CURRENT_DATE`,
-      [userId]
-    );
-    const completed = parseInt(habitResult.rows[0]?.completed) || 0;
-    const total = parseInt(habitResult.rows[0]?.total) || 0;
-    context.habitSummary = total > 0 
-      ? `${completed} of ${total} habits done today` 
-      : 'No habits tracked today';
-
-    // Budget spent this month
-    const budgetResult = await pool.query(
-      `SELECT COALESCE(SUM(amount), 0) as total FROM budget_entries WHERE user_id = $1 AND date >= DATE_TRUNC('month', CURRENT_DATE)`,
-      [userId]
-    );
-    const spent = parseInt(budgetResult.rows[0]?.total) || 0;
-    context.budgetSummary = spent > 0 
-      ? `₦${(spent / 1000).toFixed(1)}k spent this month` 
-      : 'No expenses tracked this month';
-
-    // Last journal entry
-    const journalResult = await pool.query(
-      `SELECT recorded_at FROM journal_entries WHERE user_id = $1 ORDER BY recorded_at DESC LIMIT 1`,
-      [userId]
-    );
-    if (journalResult.rows.length > 0) {
-      const lastEntry = new Date(journalResult.rows[0].recorded_at);
-      const daysAgo = Math.floor((Date.now() - lastEntry.getTime()) / (1000 * 60 * 60 * 24));
-      context.journalSummary = daysAgo === 0 
-        ? 'Last entry today' 
-        : daysAgo === 1 
-        ? 'Last entry yesterday' 
-        : `Last entry ${daysAgo} days ago`;
-    } else {
-      context.journalSummary = 'No journal entries yet';
-    }
-
-  } catch (error) {
-    console.error('Get user context error:', error);
+    await clearConvHistory(req.user.id);
+    res.json({ success: true, message: 'Conversation memory cleared.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to clear memory' });
   }
+});
 
-  return context;
-}
+/**
+ * GET /api/lumi/context
+ * Returns the full shared user context from the database.
+ * Used by all Lumi instances (TalkToLumi, JournalPage, BudgetPage)
+ * so they all read from the same source of truth.
+ */
+router.get('/context', authenticate, async (req, res) => {
+  try {
+    const ctx = await buildUserContext(req.user.id);
+    res.json(ctx);
+  } catch (err) {
+    console.error('Lumi context error:', err);
+    res.status(500).json({ error: 'Failed to load context' });
+  }
+});
 
 /**
  * POST /api/lumi/plan
@@ -473,6 +530,154 @@ router.post('/execute', authenticate, async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: 'Execution failed', message: "Something went wrong executing that. Your data is safe — try again?" });
+  }
+});
+
+/**
+ * POST /api/lumi/recurring-plan
+ * Start a smart recurring plan interview.
+ * Lumi proposes a default schedule and returns the first interview question.
+ */
+router.post('/recurring-plan', authenticate, async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text?.trim()) return res.status(400).json({ error: 'Text is required' });
+
+    const { Groq } = require('groq-sdk');
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+    const systemPrompt = `You are Lumi, a smart life planner AI. The user wants to set up a recurring activity in their schedule.
+
+Extract:
+1. The activity (e.g. "gym", "yoga", "Bible study", "reading")
+2. Frequency (times per week / daily / specific days)
+3. Propose a sensible default weekly schedule
+
+Return ONLY valid JSON in this exact format:
+{
+  "activity": "gym",
+  "frequency": "4 times a week",
+  "defaultSchedule": [
+    { "day": "Mon", "dayNum": 1, "time": "07:00", "duration": 45, "focus": "Strength training", "category": "wellness" },
+    { "day": "Wed", "dayNum": 3, "time": "07:00", "duration": 45, "focus": "Cardio", "category": "wellness" },
+    { "day": "Fri", "dayNum": 5, "time": "07:00", "duration": 45, "focus": "Strength training", "category": "wellness" },
+    { "day": "Sat", "dayNum": 6, "time": "09:00", "duration": 60, "focus": "Full body", "category": "wellness" }
+  ],
+  "interviewQuestions": [
+    "What's your main goal — weight loss, strength, cardio, or general fitness?",
+    "What's your current fitness level — beginner, intermediate, or advanced?",
+    "Which days work best for you?",
+    "How long can you spend per session?",
+    "Morning, afternoon, or evening?",
+    "Any injuries or limitations I should know about?",
+    "Do you want rest-day activities like stretching or walking?"
+  ],
+  "category": "wellness"
+}
+
+Use appropriate categories: wellness, learning, spiritual, work, personal.`;
+
+    const completion = await groq.chat.completions.create({
+      messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: text }],
+      model: 'llama-3.1-8b-instant',
+      temperature: 0.3,
+      max_tokens: 800,
+    });
+
+    const raw = completion.choices[0]?.message?.content || '{}';
+    const match = raw.match(/\{[\s\S]*\}/);
+    let plan = {};
+    try { plan = JSON.parse(match?.[0] || '{}'); } catch { plan = {}; }
+
+    if (!plan.activity) {
+      return res.json({
+        success: false,
+        message: "I didn't quite catch what activity you want to plan. Could you tell me more, like 'I want to go to the gym 4 times a week'?"
+      });
+    }
+
+    res.json({
+      success: true,
+      needsPlanInterview: true,
+      planDraft: {
+        activity: plan.activity,
+        frequency: plan.frequency,
+        category: plan.category || 'wellness',
+        defaultSchedule: plan.defaultSchedule || [],
+        interviewQuestions: plan.interviewQuestions || [],
+        currentQuestion: 0,
+        answers: [],
+      },
+      message: `I'd love to set up your ${plan.activity} schedule! Here's a default plan — let me ask a few quick questions to personalise it.`,
+    });
+  } catch (error) {
+    console.error('Recurring plan error:', error);
+    res.status(500).json({ error: 'Failed to create plan', message: "I ran into an issue. Could you try again?" });
+  }
+});
+
+/**
+ * PATCH /api/lumi/plan-interview
+ * User answered an interview question — refine the plan draft and return the next question.
+ */
+router.patch('/plan-interview', authenticate, async (req, res) => {
+  try {
+    const { planDraft, answer } = req.body;
+    if (!planDraft) return res.status(400).json({ error: 'planDraft is required' });
+
+    const qIndex = planDraft.currentQuestion || 0;
+    const questions = planDraft.interviewQuestions || [];
+    const answers   = [...(planDraft.answers || []), { q: questions[qIndex], a: answer }];
+    const nextQ     = qIndex + 1;
+    const done      = nextQ >= questions.length;
+
+    if (done) {
+      // All questions answered — refine the schedule with Groq
+      const { Groq } = require('groq-sdk');
+      const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+      const answersSummary = answers.map(({ q, a }) => `Q: ${q}\nA: ${a}`).join('\n\n');
+      const completion = await groq.chat.completions.create({
+        messages: [{
+          role: 'system',
+          content: `You are a smart fitness/life coach. Based on the interview answers, refine the weekly schedule.
+Original plan: ${JSON.stringify(planDraft.defaultSchedule)}
+Activity: ${planDraft.activity}
+
+Return ONLY a JSON array of schedule blocks:
+[{ "day": "Mon", "dayNum": 1, "time": "07:00", "duration": 45, "focus": "Strength — chest/back", "category": "${planDraft.category || 'wellness'}", "description": "..." }]`
+        }, {
+          role: 'user',
+          content: `Interview answers:\n${answersSummary}`
+        }],
+        model: 'llama-3.1-8b-instant',
+        temperature: 0.3,
+        max_tokens: 600,
+      });
+
+      const raw = completion.choices[0]?.message?.content || '[]';
+      const match = raw.match(/\[[\s\S]*\]/);
+      let refinedSchedule = planDraft.defaultSchedule;
+      try { refinedSchedule = JSON.parse(match?.[0] || '[]'); } catch {}
+      if (!refinedSchedule.length) refinedSchedule = planDraft.defaultSchedule;
+
+      return res.json({
+        success: true,
+        done: true,
+        planDraft: { ...planDraft, defaultSchedule: refinedSchedule, answers, currentQuestion: nextQ },
+        message: `Perfect! Here's your personalised ${planDraft.activity} plan. Ready to add it to your schedule?`,
+      });
+    }
+
+    res.json({
+      success: true,
+      done: false,
+      planDraft: { ...planDraft, answers, currentQuestion: nextQ },
+      message: questions[nextQ],
+    });
+  } catch (error) {
+    console.error('Plan interview error:', error);
+    res.status(500).json({ error: 'Failed to process answer' });
   }
 });
 

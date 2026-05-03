@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import * as lumiVoice from '../lib/lumi-voice';
 import { THEME_LIBRARY } from '../lib/livingBackgroundConfig';
@@ -20,6 +20,9 @@ import { getSceneById } from '../lib/wallpaperScenes';
 export default function Settings() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const oauthSuccess = searchParams.get('oauth_success');
+  const oauthError   = searchParams.get('oauth_error');
 
   // Settings state
   const [theme, setTheme] = useState('dark');
@@ -59,7 +62,11 @@ export default function Settings() {
 
   // Notifications
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notifPermission, setNotifPermission] = useState(typeof Notification !== 'undefined' ? Notification.permission : 'unsupported');
   const [checkInTime, setCheckInTime] = useState('07:00');
+
+  // Integrations — Google OAuth
+  const [googleStatus, setGoogleStatus] = useState(null); // null | { connected, scopes, connectedAt }
 
   // Cinematic Wallpaper
   const [showWallpaperPicker, setShowWallpaperPicker] = useState(false);
@@ -77,6 +84,11 @@ export default function Settings() {
       }
     }
     loadVoices();
+
+    // Check Google OAuth status
+    import('../lib/api').then(({ default: api }) => {
+      api.get('/oauth/google/status').then(res => setGoogleStatus(res.data)).catch(() => {});
+    });
 
     // Load wallpaper scene
     const savedScene = localStorage.getItem('plos_wallpaper_scene') || 'auto';
@@ -168,6 +180,7 @@ export default function Settings() {
     { id: 'security', title: 'Security', icon: '🛡️' },
     { id: 'email', title: 'Email', icon: '📧' },
     { id: 'notifications', title: 'Notifications', icon: '🔔' },
+    { id: 'integrations', title: 'Integrations', icon: '🔗' },
   ];
 
   return (
@@ -180,6 +193,17 @@ export default function Settings() {
       }}
     >
       <div style={{ maxWidth: '800px', margin: '0 auto', padding: '32px 24px' }}>
+        {/* OAuth result banner */}
+        {oauthSuccess === 'google' && (
+          <div style={{ marginBottom:16, padding:'12px 16px', borderRadius:10, background:'rgba(0,212,170,0.1)', border:'1px solid rgba(0,212,170,0.3)', color:'#00d4aa', fontSize:13 }}>
+            ✅ Google account connected successfully! Lumi can now send emails on your behalf.
+          </div>
+        )}
+        {oauthError && (
+          <div style={{ marginBottom:16, padding:'12px 16px', borderRadius:10, background:'rgba(248,113,113,0.1)', border:'1px solid rgba(248,113,113,0.3)', color:'#f87171', fontSize:13 }}>
+            ⚠️ Google connection failed: {oauthError}
+          </div>
+        )}
         {/* Header */}
         <div
           style={{
@@ -1496,6 +1520,91 @@ export default function Settings() {
               >
                 Lumi will send you a notification at this time every day
               </p>
+            </div>
+          </SettingsSection>
+
+          {/* Section 9: Integrations */}
+          <SettingsSection title="Integrations" icon="🔗">
+            {/* Browser notifications */}
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#F5F0E8', marginBottom: 8 }}>Browser Notifications</div>
+              {notifPermission === 'granted' ? (
+                <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:10, background:'rgba(0,212,170,0.08)', border:'1px solid rgba(0,212,170,0.2)' }}>
+                  <span style={{ fontSize:16 }}>✅</span>
+                  <div>
+                    <div style={{ fontSize:13, color:'#00d4aa' }}>Notifications enabled</div>
+                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)' }}>PLOS will alert you when schedule items are due</div>
+                  </div>
+                </div>
+              ) : notifPermission === 'denied' ? (
+                <div style={{ padding:'10px 14px', borderRadius:10, background:'rgba(248,113,113,0.08)', border:'1px solid rgba(248,113,113,0.2)', fontSize:13, color:'#f87171' }}>
+                  Notifications blocked. Open your browser settings and allow notifications for this site, then reload.
+                </div>
+              ) : notifPermission === 'unsupported' ? (
+                <div style={{ fontSize:12, color:'rgba(255,255,255,0.4)' }}>Browser notifications not supported in this browser.</div>
+              ) : (
+                <button onClick={async () => { const r = await Notification.requestPermission(); setNotifPermission(r); }}
+                  style={{ padding:'10px 20px', borderRadius:10, border:'1px solid rgba(200,149,92,0.4)', background:'rgba(200,149,92,0.1)', color:'#C8955C', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
+                  Enable notifications
+                </button>
+              )}
+            </div>
+
+            {/* Google account */}
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#F5F0E8', marginBottom: 4 }}>Google Account</div>
+              <div style={{ fontSize:12, color:'rgba(255,255,255,0.45)', marginBottom:14, lineHeight:1.6 }}>
+                Connect your Google account to let Lumi send emails on your behalf and import content from Google Drive.
+              </div>
+
+              {googleStatus === null ? (
+                <div style={{ fontSize:12, color:'rgba(255,255,255,0.3)' }}>Checking…</div>
+              ) : googleStatus.connected ? (
+                <div style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderRadius:12, background:'rgba(0,212,170,0.06)', border:'1px solid rgba(0,212,170,0.2)', flexWrap:'wrap' }}>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:13, color:'#00d4aa', fontWeight:600 }}>✓ Google connected</div>
+                    {googleStatus.connectedAt && (
+                      <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:2 }}>
+                        Connected {new Date(googleStatus.connectedAt).toLocaleDateString('en-NG', { day:'numeric', month:'short', year:'numeric' })}
+                      </div>
+                    )}
+                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:2 }}>
+                      Scopes: {(googleStatus.scopes || []).map(s => s.split('/').pop()).join(', ')}
+                    </div>
+                  </div>
+                  <button onClick={async () => {
+                    if (!window.confirm('Disconnect your Google account from PLOS?')) return;
+                    const { default: api } = await import('../lib/api');
+                    await api.delete('/oauth/google').catch(() => {});
+                    setGoogleStatus({ connected: false });
+                  }}
+                    style={{ padding:'7px 16px', borderRadius:8, border:'1px solid rgba(248,113,113,0.3)', background:'transparent', color:'#f87171', fontSize:12, cursor:'pointer', fontFamily:'inherit' }}>
+                    Disconnect
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <a href={`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/oauth/google`}
+                    style={{ display:'inline-block', padding:'10px 20px', borderRadius:10, background:'#fff', color:'#333', fontSize:13, fontWeight:600, textDecoration:'none', fontFamily:'inherit' }}>
+                    <span style={{ marginRight:8 }}>🔗</span> Connect Google Account
+                  </a>
+                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginTop:8 }}>
+                    Grants Gmail send + Google Drive read access. You can revoke at any time.
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Claude affiliate */}
+            <div style={{ marginTop:24, paddingTop:20, borderTop:'1px solid rgba(255,255,255,0.07)' }}>
+              <div style={{ fontSize:14, fontWeight:600, color:'#F5F0E8', marginBottom:4 }}>Claude AI — Premium Planning</div>
+              <div style={{ fontSize:12, color:'rgba(255,255,255,0.45)', marginBottom:14, lineHeight:1.6 }}>
+                For the most powerful life planning experience — use Claude AI to do a deep planning session, then import the plan into PLOS with one click.
+              </div>
+              <a href="https://claude.ai" target="_blank" rel="noopener noreferrer"
+                style={{ display:'inline-block', padding:'9px 18px', borderRadius:10, background:'rgba(139,92,246,0.2)', border:'1px solid rgba(139,92,246,0.4)', color:'#a5b4fc', fontSize:13, fontWeight:600, textDecoration:'none', fontFamily:'inherit' }}>
+                ✨ Open Claude AI →
+              </a>
             </div>
           </SettingsSection>
         </div>

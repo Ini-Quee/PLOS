@@ -237,6 +237,154 @@ router.delete(
   }
 );
 
+/**
+ * GET /api/content/posts/calendar?month=YYYY-MM
+ * Returns all posts for a given month — used by the content calendar UI.
+ */
+router.get('/posts/calendar', authenticate, async (req, res) => {
+  const uid = req.user.id;
+  const month = req.query.month || new Date().toISOString().slice(0, 7); // YYYY-MM
+  try {
+    const result = await pool.query(
+      `SELECT id, platform, title, content, scheduled_for, status, media_url, category, source
+       FROM scheduled_posts
+       WHERE user_id = $1
+         AND date_trunc('month', scheduled_for) = date_trunc('month', $2::date)
+       ORDER BY scheduled_for ASC`,
+      [uid, `${month}-01`]
+    );
+    res.json({ posts: result.rows, month });
+  } catch (err) {
+    console.error('Content calendar error:', err);
+    res.status(500).json({ error: 'Failed to load calendar' });
+  }
+});
+
+/**
+ * GET /api/content/posts/today
+ * Returns posts due today — used by AlarmBar for content alerts.
+ */
+router.get('/posts/today', authenticate, async (req, res) => {
+  const uid = req.user.id;
+  try {
+    const result = await pool.query(
+      `SELECT id, platform, title, content, scheduled_for, status, media_url, category
+       FROM scheduled_posts
+       WHERE user_id = $1
+         AND status = 'scheduled'
+         AND DATE(scheduled_for AT TIME ZONE 'UTC') = CURRENT_DATE
+       ORDER BY scheduled_for ASC`,
+      [uid]
+    );
+    res.json({ posts: result.rows });
+  } catch (err) {
+    console.error('Content today error:', err);
+    res.status(500).json({ error: 'Failed to load today content' });
+  }
+});
+
+/**
+ * POST /api/content/posts/bulk
+ * Bulk-create scheduled posts — for year-long content planning or Lumi imports.
+ * Body: { posts: [{ platform, content, scheduled_for, title?, category?, media_url? }] }
+ */
+router.post('/posts/bulk', authenticate, async (req, res) => {
+  const uid = req.user.id;
+  const { posts } = req.body;
+
+  if (!Array.isArray(posts) || posts.length === 0) {
+    return res.status(400).json({ error: 'posts array is required' });
+  }
+  if (posts.length > 500) {
+    return res.status(400).json({ error: 'Maximum 500 posts per bulk import' });
+  }
+
+  const created = [];
+  const failed  = [];
+
+  for (const p of posts) {
+    if (!p.platform || !p.content || !p.scheduled_for) {
+      failed.push({ post: p, reason: 'Missing platform, content, or scheduled_for' });
+      continue;
+    }
+    try {
+      const r = await pool.query(
+        `INSERT INTO scheduled_posts
+           (user_id, platform, content, scheduled_for, title, category, media_url, source)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+         RETURNING id, platform, title, scheduled_for, status`,
+        [uid, p.platform, p.content, p.scheduled_for,
+         p.title || null, p.category || null, p.media_url || null, p.source || 'import']
+      );
+      created.push(r.rows[0]);
+    } catch (err) {
+      failed.push({ post: p, reason: err.message });
+    }
+  }
+
+  res.status(201).json({
+    created: created.length,
+    failed:  failed.length,
+    posts:   created,
+    message: failed.length === 0
+      ? `All ${created.length} posts scheduled!`
+      : `${created.length} posts created, ${failed.length} failed.`,
+  });
+});
+
+/**
+ * POST /api/content/posts/import-from-lumi
+ * Lumi parses a user's pasted content list and returns structured posts.
+ * Body: { text: "..." }
+ */
+router.post('/posts/import-from-lumi', authenticate, async (req, res) => {
+  const uid = req.user.id;
+  const { text } = req.body;
+  if (!text?.trim()) return res.status(400).json({ error: 'text is required' });
+
+  try {
+    const { Groq } = require('groq-sdk');
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+    const today = new Date().toISOString().slice(0, 10);
+    const completion = await groq.chat.completions.create({
+      messages: [{
+        role: 'system',
+        content: `Today is ${today}. Extract content posts from the following text.
+For each post return a JSON object with:
+  platform (instagram/twitter/linkedin/facebook/tiktok/blog/email),
+  content (the post text),
+  title (short headline, max 60 chars),
+  scheduled_for (ISO datetime, e.g. "2026-05-10T15:00:00Z"),
+  category (lifestyle/business/faith/fitness/food/travel/other).
+If the date is relative (e.g. "next Friday", "in 2 weeks"), calculate from today.
+Return ONLY a JSON array, no markdown.`
+      }, {
+        role: 'user',
+        content: text.slice(0, 4000),
+      }],
+      model: 'llama-3.1-8b-instant',
+      temperature: 0.2,
+      max_tokens: 1500,
+    });
+
+    const raw = completion.choices[0]?.message?.content || '[]';
+    const match = raw.match(/\[[\s\S]*\]/);
+    let posts = [];
+    try { posts = JSON.parse(match?.[0] || '[]'); } catch {}
+
+    res.json({
+      posts,
+      message: posts.length
+        ? `Found ${posts.length} post${posts.length > 1 ? 's' : ''} in your content. Review and confirm to schedule them.`
+        : "I couldn't extract any posts. Try pasting in a clearer format: one post per line with a date.",
+    });
+  } catch (err) {
+    console.error('Import from Lumi error:', err);
+    res.status(500).json({ error: 'Failed to parse content' });
+  }
+});
+
 // ===== TEMPLATES =====
 
 /**
