@@ -1,15 +1,137 @@
 # PLOS — Tomorrow's Build Session
-**Date saved:** 2026-05-03
-**Last commit:** f71cd49 — "Major release: Lumi AI life planning, journal architecture, alarms & content scheduler"
+**Date saved:** 2026-05-04
+**Last commit:** 5b23588 — "Major release: complete product build — all 6 problems fixed, launch-ready"
 
 ---
 
 ## START HERE — Read this first
 
-We had a massive session today. Everything below is what's left to build.
-The app runs. The backend is up. The frontend compiles (after fixing a JSX parse error in JournalDashboard.jsx line 1008 — missing `}` on the bookshelf grid conditional).
+The full web app product build is complete. All 12 original tasks done. All 6 structural problems fixed.
+The app is on GitHub. It runs locally. It has NOT been deployed yet and has NOT been fully tested.
 
-Tell Claude: **"Continue from TOMORROW.md"** and point to this file.
+Tell Claude: **"Continue from TOMORROW.md"** — start with bug testing, then deploy, then mobile app design.
+
+---
+
+## PRIORITY 1 — Bug testing (do before anything else)
+
+The app was built fast. There are likely bugs we haven't seen yet.
+Walk through every page methodically and write down what breaks.
+
+| Page | What to test |
+|------|-------------|
+| **Planner** | Today tab loads, week view renders, bell reminder picker, progress ring |
+| **Habits** | Add habit, mark done (identity vote modal fires), heatmap shows, 📤 share downloads PNG |
+| **Journal** | Open a book, write, auto-save shows, Browse tab shows past entries by week |
+| **Dashboard** | Stat cards load, InsightCard renders, no blank/crashed widgets |
+| **Lumi** | Send message, gets response, header shows "Remembers N things about you" |
+| **Budget** | Log expense, see it in list |
+| **Login** | "Try Investor Demo" loads demo account with seed data |
+| **Mobile** | DevTools → iPhone 12: bottom nav shows, pages usable, habits heatmap 4 weeks |
+
+Fix every bug found before deploying.
+
+---
+
+## PRIORITY 2 — Deploy (after bugs fixed)
+
+Follow DEPLOY.md step by step. Commands you run yourself:
+1. `npm install -g @railway/cli` → `railway login` → `railway init` → `railway up`
+2. `npm install -g vercel` → `cd frontend` → `vercel --prod`
+3. Set env vars on Railway: DATABASE_URL, JWT_SECRET, GROQ_API_KEY, GEMINI_API_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, FRONTEND_URL
+4. Get Gemini API key free at aistudio.google.com/apikey
+5. VAPID keys: server logs them on first start — copy to Railway env vars
+6. Test: `curl https://your-api.railway.app/api/health`
+
+---
+
+## PRIORITY 3 — Mobile app UI design
+
+The web app is mobile-responsive (works in a phone browser with bottom nav).
+A native mobile app is a separate project — not yet designed or built.
+
+**Decision to make:**
+
+**Option A — PWA (fastest, works now)**
+- Already 80% done — sw.js and manifest.json built
+- Missing: PWA icons (generate at realfavicongenerator.net → drop into frontend/public/icons/)
+- Users can "Add to Home Screen" on iOS/Android — feels like a real app
+- Timeline: 1 day
+
+**Option B — React Native (proper native app)**
+- Full iOS + Android app — separate codebase, same backend API
+- Core screens: Dashboard, Habits, Journal write, Lumi chat, Planner
+- Design language: same dark cinematic aesthetic, adapted for native components
+- Timeline: 4–6 weeks
+- Start with screens design in Figma/Framer before writing code
+
+**Recommendation:** Do PWA first (ship it), then plan React Native as v2.
+
+---
+
+## WHAT WAS BUILT IN THIS SESSION (full summary)
+
+### Problems fixed (all 6 from PROBLEMS-AND-FIXES.md)
+1. **Lumi memory** — lumi_memories table, extracted from every chat, injected into system prompt, header shows count
+2. **Push notifications** — push_subscriptions table, VAPID, per-minute cron fires reminders, opt-in prompt on dashboard
+3. **Mobile layout** — useIsMobile hook, bottom nav + drawer in SidebarLayout, 2-col dashboard, heatmap collapses
+4. **Social layer** — accountability partners, weekly cron emails via nodemailer, streak card PNG download
+5. **Deploy config** — railway.toml, vercel.json, DEPLOY.md ready
+6. **Insight depth** — 30-day identity sparklines, InsightCard + monthly review on dashboard
+
+### Also built
+- Offline-first write queue (habits/journal/budget/schedule survive network loss)
+- Language audit — all punishing copy removed, replaced with compassionate language
+- Error boundaries — App-level, page-level, compact widget-level (Dashboard)
+- Per-user 50 msg/day Lumi cap
+- Gemini Flash switch — aiClient.js wrapper, 1M free tokens/day vs 100K
+- Privacy policy page at /privacy (Google OAuth compliance)
+- Investor demo mode — demo account, seed data, reset endpoint, "Try Demo" on login
+- Journal past entries week browser in journal modal
+- Bell reminder picker (🔔) on every schedule task card
+- Bug fixes: ProgressRing crash, C.pink undefined, OpenJournal null guard, WeekTab null guard, TalkToLumi C.amber
+
+### New files created
+backend: habits.js, demo.js, push.js, aiClient.js, migrations 018–023
+frontend: Habits.jsx, PrivacyPolicy.jsx, DemoBanner.jsx, OnboardingModal.jsx
+frontend hooks: useIsMobile.js, useOnlineStatus.js, usePushNotifications.js
+frontend lib: offlineQueue.js
+PWA: manifest.json, sw.js
+Docs: DEPLOY.md, LAUNCH.md, PROBLEMS-AND-FIXES.md, railway.toml, vercel.json
+
+---
+
+## KEY FILES TO KNOW
+
+| What | Where |
+|------|-------|
+| AI provider wrapper | `backend/src/services/aiClient.js` |
+| Lumi AI brain | `backend/src/services/lumiRouter.js` |
+| Lumi persistent memory | `lumi_memories` table, extracted in lumiRouter.js |
+| Push notifications | `backend/src/routes/push.js` + cron in server.js |
+| Habits system | `backend/src/routes/habits.js` + `frontend/src/pages/Habits.jsx` |
+| Offline queue | `frontend/src/lib/offlineQueue.js` + wired in api.js |
+| Mobile layout | `frontend/src/components/layout/SidebarLayout.jsx` (useIsMobile) |
+| Deploy instructions | `DEPLOY.md` |
+| Launch checklist | `LAUNCH.md` |
+
+## AI PROVIDER (updated)
+aiClient.js wraps both providers:
+- **Gemini Flash** (preferred) — set GEMINI_API_KEY in .env → 1M tokens/day free
+- **Groq fallback** — llama-3.3-70b-versatile for Lumi, llama-3.1-8b-instant for sub-tasks
+
+## REDIS KEYS
+- `lumi_conv:{userId}` — conversation history (TTL 4h)
+- `life_audit:{userId}` — life planning interview session (TTL 4h)
+
+## DATABASE MIGRATIONS
+001–017: original schema
+018: habits + habit_completions
+019: identity_label, revival_tokens, identity_score
+020: is_demo flag on users
+021: lumi_memories
+022: habit_commitments (accountability partners)
+023: push_subscriptions
 
 ---
 
