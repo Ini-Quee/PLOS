@@ -6,6 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/authenticate');
+const { getLegacyClient } = require('../services/aiClient');
 const { auditLog } = require('../middleware/auditLog');
 const { validateInput } = require('../middleware/validateInput');
 const { body, param, query } = require('express-validator');
@@ -343,8 +344,7 @@ router.post('/posts/import-from-lumi', authenticate, async (req, res) => {
   if (!text?.trim()) return res.status(400).json({ error: 'text is required' });
 
   try {
-    const { Groq } = require('groq-sdk');
-    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+    const groq = getLegacyClient();
 
     const today = new Date().toISOString().slice(0, 10);
     const completion = await groq.chat.completions.create({

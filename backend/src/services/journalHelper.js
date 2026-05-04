@@ -1,14 +1,7 @@
 const { pool } = require('../db/connection');
+const { getLegacyClient } = require('./aiClient');
 
-// Lazy-load Groq SDK - only initialize when needed
-let groq = null;
-function getGroqClient() {
-  if (!groq) {
-    const { Groq } = require('groq-sdk');
-    groq = new Groq({ apiKey: process.env.GROQ_API_KEY || 'dummy-key' });
-  }
-  return groq;
-}
+function getGroqClient() { return getLegacyClient(); }
 
 /**
  * JOURNAL HELPER FOR LUMI

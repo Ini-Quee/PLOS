@@ -24,14 +24,10 @@
  */
 
 const { pool } = require('../db/connection');
+const { getLegacyClient } = require('./aiClient');
 
-let groq = null;
 function getGroqClient() {
-  if (!groq) {
-    const { Groq } = require('groq-sdk');
-    groq = new Groq({ apiKey: process.env.GROQ_API_KEY || 'dummy-key' });
-  }
-  return groq;
+  return getLegacyClient();
 }
 
 const pending = new Map();
@@ -77,6 +73,102 @@ function isRecurringPlanRequest(text) {
   const hasFreq = /(\d+\s*times?\s*(a|per)\s*week|every\s+day|daily|each\s+week|weekly)/i.test(text);
   const hasActivity = /(gym|yoga|workout|exercise|run|jog|swim|pilates|meditat|pray|read|bible|study|walk|cycle|lift|sprint|train)/i.test(lower);
   return hasFreq && hasActivity;
+}
+
+// ─── Persistent memory helpers (Postgres) ──────────────────────────────────────
+
+async function getUserMemories(userId) {
+  try {
+    const { rows } = await pool.query(
+      `SELECT memory_type, content FROM lumi_memories
+       WHERE user_id = $1 ORDER BY importance DESC, updated_at DESC LIMIT 12`,
+      [userId]
+    );
+    return rows;
+  } catch { return []; }
+}
+
+// Save pre-extracted memory facts directly to DB — no Groq call
+async function saveExtractedMemories(userId, facts) {
+  try {
+    for (const fact of facts) {
+      if (!fact?.content?.trim()) continue;
+      const content = fact.content.trim();
+      const { rows: existing } = await pool.query(
+        `SELECT id FROM lumi_memories WHERE user_id = $1 AND content ILIKE $2 LIMIT 1`,
+        [userId, `%${content.slice(0, 60)}%`]
+      );
+      if (existing.length > 0) {
+        await pool.query(
+          `UPDATE lumi_memories SET updated_at = NOW(), importance = GREATEST(importance, $1) WHERE id = $2`,
+          [fact.importance || 5, existing[0].id]
+        );
+      } else {
+        await pool.query(
+          `INSERT INTO lumi_memories (user_id, memory_type, content, importance, source)
+           VALUES ($1, $2, $3, $4, 'chat')`,
+          [userId, fact.type || 'fact', content, Math.min(10, Math.max(1, fact.importance || 5))]
+        );
+      }
+    }
+  } catch (err) {
+    console.error('[Lumi memory] save error:', err.message);
+  }
+}
+
+// Used only for life audit confirm — forces a Groq extraction from a summary string
+async function extractAndSaveMemories(userId, userMessage, lumiResponse) {
+  try {
+    const prompt = `Extract 0-2 facts worth remembering long-term about this user.
+Only extract things that reveal goals, fears, patterns, values, milestones, or strong preferences.
+Ignore: task requests, questions, one-off comments, logging of expenses/workouts/schedule items.
+
+User said: "${userMessage.slice(0, 400)}"
+Assistant responded: "${lumiResponse.slice(0, 300)}"
+
+Return a JSON array ONLY. No other text. Example:
+[{ "type": "goal", "content": "Wants to save ₦500,000 for an emergency fund by December", "importance": 8 }]
+
+Return [] if nothing genuinely memorable. Types: goal | fear | pattern | fact | milestone`;
+
+    const result = await getGroqClient().chat.completions.create({
+      messages: [{ role: 'user', content: prompt }],
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.1,
+      max_tokens: 300,
+    });
+
+    const raw = result.choices[0]?.message?.content?.trim() || '[]';
+    const match = raw.match(/\[[\s\S]*\]/);
+    if (!match) return;
+    const facts = JSON.parse(match[0]);
+    if (!Array.isArray(facts)) return;
+
+    for (const fact of facts) {
+      if (!fact?.content?.trim()) continue;
+      const content = fact.content.trim();
+      // Deduplication — skip if very similar memory already exists
+      const { rows: existing } = await pool.query(
+        `SELECT id FROM lumi_memories WHERE user_id = $1 AND content ILIKE $2 LIMIT 1`,
+        [userId, `%${content.slice(0, 60)}%`]
+      );
+      if (existing.length > 0) {
+        await pool.query(
+          `UPDATE lumi_memories SET updated_at = NOW(), importance = GREATEST(importance, $1) WHERE id = $2`,
+          [fact.importance || 5, existing[0].id]
+        );
+      } else {
+        await pool.query(
+          `INSERT INTO lumi_memories (user_id, memory_type, content, importance, source)
+           VALUES ($1, $2, $3, $4, 'chat')`,
+          [userId, fact.type || 'fact', content, Math.min(10, Math.max(1, fact.importance || 5))]
+        );
+      }
+    }
+  } catch (err) {
+    // Non-blocking — never let memory extraction crash the main flow
+    console.error('[Lumi memory] extraction error:', err.message);
+  }
 }
 
 // ─── Redis conversation memory helpers ─────────────────────────────────────────
@@ -146,6 +238,10 @@ async function routeLumiInput(userId, text, context = {}) {
     // Save this exchange to Redis for future context
     if (extraction.lumiResponse) {
       await appendConvHistory(userId, text, extraction.lumiResponse);
+      // Save any memories Lumi identified — no extra API call needed
+      if (Array.isArray(extraction.memories_to_save) && extraction.memories_to_save.length > 0) {
+        saveExtractedMemories(userId, extraction.memories_to_save).catch(() => {});
+      }
     }
 
     return result;
@@ -171,6 +267,12 @@ async function extractAndClassify(userId, text, context, convHistory = []) {
   const convBlock = recentConv.length > 0
     ? recentConv.map(m => `${m.role === 'user' ? 'User' : 'Lumi'}: ${m.content.slice(0, 120)}`).join('\n')
     : '(first message in this session)';
+
+  // Format persistent memories for injection
+  const memories = context.persistentMemories || [];
+  const memoriesBlock = memories.length > 0
+    ? memories.map(m => `- [${m.memory_type}]: ${m.content}`).join('\n')
+    : 'Nothing stored yet — this may be one of their first sessions.';
 
   const systemPrompt = `You are Lumi — the AI best friend, life coach, and daily companion inside PLOS. You are not a chatbot. You are the person the user talks to every single day to run their life.
 
@@ -208,6 +310,9 @@ Recent activity: ${context.recentLogs || 'No recent logs'}
 Habits today: ${context.habitSummary || 'No habits tracked'}
 Last journal: ${context.journalSummary || 'No journal entries'}
 Today's journal pages written: ${context.journalPagesToday || 'None yet'}
+
+WHAT YOU KNOW ABOUT THIS USER FROM PAST SESSIONS (persistent memory):
+${memoriesBlock}
 
 RECENT CONVERSATION (what was said earlier in this session):
 ${convBlock}
@@ -389,8 +494,12 @@ Respond ONLY with this exact JSON — no markdown fences, no text before or afte
   "lumiResponse": "your warm, specific, emotionally intelligent response with follow-up question",
   "needsConfirmation": false,
   "confirmPrompt": null,
-  "pendingJournalContent": null
-}`;
+  "pendingJournalContent": null,
+  "memories_to_save": []
+}
+
+The memories_to_save field is optional. Only include entries for things genuinely worth remembering long-term: goals, fears, values, strong patterns, milestones. Ignore task logging, questions, and one-off comments. Max 2 entries. Format: { "type": "goal|fear|pattern|fact|milestone", "content": "concise fact about the user", "importance": 1-10 }
+Example: "memories_to_save": [{ "type": "goal", "content": "Wants to run a marathon by December 2026", "importance": 8 }]`;
 
   try {
     // Build message array: system prompt + recent history turns + current message
@@ -1021,6 +1130,7 @@ async function buildUserContext(userId) {
     journalSummary:'No journal entries',
     journalPagesToday:'None yet',
     customJournalTypes:[],
+    persistentMemories:[],
   };
   try {
     const [sched, hab, todayB, monthB, logs, journal] = await Promise.all([
@@ -1090,6 +1200,9 @@ async function buildUserContext(userId) {
       routing_keywords: r.routing_keywords || [],
     }));
 
+    // Persistent memories — what Lumi knows about this user across all sessions
+    ctx.persistentMemories = await getUserMemories(userId);
+
   } catch (err) {
     console.error('[Lumi] buildUserContext error:', err.message);
   }
@@ -1156,4 +1269,5 @@ module.exports = {
   routeLumiInput, confirmAndSave, confirmJournalPageWrite, buildUserContext,
   clearConvHistory, getConversationHistory,
   saveToJournal, saveToBudget, saveToSchedule, updateHabit,
+  getUserMemories, extractAndSaveMemories, saveExtractedMemories,
 };

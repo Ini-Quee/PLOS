@@ -349,10 +349,10 @@ export function generateTaskCelebration(taskTitle, streak = 0) {
  */
 export function generateAccountabilityMessage(taskTitle, missedCount) {
   if (missedCount === 1) {
-    return `You missed ${taskTitle} today. That's okay — one day doesn't break the chain. What's the plan for tomorrow?`;
+    return `You took a day away from ${taskTitle}. Rest days are real too. Want to pick it up tomorrow, or is something getting in the way?`;
   }
 
-  return `Hey. You said you wouldn't skip ${taskTitle} twice in a row. Today makes ${missedCount}. What happened? Do you want to talk about it or reschedule?`;
+  return `${taskTitle} has been quiet for ${missedCount} days. No pressure — but I'm curious. Is this still something you want, or has something shifted? It's okay either way.`;
 }
 
 export default {

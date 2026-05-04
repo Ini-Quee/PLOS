@@ -253,12 +253,111 @@ function NewJournalCard({ onClick }) {
   );
 }
 
+// ─── Week browser helper ──────────────────────────────────────────────────────
+function weekStart(offset = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() - d.getDay() - offset * 7);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+function weekEnd(offset = 0) {
+  const d = weekStart(offset);
+  d.setDate(d.getDate() + 6);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+function isoDate(d) { return d.toISOString().slice(0, 10); }
+
+function WeekBrowser({ journal }) {
+  const navigate = useNavigate();
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!journal?.type) return;
+    setLoading(true);
+    const from = isoDate(weekStart(weekOffset));
+    const to   = isoDate(weekEnd(weekOffset));
+    api.get(`/journal/pages?journal_type=${journal.type}&from=${from}&to=${to}&limit=50`)
+      .then(res => setEntries(res.data?.entries || []))
+      .catch(() => setEntries([]))
+      .finally(() => setLoading(false));
+  }, [weekOffset, journal?.type]);
+
+  const ws = weekStart(weekOffset);
+  const we = weekEnd(weekOffset);
+  const weekLabel = weekOffset === 0 ? 'This week'
+    : weekOffset === 1 ? 'Last week'
+    : `${ws.toLocaleDateString('en-NG', { day:'numeric', month:'short' })} – ${we.toLocaleDateString('en-NG', { day:'numeric', month:'short', year:'numeric' })}`;
+
+  // Group by entry_date
+  const grouped = {};
+  entries.forEach(e => {
+    if (!grouped[e.entry_date]) grouped[e.entry_date] = [];
+    grouped[e.entry_date].push(e);
+  });
+  const days = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+
+  return (
+    <div>
+      {/* Week navigator */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+        <button
+          onClick={() => setWeekOffset(v => v + 1)}
+          style={{ padding:'6px 12px', borderRadius:8, background:'rgba(255,255,255,0.05)', border:`1px solid ${C.border2}`, color:C.muted, fontSize:12, cursor:'pointer', fontFamily:'inherit' }}
+        >← Older</button>
+        <span style={{ fontSize:13, fontWeight:600, color:C.text }}>{weekLabel}</span>
+        <button
+          onClick={() => setWeekOffset(v => Math.max(0, v - 1))}
+          disabled={weekOffset === 0}
+          style={{ padding:'6px 12px', borderRadius:8, background:'rgba(255,255,255,0.05)', border:`1px solid ${C.border2}`, color: weekOffset === 0 ? 'rgba(255,255,255,0.15)' : C.muted, fontSize:12, cursor: weekOffset === 0 ? 'default' : 'pointer', fontFamily:'inherit' }}
+        >Newer →</button>
+      </div>
+
+      {loading && <div style={{ textAlign:'center', padding:'32px 0', color:C.muted, fontSize:12 }}>Loading…</div>}
+
+      {!loading && days.length === 0 && (
+        <div style={{ textAlign:'center', padding:'32px 0' }}>
+          <div style={{ fontSize:28, marginBottom:8 }}>🌿</div>
+          <div style={{ fontSize:13, color:C.muted }}>A quiet week — nothing written here yet</div>
+        </div>
+      )}
+
+      {!loading && days.map(date => (
+        <div key={date} style={{ marginBottom:18 }}>
+          <div style={{ fontSize:11, fontWeight:700, color:journal.accent, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>
+            {new Date(date + 'T00:00:00').toLocaleDateString('en-NG', { weekday:'long', day:'numeric', month:'long' })}
+          </div>
+          {grouped[date].map((e, i) => {
+            const snippet = JSON.stringify(e.fields || {}).replace(/[{}"]/g, '').replace(/:/g, ': ').slice(0, 140);
+            return (
+              <div
+                key={e.id || i}
+                onClick={() => navigate(`/journal/page?type=${e.journal_type}&template=${encodeURIComponent(e.template_name)}&date=${e.entry_date}`)}
+                style={{ background:C.bg3, border:`1px solid ${C.border2}`, borderRadius:10, padding:'12px 14px', marginBottom:8, cursor:'pointer' }}
+              >
+                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
+                  <span style={{ fontSize:11, fontWeight:600, color:journal.accent }}>{e.template_name}</span>
+                  <span style={{ fontSize:10, color:C.muted }}>{new Date(e.updated_at).toLocaleTimeString('en-NG', { hour:'2-digit', minute:'2-digit' })}</span>
+                </div>
+                <div style={{ fontSize:12, color:C.muted, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{snippet || 'Entry saved'}</div>
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Open Journal Modal Component ───────────────────────────────────────────────
 function OpenJournal({ journal, onClose }) {
   const navigate = useNavigate();
   const [tab, setTab] = useState('entries');
   const [entries, setEntries] = useState([]);
   const [loadingEntries, setLoadingEntries] = useState(true);
+  if (!journal) return null;
 
   useEffect(() => {
     setLoadingEntries(true);
@@ -370,7 +469,7 @@ function OpenJournal({ journal, onClose }) {
 
         {/* Tabs */}
         <div style={{ display: 'flex', borderBottom: `1px solid ${C.border2}`, padding: '0 28px' }}>
-          {['entries', 'calendar', 'ai-insights'].map((t) => (
+          {['entries', 'browse', 'calendar', 'ai-insights'].map((t) => (
             <div
               key={t}
               onClick={() => setTab(t)}
@@ -385,7 +484,7 @@ function OpenJournal({ journal, onClose }) {
                 textTransform: 'capitalize',
               }}
             >
-              {t === 'ai-insights' ? '✨ AI Insights' : t.charAt(0).toUpperCase() + t.slice(1)}
+              {t === 'ai-insights' ? '✨ AI Insights' : t === 'browse' ? '📅 Browse' : t.charAt(0).toUpperCase() + t.slice(1)}
             </div>
           ))}
         </div>
@@ -447,8 +546,8 @@ function OpenJournal({ journal, onClose }) {
               ) : entries.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '32px 0' }}>
                   <div style={{ fontSize: 28, marginBottom: 8 }}>✍️</div>
-                  <div style={{ fontSize: 13, color: C.warm, marginBottom: 4 }}>No entries yet</div>
-                  <div style={{ fontSize: 11, color: C.muted }}>Write your first entry to see it here.</div>
+                  <div style={{ fontSize: 13, color: C.warm, marginBottom: 4 }}>This is your space</div>
+                  <div style={{ fontSize: 11, color: C.muted }}>Write when you're ready. There's no pressure.</div>
                 </div>
               ) : entries.map((e, i) => (
                 <div
@@ -476,6 +575,8 @@ function OpenJournal({ journal, onClose }) {
               ))}
             </div>
           )}
+
+          {tab === 'browse' && <WeekBrowser journal={journal} />}
 
           {tab === 'calendar' && (
             <div>
@@ -715,7 +816,7 @@ export default function JournalDashboard() {
     ...t,
     entries: journalStats._total?.count || 0,
     streak: 0,
-    lastActive: journalStats._total?.latestDaysAgo === 0 ? 'Today' : journalStats._total?.latestDaysAgo === 1 ? 'Yesterday' : journalStats._total?.latestDaysAgo != null ? `${journalStats._total.latestDaysAgo} days ago` : 'No entries yet',
+    lastActive: journalStats._total?.latestDaysAgo === 0 ? 'Today' : journalStats._total?.latestDaysAgo === 1 ? 'Yesterday' : journalStats._total?.latestDaysAgo != null ? `${journalStats._total.latestDaysAgo} days ago` : 'Ready when you are',
     completedDays: [],
   }));
 
@@ -723,7 +824,7 @@ export default function JournalDashboard() {
     ...t,
     entries: journalStats._total?.count || 0,
     streak: 0,
-    lastActive: journalStats._total?.latestDaysAgo === 0 ? 'Today' : journalStats._total?.latestDaysAgo === 1 ? 'Yesterday' : journalStats._total?.latestDaysAgo != null ? `${journalStats._total.latestDaysAgo} days ago` : 'No entries yet',
+    lastActive: journalStats._total?.latestDaysAgo === 0 ? 'Today' : journalStats._total?.latestDaysAgo === 1 ? 'Yesterday' : journalStats._total?.latestDaysAgo != null ? `${journalStats._total.latestDaysAgo} days ago` : 'Ready when you are',
     completedDays: [],
   }));
 
@@ -995,7 +1096,7 @@ export default function JournalDashboard() {
               spine: cj.color ? cj.color + 'bb' : '#5a3aed',
               accent: cj.color || '#a5b4fc',
               type: cj.type_key,
-              entries: 0, streak: 0, lastActive: 'No entries yet', completedDays: [],
+              entries: 0, streak: 0, lastActive: 'Ready when you are', completedDays: [],
             }}
             onClick={(j) => navigate(`/journal/page?type=${j.type}`)}
             delay={(filtered.length + i) * 0.06}

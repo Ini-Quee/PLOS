@@ -8,9 +8,12 @@ const {
   buildUserContext,
   clearConvHistory,
   getConversationHistory,
+  getUserMemories,
+  extractAndSaveMemories,
 } = require('../services/lumiRouter');
 const { executeActions, getUserFullContext } = require('../services/lumiActions');
 const { pool } = require('../db/connection');
+const { getLegacyClient } = require('../services/aiClient');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -20,6 +23,8 @@ const upload = multer({ storage: multer.memoryStorage() });
  * Main endpoint for all Lumi text interactions
  * Lumi is a conversational AI companion - she talks first, saves later
  */
+const DAILY_MSG_LIMIT = 50;
+
 router.post('/message', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
@@ -27,6 +32,25 @@ router.post('/message', authenticate, async (req, res) => {
 
     if (!text || text.trim().length === 0) {
       return res.status(400).json({ error: 'Text is required' });
+    }
+
+    // Per-user daily message cap — protects the Groq token budget
+    const { rows: countRows } = await pool.query(
+      `SELECT COUNT(*) AS count FROM lumi_conversations
+       WHERE user_id = $1 AND created_at >= CURRENT_DATE`,
+      [userId]
+    );
+    const todayCount = Number(countRows[0]?.count || 0);
+    if (todayCount >= DAILY_MSG_LIMIT) {
+      return res.json({
+        success: true,
+        message: `You've had ${DAILY_MSG_LIMIT} conversations with me today — that's a lot of thinking! I'll be back to full capacity tomorrow morning. In the meantime, your journal and habits are always here for you.`,
+        route: 'limit',
+        saved: false,
+        savedItems: [],
+        needsConfirmation: false,
+        rateLimited: true,
+      });
     }
 
     // Build rich context from the real database — shared across all Lumi instances
@@ -379,6 +403,49 @@ router.delete('/memory', authenticate, async (req, res) => {
 });
 
 /**
+ * GET /api/lumi/memories
+ * Returns all persistent memories Lumi has stored about this user.
+ */
+router.get('/memories', authenticate, async (req, res) => {
+  try {
+    const memories = await getUserMemories(req.user.id);
+    res.json({ memories });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load memories' });
+  }
+});
+
+/**
+ * DELETE /api/lumi/memories/:id
+ * Delete a specific persistent memory (user controls their own data).
+ */
+router.delete('/memories/:id', authenticate, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `DELETE FROM lumi_memories WHERE id = $1 AND user_id = $2 RETURNING id`,
+      [req.params.id, req.user.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Memory not found' });
+    res.json({ deleted: rows[0].id });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete memory' });
+  }
+});
+
+/**
+ * DELETE /api/lumi/memories
+ * Clear ALL persistent memories for this user (privacy reset).
+ */
+router.delete('/memories', authenticate, async (req, res) => {
+  try {
+    await pool.query(`DELETE FROM lumi_memories WHERE user_id = $1`, [req.user.id]);
+    res.json({ success: true, message: 'All memories cleared.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to clear memories' });
+  }
+});
+
+/**
  * GET /api/lumi/context
  * Returns the full shared user context from the database.
  * Used by all Lumi instances (TalkToLumi, JournalPage, BudgetPage)
@@ -409,8 +476,7 @@ router.post('/plan', authenticate, async (req, res) => {
     const context = await getUserFullContext(userId);
 
     // Ask Lumi to propose concrete actions (uses same Groq model)
-    const { Groq } = require('groq-sdk');
-    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+    const groq = getLegacyClient();
 
     const systemPrompt = `You are Lumi, the AI core of PLOS life planning app. The user just said something and you need to figure out what they want done across their app — their planner, journal, goals, and habits.
 
@@ -543,8 +609,7 @@ router.post('/recurring-plan', authenticate, async (req, res) => {
     const { text } = req.body;
     if (!text?.trim()) return res.status(400).json({ error: 'Text is required' });
 
-    const { Groq } = require('groq-sdk');
-    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+    const groq = getLegacyClient();
 
     const systemPrompt = `You are Lumi, a smart life planner AI. The user wants to set up a recurring activity in their schedule.
 
@@ -632,9 +697,8 @@ router.patch('/plan-interview', authenticate, async (req, res) => {
     const done      = nextQ >= questions.length;
 
     if (done) {
-      // All questions answered — refine the schedule with Groq
-      const { Groq } = require('groq-sdk');
-      const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+      // All questions answered — refine the schedule with AI
+      const groq = getLegacyClient();
 
       const answersSummary = answers.map(({ q, a }) => `Q: ${q}\nA: ${a}`).join('\n\n');
       const completion = await groq.chat.completions.create({
@@ -735,6 +799,132 @@ router.post('/complete-task', authenticate, async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to complete task' });
+  }
+});
+
+/**
+ * POST /api/lumi/monthly-review
+ * Generates a personalised monthly review using Groq and saves it as a
+ * journal entry. Idempotent — returns existing review if already generated
+ * this calendar month.
+ */
+router.post('/monthly-review', authenticate, async (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    // Guard: return existing review if already generated this month
+    const existing = await pool.query(
+      `SELECT id, fields, entry_date FROM journal_page_entries
+       WHERE user_id = $1
+         AND journal_type = 'lumi_monthly_review'
+         AND entry_date >= DATE_TRUNC('month', CURRENT_DATE)
+       ORDER BY entry_date DESC LIMIT 1`,
+      [userId]
+    );
+    if (existing.rows.length > 0) {
+      return res.json({ review: existing.rows[0].fields, existing: true });
+    }
+
+    // Gather data for the prompt
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    const monthStartISO = monthStart.toISOString().slice(0, 10);
+    const today = new Date().toISOString().slice(0, 10);
+    const monthLabel = new Date().toLocaleDateString('en-NG', { month: 'long', year: 'numeric' });
+    const daysInMonth = new Date().getDate(); // days elapsed so far
+
+    const [habitsRes, savingsRes, journalRes] = await Promise.all([
+      pool.query(
+        `SELECT h.title, h.emoji, h.category,
+           COUNT(hc.id) AS completions,
+           ROUND(AVG(hc.identity_score), 1) AS avg_identity
+         FROM habits h
+         LEFT JOIN habit_completions hc
+           ON hc.habit_id = h.id AND hc.completion_date >= $2
+         WHERE h.user_id = $1 AND h.is_active = true
+         GROUP BY h.id ORDER BY completions DESC`,
+        [userId, monthStartISO]
+      ).catch(() => ({ rows: [] })),
+      pool.query(
+        `SELECT title, target_amount, current_amount, currency
+         FROM savings_goals WHERE user_id = $1 AND is_active = true
+         ORDER BY current_amount DESC LIMIT 3`,
+        [userId]
+      ).catch(() => ({ rows: [] })),
+      pool.query(
+        `SELECT COUNT(*) AS count FROM journal_page_entries
+         WHERE user_id = $1 AND entry_date >= $2`,
+        [userId, monthStartISO]
+      ).catch(() => ({ rows: [{ count: 0 }] })),
+    ]);
+
+    const habitLines = habitsRes.rows.map(h => {
+      const rate = daysInMonth > 0 ? Math.round((h.completions / daysInMonth) * 100) : 0;
+      const identity = h.avg_identity ? ` · identity avg ${h.avg_identity}/10` : '';
+      return `- ${h.emoji} ${h.title}: ${rate}% completion${identity}`;
+    }).join('\n') || '- No habits tracked yet';
+
+    const savingsLines = savingsRes.rows.map(s => {
+      const pct = s.target_amount > 0
+        ? Math.round((s.current_amount / s.target_amount) * 100) : 0;
+      return `- ${s.title}: ${s.currency}${Number(s.current_amount).toLocaleString()} of ${s.currency}${Number(s.target_amount).toLocaleString()} (${pct}%)`;
+    }).join('\n') || '- No savings goals set';
+
+    const journalCount = Number(journalRes.rows[0]?.count || 0);
+
+    const prompt = `Write a warm, honest 3-paragraph monthly review for this person. Be specific — use the actual numbers. Do not be generic or use toxic positivity.
+
+Data for ${monthLabel} (${daysInMonth} days elapsed):
+Habits:
+${habitLines}
+Savings:
+${savingsLines}
+Journal pages written: ${journalCount}
+
+Paragraph 1: What genuinely went well this month (name specific habits or wins from the data).
+Paragraph 2: One honest pattern you noticed — something interesting or worth paying attention to. No judgment.
+Paragraph 3: One specific, actionable thing to focus on next month based on what you see.
+
+Tone: Lumi — warm, direct, treats them like an intelligent adult. No corporate cheerleading. 3 paragraphs, no headings, plain prose.`;
+
+    const groq = getLegacyClient();
+    const completion = await groq.chat.completions.create({
+      messages: [{ role: 'user', content: prompt }],
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.5,
+      max_tokens: 600,
+    });
+
+    const reviewText = completion.choices[0]?.message?.content?.trim() || '';
+    const paragraphs = reviewText.split(/\n\n+/).filter(Boolean);
+
+    const fields = {
+      month: monthLabel,
+      review: reviewText,
+      paragraphs,
+      generated_at: new Date().toISOString(),
+      data_snapshot: {
+        habit_count: habitsRes.rows.length,
+        journal_pages: journalCount,
+        savings_goals: savingsRes.rows.length,
+      },
+    };
+
+    // Save to journal
+    await pool.query(
+      `INSERT INTO journal_page_entries
+         (user_id, journal_type, template_name, entry_date, fields, source)
+       VALUES ($1, 'lumi_monthly_review', 'Month in Review', CURRENT_DATE, $2::jsonb, 'lumi')
+       ON CONFLICT (user_id, journal_type, template_name, entry_date)
+       DO UPDATE SET fields = $2::jsonb, updated_at = NOW()`,
+      [userId, JSON.stringify(fields)]
+    );
+
+    res.json({ review: fields, existing: false });
+  } catch (err) {
+    console.error('[Lumi] monthly-review error:', err.message);
+    res.status(500).json({ error: 'Failed to generate monthly review' });
   }
 });
 

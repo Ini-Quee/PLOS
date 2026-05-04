@@ -14,9 +14,19 @@ CREATE TABLE IF NOT EXISTS user_oauth_tokens (
 
 ALTER TABLE user_oauth_tokens ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY oauth_tokens_user_isolation ON user_oauth_tokens
-  USING (user_id::text = current_setting('app.current_user_id', true));
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'user_oauth_tokens'
+      AND policyname = 'oauth_tokens_user_isolation'
+  ) THEN
+    CREATE POLICY oauth_tokens_user_isolation ON user_oauth_tokens
+      USING (user_id::text = current_setting('app.current_user_id', true));
+  END IF;
+END$$;
 
+DROP TRIGGER IF EXISTS trg_oauth_tokens_updated_at ON user_oauth_tokens;
 CREATE TRIGGER trg_oauth_tokens_updated_at
   BEFORE UPDATE ON user_oauth_tokens
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

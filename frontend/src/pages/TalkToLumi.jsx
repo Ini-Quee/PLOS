@@ -33,6 +33,7 @@ export default function TalkToLumi() {
   const [importText, setImportText]         = useState('');
   const [importBlocks, setImportBlocks]     = useState(null);
   const [pendingEmail, setPendingEmail]     = useState(null);    // email preview state
+  const [memoryCount, setMemoryCount]       = useState(0);
 
   // Context
   const [tasks, setTasks]           = useState([]);
@@ -56,6 +57,7 @@ export default function TalkToLumi() {
     lumiVoice.initLumiVoice();
     lumiListen.initLumiListen();
     fetchContext();
+    api.get('/lumi/memories').then(r => setMemoryCount(r.data?.memories?.length || 0)).catch(() => {});
 
     if (history.length === 0 && !hasGreetedRef.current) {
       hasGreetedRef.current = true;
@@ -95,7 +97,23 @@ export default function TalkToLumi() {
     const hour = new Date().getHours();
     const time = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
     const name = user?.name?.split(' ')[0] || 'there';
-    const msg  = `${time}, ${name}! I'm ${aiName}. I can help you plan your day, log expenses, write journal entries, and more. What's on your mind?`;
+
+    // If Lumi has memories, ask backend to generate a personalised greeting
+    try {
+      const memoriesRes = await api.get('/lumi/memories');
+      const storedMemories = memoriesRes.data?.memories || [];
+      if (storedMemories.length > 0) {
+        setMemoryCount(storedMemories.length);
+        const res = await api.post('/lumi/message', {
+          text: `Greet me warmly with "${time}, ${name}". Reference one specific thing you remember about me — a goal, fear, or pattern. Keep it short, one sentence max after the greeting. Don't list everything you know.`,
+          source: 'greeting',
+        });
+        if (res.data?.message) { await speak(res.data.message); return; }
+      }
+    } catch {}
+
+    // Fallback to generic greeting
+    const msg = `${time}, ${name}! I'm ${aiName}. I can help you plan your day, log expenses, write journal entries, and more. What's on your mind?`;
     await speak(msg);
   }
 
@@ -255,6 +273,10 @@ export default function TalkToLumi() {
       const res = await api.post('/lumi/life-audit/confirm', {});
       const data = res.data;
       setLifeAudit(null);
+      // Refresh memory count — life audit completion triggers memory extraction on backend
+      setTimeout(() => {
+        api.get('/lumi/memories').then(r => setMemoryCount(r.data?.memories?.length || 0)).catch(() => {});
+      }, 4000);
       const aiMsg = { role: 'model', content: data.message, timestamp: new Date().toISOString(), saved: true,
         savedItems: [{ label: `${data.created} schedule entries`, destination: 'Planner' }] };
       setHistory(prev => [...prev, aiMsg]);
@@ -444,6 +466,11 @@ export default function TalkToLumi() {
       processingRef.current = false;
       await speak(aiResponse);
 
+      // Refresh memory count silently — extraction runs async on the backend
+      setTimeout(() => {
+        api.get('/lumi/memories').then(r => setMemoryCount(r.data?.memories?.length || 0)).catch(() => {});
+      }, 3000);
+
     } catch (err) {
       console.error('Lumi error:', err);
       processingRef.current = false;
@@ -598,6 +625,7 @@ export default function TalkToLumi() {
     surf:    'rgba(20,12,6,0.55)',
     brd:     'rgba(255,220,160,0.08)',
     accent:  '#C8955C',
+    amber:   '#C8955C',
     teal:    '#00d4aa',
     muted:   'rgba(255,255,255,0.38)',
     text:    '#F0EAE0',
@@ -620,7 +648,12 @@ export default function TalkToLumi() {
           <div style={{ width:38, height:38, borderRadius:'50%', background:`radial-gradient(circle,#ffbe4d,${C.accent})`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>✨</div>
           <div>
             <div style={{ fontSize:15, fontWeight:600, color: C.text }}>{aiName}</div>
-            <div style={{ fontSize:11, color: C.muted }}>{lumiState === 'processing' ? 'Thinking…' : lumiState === 'speaking' ? 'Speaking…' : 'Ready'}</div>
+            <div style={{ fontSize:11, color: C.muted }}>
+              {lumiState === 'processing' ? 'Thinking…'
+                : lumiState === 'speaking' ? 'Speaking…'
+                : memoryCount > 0 ? `Remembers ${memoryCount} thing${memoryCount !== 1 ? 's' : ''} about you`
+                : 'Ready'}
+            </div>
           </div>
         </div>
 

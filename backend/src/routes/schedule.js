@@ -222,6 +222,34 @@ router.put(
 );
 
 /**
+ * PATCH /api/schedule/:id/reminder
+ * Update only the reminder_minutes field for a schedule item
+ */
+router.patch(
+  '/:id/reminder',
+  authenticate,
+  validateInput([param('id').isUUID()]),
+  async (req, res) => {
+    const minutes = req.body.reminder_minutes;
+    if (minutes !== null && (typeof minutes !== 'number' || minutes < 0)) {
+      return res.status(400).json({ error: 'reminder_minutes must be a non-negative number or null' });
+    }
+    try {
+      const { rows } = await pool.query(
+        `UPDATE schedules SET reminder_minutes = $1, updated_at = NOW()
+         WHERE id = $2 AND user_id = $3 RETURNING id, reminder_minutes`,
+        [minutes, req.params.id, req.user.id]
+      );
+      if (!rows.length) return res.status(404).json({ error: 'Schedule not found' });
+      res.json({ schedule: rows[0] });
+    } catch (err) {
+      console.error('Error updating reminder:', err);
+      res.status(500).json({ error: 'Failed to update reminder' });
+    }
+  }
+);
+
+/**
  * DELETE /api/schedule/:id
  * Delete a schedule (soft delete by setting is_active = false)
  */

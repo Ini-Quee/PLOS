@@ -1,8 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SidebarLayout, { C } from '../components/layout/SidebarLayout'
 import { useAtmos } from '../components/Atmosphere'
 import { useLumi } from '../hooks/useLumi'
+import api from '../lib/api'
+import { useAuth } from '../lib/auth'
+import OnboardingModal from '../components/OnboardingModal'
+import { useIsMobile } from '../hooks/useIsMobile'
+import ErrorBoundary from '../components/ErrorBoundary'
+import { usePushNotifications } from '../hooks/usePushNotifications'
 
 // ─── Design tokens are now imported from SidebarLayout ─────────────────────────
 
@@ -155,9 +161,10 @@ function LumiCard() {
   )
 }
 
-function ScheduleCard() {
+function ScheduleCard({ items: initialItems = [] }) {
   const navigate = useNavigate()
-  const [items, setItems] = useState(SCHEDULE)
+  const [items, setItems] = useState(initialItems)
+  useEffect(() => { setItems(initialItems) }, [initialItems])
 
   if (items.length === 0) {
     return (
@@ -168,7 +175,7 @@ function ScheduleCard() {
         </div>
         <div style={{ textAlign: 'center', padding: '32px 0' }}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>📅</div>
-          <div style={{ fontSize: 14, color: C.text, marginBottom: 8 }}>No schedule yet</div>
+          <div style={{ fontSize: 14, color: C.text, marginBottom: 8 }}>Your day is open</div>
           <div style={{ fontSize: 12, color: C.muted, marginBottom: 16 }}>Add your daily routines and Lumi will guide you through your day</div>
           <button
             onClick={() => navigate('/schedule')}
@@ -191,7 +198,9 @@ function ScheduleCard() {
   }
 
   const toggle = (i) => {
-    setItems(prev => prev.map((it, idx) => idx === i ? { ...it, done: !it.done } : it))
+    const item = items[i]
+    setItems(prev => prev.map((it, idx) => idx === i ? { ...it, completed: !it.completed } : it))
+    if (item) api.post(`/schedule/${item.id}/complete`).catch(() => {})
   }
 
   return (
@@ -202,20 +211,20 @@ function ScheduleCard() {
       </div>
       {items.map((s, i) => (
         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: i < items.length - 1 ? `1px solid ${C.border}` : 'none' }}>
-          <span style={{ fontSize: 10, color: C.muted, width: 42, flexShrink: 0, textAlign: 'right' }}>{s.time}</span>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
+          <span style={{ fontSize: 10, color: C.muted, width: 42, flexShrink: 0, textAlign: 'right' }}>{s.start_time}</span>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: ({ spiritual:'#a5b4fc', health:'#6ee7b7', meal:'#fbbf24', work:'#2dd4bf', social:'#f9a8d4', sleep:'#93c5fd', personal:'#c4b5fd' }[s.category] || '#c4b5fd'), flexShrink: 0 }} />
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 12, fontWeight: 500, color: s.done ? C.muted : C.text, textDecoration: s.done ? 'line-through' : 'none' }}>{s.name}</div>
-            <div style={{ fontSize: 10, color: C.muted, marginTop: 1 }}>{s.cat}</div>
+            <div style={{ fontSize: 12, fontWeight: 500, color: s.completed ? C.muted : C.text, textDecoration: s.completed ? 'line-through' : 'none' }}>{s.title}</div>
+            <div style={{ fontSize: 10, color: C.muted, marginTop: 1 }}>{s.category}</div>
           </div>
           <div
             onClick={() => toggle(i)}
             style={{
               width: 20, height: 20, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 10, cursor: 'pointer', flexShrink: 0, transition: 'all 0.2s',
-              background: s.done ? 'rgba(0,212,170,0.15)' : 'rgba(255,255,255,0.05)',
-              border: s.done ? 'none' : `1px solid ${C.border}`,
-              color: s.done ? C.teal : 'transparent',
+              background: s.completed ? 'rgba(0,212,170,0.15)' : 'rgba(255,255,255,0.05)',
+              border: s.completed ? 'none' : `1px solid ${C.border}`,
+              color: s.completed ? C.teal : 'transparent',
             }}
           >✓</div>
         </div>
@@ -316,7 +325,7 @@ function GoalsCard() {
       {!hasGoals ? (
         <div style={{ textAlign: 'center', padding: '24px 0' }}>
           <div style={{ fontSize: 32, marginBottom: 12 }}>🎯</div>
-          <div style={{ fontSize: 14, color: C.text, marginBottom: 8 }}>No goals set yet</div>
+          <div style={{ fontSize: 14, color: C.text, marginBottom: 8 }}>Your goals live here</div>
           <div style={{ fontSize: 12, color: C.muted, marginBottom: 16 }}>Define what you want to achieve and track your progress</div>
           <button
             onClick={() => navigate('/goals')}
@@ -379,6 +388,110 @@ function ReadingCard() {
   )
 }
 
+// ─── Insight Card (monthly review) ───────────────────────────────────────────
+function InsightCard() {
+  const navigate  = useNavigate()
+  const [review, setReview]     = useState(null)
+  const [loading, setLoading]   = useState(true)
+  const [generating, setGen]    = useState(false)
+  const [error, setError]       = useState('')
+
+  const today        = new Date().toISOString().slice(0, 10)
+  const firstOfMonth = today.slice(0, 7) + '-01'
+  const monthLabel   = new Date().toLocaleDateString('en-NG', { month: 'long', year: 'numeric' })
+
+  useEffect(() => {
+    api.get('/journal/pages', {
+      params: { journal_type: 'lumi_monthly_review', from: firstOfMonth, to: today, limit: 1 }
+    })
+      .then(r => {
+        const entry = r.data?.entries?.[0]
+        if (entry?.fields?.review) setReview(entry.fields)
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  async function generate() {
+    setGen(true)
+    setError('')
+    try {
+      const r = await api.post('/lumi/monthly-review')
+      if (r.data?.review) setReview(r.data.review)
+    } catch {
+      setError('Could not generate review right now. Try again later.')
+    }
+    setGen(false)
+  }
+
+  return (
+    <div style={{
+      ...GLASS, borderRadius: 16, padding: 18,
+      animation: 'fadeUp 0.5s 0.5s ease both',
+      borderTop: '1px solid rgba(139,92,246,0.3)',
+      display: 'flex', flexDirection: 'column', gap: 10,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{
+          width: 28, height: 28, borderRadius: '50%',
+          background: 'radial-gradient(circle,#ffbe4d,#C8955C)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0,
+        }}>✨</div>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.text }}>{monthLabel} in Review</div>
+          <div style={{ fontSize: 10, color: C.muted }}>Lumi's analysis of your month</div>
+        </div>
+      </div>
+
+      {loading && (
+        <div style={{ fontSize: 11, color: C.muted }}>Loading…</div>
+      )}
+
+      {!loading && !review && (
+        <>
+          <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
+            Lumi will look at your habits, savings, and journal pages this month and write you an honest, personalised reflection.
+          </div>
+          {error && <div style={{ fontSize: 11, color: '#f87171' }}>{error}</div>}
+          <button
+            onClick={generate}
+            disabled={generating}
+            style={{
+              padding: '9px 0', borderRadius: 10, border: 'none',
+              background: generating ? 'rgba(139,92,246,0.2)' : 'rgba(139,92,246,0.85)',
+              color: generating ? C.muted : '#fff',
+              fontSize: 12, fontWeight: 700, cursor: generating ? 'wait' : 'pointer',
+            }}
+          >
+            {generating ? 'Lumi is thinking…' : 'Generate Month in Review'}
+          </button>
+        </>
+      )}
+
+      {!loading && review && (review.review || review.paragraphs?.length > 0) && (
+        <>
+          {(review.paragraphs?.length > 0 ? review.paragraphs : [review.review])
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((para, i) => (
+              <p key={i} style={{ fontSize: 12, color: C.muted, lineHeight: 1.7, margin: 0 }}>
+                {para}
+              </p>
+            ))}
+          {(review.paragraphs?.length > 2) && (
+            <div
+              onClick={() => navigate('/journal')}
+              style={{ fontSize: 11, color: C.purple, cursor: 'pointer', fontWeight: 600 }}
+            >
+              Read full review in Journal →
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function Dashboard() {
   const [season, setSeason] = useState('harmattan')
@@ -386,21 +499,68 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const { palette } = useAtmos()
   const AC = palette.accent
+  const isMobile = useIsMobile()
+  const { supported: pushSupported, subscribed: pushSubscribed, permission: pushPermission, subscribe: subscribePush } = usePushNotifications()
+  const [showPushPrompt, setShowPushPrompt] = useState(() => {
+    if (typeof window === 'undefined') return false
+    const sessions = Number(localStorage.getItem('plos_sessions') || 0) + 1
+    localStorage.setItem('plos_sessions', sessions)
+    return sessions >= 3 && !localStorage.getItem('plos_push_dismissed')
+  })
 
-  // Lumi hook
-  const { 
-    isListening, 
-    isThinking, 
-    lumiResponse, 
-    savedRoute, 
-    needsConfirmation, 
+  const {
+    isListening,
+    isThinking,
+    lumiResponse,
+    savedRoute,
+    needsConfirmation,
     pendingState,
-    startListening, 
-    stopListening, 
+    startListening,
+    stopListening,
     sendText,
     confirmSave,
-    declineSave 
+    declineSave
   } = useLumi('dashboard')
+
+  const { user } = useAuth()
+  const [scheduleItems, setScheduleItems] = useState([])
+  const [savingsGoals, setSavingsGoals] = useState([])
+  const [hasLifeAudit, setHasLifeAudit] = useState(false)
+  const [journalStreak, setJournalStreak] = useState(0)
+  const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('plos_onboarded'))
+
+  useEffect(() => {
+    api.get('/schedule/today')
+      .then(r => setScheduleItems(r.data?.schedules || []))
+      .catch(() => {})
+
+    api.get('/savings')
+      .then(r => setSavingsGoals(r.data?.goals || []))
+      .catch(() => {})
+
+    api.get('/lumi/life-audit/preview')
+      .then(() => setHasLifeAudit(true))
+      .catch(() => setHasLifeAudit(false))
+
+    api.get('/journal/pages?limit=60')
+      .then(r => {
+        const entries = r.data?.entries || []
+        const dates = new Set(entries.map(e => e.entry_date))
+        let streak = 0
+        const today = new Date()
+        for (let i = 0; i < 60; i++) {
+          const d = new Date(today)
+          d.setDate(today.getDate() - i)
+          const ds = d.toISOString().slice(0, 10)
+          if (dates.has(ds)) streak++
+          else if (i > 0) break
+        }
+        setJournalStreak(streak)
+      })
+      .catch(() => {})
+  }, [])
+
+  const topGoal = savingsGoals.find(g => !g.is_complete)
 
   return (
     <>
@@ -414,10 +574,10 @@ export default function Dashboard() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px 28px 0' }}>
           <div>
             <div style={{ fontSize: 22, fontWeight: 700 }}>
-              Good morning, <span style={{ color: AC }}>Erica</span> ☀️
+              Good morning, <span style={{ color: AC }}>{user?.name?.split(' ')[0] || 'there'}</span> ☀️
             </div>
             <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
-              Sunday, April 27 · {SEASONS[season].label} · 3 tasks remaining
+              {new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' })} · {SEASONS[season].label} · {scheduleItems.filter(t => !t.completed).length} tasks remaining
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, position: 'relative' }}>
@@ -622,28 +782,104 @@ export default function Dashboard() {
         </div>
       )}
 
+        {/* Push notification prompt — shown after 3 sessions, once */}
+        {showPushPrompt && pushSupported && !pushSubscribed && pushPermission !== 'denied' && (
+          <div style={{
+            margin: isMobile ? '0 14px 12px' : '0 28px 14px',
+            padding: '14px 18px',
+            background: 'rgba(139,92,246,0.08)',
+            border: '1px solid rgba(139,92,246,0.2)',
+            borderRadius: 14,
+            display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+            animation: 'fadeUp 0.4s ease both',
+          }}>
+            <span style={{ fontSize: 20 }}>🔔</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>Never miss a habit reminder</div>
+              <div style={{ fontSize: 11, color: C.muted }}>Get notified when it's time for your scheduled habits</div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={async () => {
+                  await subscribePush()
+                  setShowPushPrompt(false)
+                  localStorage.setItem('plos_push_dismissed', '1')
+                }}
+                style={{
+                  padding: '7px 16px', borderRadius: 20, border: 'none',
+                  background: 'rgba(139,92,246,0.85)', color: '#fff',
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                }}
+              >Turn on</button>
+              <button
+                onClick={() => {
+                  setShowPushPrompt(false)
+                  localStorage.setItem('plos_push_dismissed', '1')
+                }}
+                style={{
+                  padding: '7px 12px', borderRadius: 20,
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  background: 'transparent', color: C.muted,
+                  fontSize: 12, cursor: 'pointer',
+                }}
+              >Later</button>
+            </div>
+          </div>
+        )}
+
         {/* Dashboard Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, padding: '20px 28px 28px' }}>
-          {/* Row 1: 4 stat cards */}
-          <StatCard icon="📖" label="Journal streak" value="0" sub="days in a row" badge="Start journaling" badgeType="warn" accentColor={C.amber} delay={0.05} />
-          <StatCard icon="💪" label="Workouts" value="0" sub="of 0 this month" badge="Log your first workout" badgeType="warn" accentColor={C.teal} delay={0.1} />
-          <StatCard icon="💰" label="Savings goal" value="₦0" sub="of ₦0 target" badge="Set a savings goal" badgeType="warn" accentColor={C.purple} delay={0.15} />
-          <StatCard icon="⚡" label="Habits today" value="0/0" sub="done · 0 set up" badge="Add your first habit" badgeType="warn" accentColor={C.pink} delay={0.2} />
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)',
+          gap: isMobile ? 10 : 14,
+          padding: isMobile ? '12px 14px 20px' : '20px 28px 28px',
+        }}>
+          {/* Row 1: stat cards */}
+          <StatCard icon="📖" label="Journal streak" value={String(journalStreak)} sub="days in a row" badge={journalStreak > 0 ? undefined : "Start journaling"} badgeType="warn" accentColor={C.amber} delay={0.05} />
+          <StatCard icon="💪" label="Workouts" value={String(scheduleItems.filter(t => t.category === 'health' && t.completed).length)} sub={`of ${scheduleItems.filter(t => t.category === 'health').length} today`} badge={scheduleItems.filter(t => t.category === 'health').length > 0 ? undefined : "Log your first workout"} badgeType="warn" accentColor={C.teal} delay={0.1} />
+          <StatCard icon="💰" label="Savings goal" value={topGoal ? topGoal.emoji + ' ' + Math.round((topGoal.saved_amount / topGoal.target_amount) * 100) + '%' : '₦0'} sub={topGoal ? topGoal.name : 'of ₦0 target'} badge={topGoal ? undefined : "Set a savings goal"} badgeType="warn" accentColor={C.purple} delay={0.15} />
+          <StatCard icon="⚡" label="Habits today" value={scheduleItems.filter(t => t.completed).length + '/' + scheduleItems.length} sub="done today" badge={scheduleItems.length > 0 ? undefined : "Add your first habit"} badgeType="warn" accentColor={C.pink} delay={0.2} />
 
-          {/* Row 2: Calendar (2-wide) + Lumi + Reading */}
-          <div style={{ gridColumn: 'span 2' }}><Calendar /></div>
-          <LumiCard />
-          <ReadingCard />
+          {/* Row 2: Calendar + Lumi + Reading */}
+          <div style={{ gridColumn: isMobile ? 'span 2' : 'span 2' }}>
+            <ErrorBoundary compact label="Calendar"><Calendar /></ErrorBoundary>
+          </div>
+          <ErrorBoundary compact label="Lumi"><LumiCard /></ErrorBoundary>
+          <ErrorBoundary compact label="Reading"><ReadingCard /></ErrorBoundary>
 
-          {/* Row 3: Schedule (2-wide) + Budget + Habits */}
-          <ScheduleCard />
-          <BudgetCard />
-          <HabitsCard />
+          {/* Row 3: Schedule + Budget + Habits */}
+          <div style={{ gridColumn: isMobile ? 'span 2' : 'span 2' }}>
+            <ErrorBoundary compact label="Schedule"><ScheduleCard items={scheduleItems} /></ErrorBoundary>
+          </div>
+          <ErrorBoundary compact label="Budget"><BudgetCard /></ErrorBoundary>
+          <ErrorBoundary compact label="Habits"><HabitsCard /></ErrorBoundary>
 
-          {/* Row 4: Goals (full width) */}
-          <div style={{ gridColumn: 'span 4' }}><GoalsCard /></div>
+          {/* Row 4: Insight card (monthly review) */}
+          <div style={{ gridColumn: isMobile ? 'span 2' : 'span 2' }}>
+            <ErrorBoundary compact label="Insights"><InsightCard /></ErrorBoundary>
+          </div>
+
+          {!hasLifeAudit && (
+            <div style={{ gridColumn: isMobile ? 'span 2' : 'span 4', background:'linear-gradient(135deg,rgba(200,149,92,0.1),rgba(139,92,246,0.08))', border:'1px solid rgba(200,149,92,0.25)', borderRadius:16, padding: isMobile ? '16px 14px' : '20px 24px', display:'flex', alignItems:'center', gap:12, animation:'fadeUp 0.5s 0.6s ease both', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+              <div style={{ fontSize:28 }}>✨</div>
+              <div style={{ flex:1, minWidth: 0 }}>
+                <div style={{ fontSize: isMobile ? 13 : 14, fontWeight:700, color:'#e8f0e9', marginBottom:4 }}>Let Lumi plan your life</div>
+                <div style={{ fontSize: isMobile ? 11 : 12, color:'rgba(255,255,255,0.45)' }}>A 10-minute interview across 8 areas of your life.</div>
+              </div>
+              <button onClick={() => navigate('/talk-to-lumi')} style={{ padding:'9px 16px', borderRadius:24, border:'none', background:'rgba(200,149,92,0.85)', color:'#000', fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}>Start →</button>
+            </div>
+          )}
+
+          {/* Goals — full width */}
+          <div style={{ gridColumn: isMobile ? 'span 2' : 'span 4' }}><GoalsCard /></div>
         </div>
       </SidebarLayout>
+      {showOnboarding && (
+        <OnboardingModal
+          userName={user?.name}
+          onDone={() => setShowOnboarding(false)}
+        />
+      )}
     </>
   )
 }

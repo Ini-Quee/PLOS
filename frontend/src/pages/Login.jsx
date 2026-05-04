@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
+import api from '../lib/api';
 
 export default function Login() {
   const { login } = useAuth();
@@ -14,6 +15,26 @@ export default function Login() {
   const [requiresMfa, setRequiresMfa] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
+
+  async function handleDemoLogin() {
+    setDemoLoading(true);
+    setError('');
+    try {
+      const res = await api.post('/demo/login');
+      const { user: demoUser, token } = res.data;
+      // Store demo user same way regular login does
+      localStorage.setItem('user', JSON.stringify(demoUser));
+      if (token) {
+        const { setAccessToken } = await import('../lib/api');
+        setAccessToken(token);
+      }
+      navigate('/dashboard');
+    } catch {
+      setError('Demo login failed — please try again.');
+    }
+    setDemoLoading(false);
+  }
 
   function handleChange(e) {
     setForm((prev) => ({
@@ -276,8 +297,26 @@ export default function Login() {
           </button>
         </form>
 
+        {/* Demo login */}
+        <div style={{ marginTop: 16, textAlign: 'center' }}>
+          <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>or</div>
+          <button
+            onClick={handleDemoLogin}
+            disabled={demoLoading}
+            style={{
+              width: '100%', padding: '11px', borderRadius: 12,
+              border: '1px solid rgba(139,92,246,0.4)',
+              background: 'rgba(139,92,246,0.1)', color: '#a78bfa',
+              fontSize: 13, fontWeight: 600, cursor: demoLoading ? 'wait' : 'pointer',
+              fontFamily: "'Inter', sans-serif", opacity: demoLoading ? 0.6 : 1,
+            }}
+          >
+            {demoLoading ? 'Loading demo…' : '🎬 Try Investor Demo'}
+          </button>
+        </div>
+
         <p style={{
-          marginTop: '24px',
+          marginTop: '16px',
           textAlign: 'center',
           fontSize: '14px',
           color: '#A89880',

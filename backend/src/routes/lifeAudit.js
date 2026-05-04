@@ -19,6 +19,8 @@ const express  = require('express');
 const { authenticate } = require('../middleware/authenticate');
 const { getRedisClient } = require('../middleware/rateLimiter');
 const { pool } = require('../db/connection');
+const { extractAndSaveMemories } = require('../services/lumiRouter');
+const { getLegacyClient } = require('../services/aiClient');
 
 const router = express.Router();
 router.use(authenticate);
@@ -338,6 +340,16 @@ router.post('/confirm', async (req, res) => {
   // Clear session after successful confirmation
   if (failed.length === 0) await clearSession(userId);
 
+  // Extract memorable facts from the life audit — fire and forget
+  if (created.length > 0) {
+    const auditSummary = created.slice(0, 8).map(e => `${e.title} at ${e.start_time}`).join(', ');
+    extractAndSaveMemories(
+      userId,
+      `Life audit completed. Weekly schedule created with ${created.length} blocks: ${auditSummary}`,
+      `Your schedule is set up! Key blocks: ${auditSummary}.`
+    ).catch(() => {});
+  }
+
   res.json({
     success: true,
     created: created.length,
@@ -389,8 +401,7 @@ router.post('/import-plan', async (req, res) => {
   if (!text?.trim()) return res.status(400).json({ error: 'Plan text is required' });
 
   try {
-    const { Groq } = require('groq-sdk');
-    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+    const groq = getLegacyClient();
 
     const completion = await groq.chat.completions.create({
       messages: [{

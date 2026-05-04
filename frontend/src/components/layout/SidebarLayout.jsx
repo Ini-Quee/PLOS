@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { getCachedSeason, SEASONS, setSeasonOverride } from '../../lib/seasonDetection';
 import { useAtmos } from '../Atmosphere';
 import AlarmBar from '../AlarmBar';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 
 // ─── Base design tokens (palette values get layered on top via useAtmos) ───────
 export const C = {
@@ -20,6 +22,7 @@ export const C = {
   teal: '#00d4aa',
   purple: '#8b5cf6',
   rose: '#f472b6',
+  pink: '#f472b6',
   sage: '#7fb87f',
   text: '#e8e8f0',
 };
@@ -453,8 +456,120 @@ export function Sidebar() {
   );
 }
 
+// ─── Mobile bottom nav ────────────────────────────────────────────────────────
+const BOTTOM_NAV = [
+  { icon: '◈',  label: 'Home',    path: '/dashboard'    },
+  { icon: '📖', label: 'Journal', path: '/journal'      },
+  { icon: '📅', label: 'Planner', path: '/schedule'     },
+  { icon: '🔥', label: 'Habits',  path: '/habits'       },
+  { icon: '✨', label: 'Lumi',    path: '/talk-to-lumi' },
+];
+
+function BottomNav({ palette }) {
+  const navigate  = useNavigate();
+  const location  = useLocation();
+  const current   = location.pathname;
+
+  function active(path) {
+    if (path === '/dashboard') return current === '/dashboard';
+    if (path === '/journal')   return current.startsWith('/journal');
+    return current === path;
+  }
+
+  return (
+    <div style={{
+      position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200,
+      height: 60,
+      background: 'rgba(6,6,14,0.92)',
+      backdropFilter: 'blur(20px)',
+      WebkitBackdropFilter: 'blur(20px)',
+      borderTop: `1px solid ${palette.border}`,
+      display: 'flex',
+      alignItems: 'center',
+    }}>
+      {BOTTOM_NAV.map(item => {
+        const isActive = active(item.path);
+        return (
+          <button
+            key={item.path}
+            onClick={() => navigate(item.path)}
+            style={{
+              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: 'center', gap: 2, height: '100%',
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: isActive ? palette.accent : C.muted,
+              transition: 'color 0.15s',
+            }}
+          >
+            <span style={{ fontSize: 18, lineHeight: 1 }}>{item.icon}</span>
+            <span style={{ fontSize: 9, fontWeight: isActive ? 700 : 400 }}>{item.label}</span>
+            {isActive && (
+              <div style={{
+                position: 'absolute', bottom: 0,
+                width: 28, height: 2, borderRadius: 2,
+                background: palette.accent,
+              }} />
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Mobile drawer ────────────────────────────────────────────────────────────
+function MobileDrawer({ open, onClose, palette }) {
+  const location = useLocation();
+  const current  = location.pathname;
+  function isActive(path) {
+    if (!path) return false;
+    if (path === '/dashboard') return current === '/dashboard';
+    if (path === '/journal')   return current.startsWith('/journal');
+    return current === path;
+  }
+  if (!open) return null;
+  return (
+    <>
+      <div
+        onClick={onClose}
+        style={{ position:'fixed', inset:0, zIndex:299, background:'rgba(0,0,0,0.5)' }}
+      />
+      <div style={{
+        position:'fixed', top:0, left:0, bottom:0, width:260, zIndex:300,
+        background:'rgba(6,6,14,0.97)',
+        backdropFilter:'blur(24px)', WebkitBackdropFilter:'blur(24px)',
+        borderRight:`1px solid ${palette.border}`,
+        padding:'24px 14px',
+        display:'flex', flexDirection:'column',
+        overflowY:'auto',
+        animation:'slideInLeft 0.22s ease',
+      }}>
+        <style>{`@keyframes slideInLeft { from { transform:translateX(-100%) } to { transform:translateX(0) } }`}</style>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+          <div style={{ fontSize:20, fontWeight:800, color:palette.accent }}>PLOS.</div>
+          <button onClick={onClose} style={{ background:'none', border:'none', color:C.muted, fontSize:20, cursor:'pointer' }}>✕</button>
+        </div>
+        {Object.entries(NAV_ITEMS).map(([section, items]) => (
+          <div key={section}>
+            {section !== 'main' && <SectionHeader label={section.charAt(0).toUpperCase() + section.slice(1)} />}
+            {items.map(item => (
+              <NavItem key={item.label} {...item} isActive={isActive(item.path)} onClick={onClose} />
+            ))}
+          </div>
+        ))}
+        <SeasonWidget />
+      </div>
+    </>
+  );
+}
+
 // ─── Layout Wrapper ─────────────────────────────────────────────────────────────
 export default function SidebarLayout({ children, customStyles = {} }) {
+  const isMobile = useIsMobile();
+  const { palette } = useAtmos();
+  const isOnline = useOnlineStatus();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
   return (
     <>
       <style>{`
@@ -478,11 +593,57 @@ export default function SidebarLayout({ children, customStyles = {} }) {
           ...customStyles,
         }}
       >
-        <Sidebar />
-        <div style={{ flex: 1, overflow: 'auto', position: 'relative', zIndex: 1 }}>
+        {/* Offline banner */}
+        {!isOnline && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, zIndex: 400,
+            background: 'rgba(251,191,36,0.1)',
+            backdropFilter: 'blur(8px)',
+            borderBottom: '1px solid rgba(251,191,36,0.25)',
+            padding: '7px 20px',
+            fontSize: 11, color: '#fbbf24', textAlign: 'center',
+            letterSpacing: '0.02em',
+          }}>
+            You're offline — your changes are saved and will sync when you reconnect
+          </div>
+        )}
+
+        {/* Sidebar — desktop only */}
+        {!isMobile && <Sidebar />}
+
+        {/* Mobile hamburger */}
+        {isMobile && (
+          <button
+            onClick={() => setDrawerOpen(true)}
+            style={{
+              position: 'fixed', top: 14, left: 14, zIndex: 150,
+              width: 38, height: 38, borderRadius: 10,
+              background: 'rgba(6,6,14,0.85)',
+              backdropFilter: 'blur(12px)',
+              border: `1px solid ${palette.border}`,
+              color: C.muted, fontSize: 16, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            ☰
+          </button>
+        )}
+
+        {/* Mobile slide-over drawer */}
+        {isMobile && (
+          <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} palette={palette} />
+        )}
+
+        <div style={{
+          flex: 1, overflow: 'auto', position: 'relative', zIndex: 1,
+          paddingBottom: isMobile ? 72 : 0,
+        }}>
           <AlarmBar />
           {children}
         </div>
+
+        {/* Bottom nav — mobile only */}
+        {isMobile && <BottomNav palette={palette} />}
       </div>
     </>
   );

@@ -20,10 +20,14 @@ import MfaSetup from './pages/MfaSetup';
 import Settings from './pages/Settings';
 import TalkToLumi from './pages/TalkToLumi';
 import Budget from './pages/Budget';
+import Habits from './pages/Habits';
 import ColorPreview from './pages/ColorPreview';
 import DesignSystemPreview from './pages/DesignSystemPreview';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 import Atmosphere from './components/Atmosphere';
 import LumiOrchestrator from './components/LumiOrchestrator';
+import DemoBanner from './components/DemoBanner';
+import ErrorBoundary from './components/ErrorBoundary';
 import { useState, useEffect } from 'react';
 
 function ProtectedRoute({ children }) {
@@ -282,12 +286,21 @@ function AppRoutes() {
           path="/design-system"
           element={<AnimatedRoute><DesignSystemPreview /></AnimatedRoute>}
         />
-        {/* Habits — redirect to wellness journal until dedicated page is built */}
-        <Route path="/habits" element={<Navigate to="/journal/page?type=wellness&template=Habit+Tracker" replace />} />
+        <Route
+          path="/habits"
+          element={
+            <ProtectedRoute>
+              <AnimatedRoute>
+                <Habits />
+              </AnimatedRoute>
+            </ProtectedRoute>
+          }
+        />
         {/* Health — redirect to wellness journal */}
         <Route path="/health" element={<Navigate to="/journal/page?type=wellness" replace />} />
         {/* Settings/privacy — redirect to settings */}
         <Route path="/settings/privacy" element={<Navigate to="/settings" replace />} />
+        <Route path="/privacy" element={<AnimatedRoute><PrivacyPolicy /></AnimatedRoute>} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </AnimatePresence>
@@ -299,7 +312,10 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <Atmosphere section="all">
-          <AppRoutes />
+          <DemoBanner />
+          <ErrorBoundary>
+            <AppRoutes />
+          </ErrorBoundary>
           <LumiOrchestrator />
         </Atmosphere>
       </AuthProvider>

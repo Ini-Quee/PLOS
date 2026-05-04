@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { isQueueable, enqueue, flushQueue, queueSize } from './offlineQueue';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -60,18 +61,36 @@ api.interceptors.request.use(
 );
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Flush any queued offline writes now that we have connectivity
+    if (queueSize() > 0) flushQueue(api)
+    return response
+  },
   async (error) => {
     const originalRequest = error.config;
 
-    // Handle network errors
+    // Handle network errors — queue safe writes, reject the rest gracefully
     if (!error.response) {
-      console.error('Network error - API unreachable:', error.message);
+      if (originalRequest) {
+        const baseURL = api.defaults.baseURL || ''
+        const fullUrl  = originalRequest.url || ''
+        const relUrl   = fullUrl.startsWith(baseURL)
+          ? fullUrl.slice(baseURL.length)
+          : fullUrl
+        const method   = originalRequest.method || 'GET'
+        let body
+        try { body = originalRequest.data ? JSON.parse(originalRequest.data) : undefined } catch { body = undefined }
+
+        if (isQueueable(method, relUrl)) {
+          enqueue(method, relUrl, body)
+          // Return a synthetic success so optimistic UI stays intact
+          return Promise.resolve({ data: { queued: true }, status: 202, queued: true })
+        }
+      }
+
       return Promise.reject({
         response: {
-          data: {
-            error: 'Unable to connect to server. Please check your connection.',
-          },
+          data: { error: 'Unable to connect to server. Please check your connection.' },
         },
       });
     }
@@ -132,5 +151,10 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Flush offline queue when browser comes back online
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => flushQueue(api))
+}
 
 export default api;

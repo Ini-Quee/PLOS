@@ -99,6 +99,7 @@ export default function JournalPage() {
   const [pageFields, setPageFields]     = useState({});
   const [pageEntryId, setPageEntryId]   = useState(null);  // UUID from DB (null = new)
   const [fieldsDirty, setFieldsDirty]   = useState(false);
+  const [savedOffline, setSavedOffline] = useState(false);
   const saveTimerRef = useRef(null);
 
   const templateName = JOURNALS[journal]?.templates[tmpl] || 'Blank Page';
@@ -157,7 +158,12 @@ export default function JournalPage() {
         fields,
         source: 'user',
       });
-      setPageEntryId(res.data?.entry?.id || null);
+      if (res.data?.queued) {
+        setSavedOffline(true);
+      } else {
+        setPageEntryId(res.data?.entry?.id || null);
+        setSavedOffline(false);
+      }
       setFieldsDirty(false);
     } catch (err) {
       console.error('Page fields save error:', err.message);
@@ -526,7 +532,7 @@ export default function JournalPage() {
     await saveFields(fields);
     // Visual confirmation without a blocking alert
     const toast = document.createElement('div');
-    toast.textContent = '✓ Page saved';
+    toast.textContent = savedOffline ? '✓ Saved offline · will sync' : '✓ Page saved';
     Object.assign(toast.style, {
       position:'fixed', bottom:'24px', left:'50%', transform:'translateX(-50%)',
       background:'rgba(0,212,170,0.15)', border:'1px solid rgba(0,212,170,0.3)',
@@ -616,7 +622,7 @@ export default function JournalPage() {
             <span style={{ fontSize: 13 }}>✨</span>
             <span style={{ fontSize: 11, color: 'rgba(165,180,252,0.8)', fontStyle: 'italic' }}>
               Lumi filled this page from your conversation
-              {fieldsDirty ? ' · saving…' : ' · saved'}
+              {fieldsDirty ? ' · saving…' : savedOffline ? ' · saved offline' : ' · saved'}
             </span>
           </div>
         )}
