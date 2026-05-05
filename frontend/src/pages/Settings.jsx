@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
+import api from '../lib/api';
 import * as lumiVoice from '../lib/lumi-voice';
 import { THEME_LIBRARY } from '../lib/livingBackgroundConfig';
 import WallpaperPicker from '../components/WallpaperPicker';
@@ -72,23 +73,42 @@ export default function Settings() {
   const [showWallpaperPicker, setShowWallpaperPicker] = useState(false);
   const [currentWallpaperScene, setCurrentWallpaperScene] = useState('auto');
 
-  // Load voices on mount
+  const saveTimer = useRef(null);
+
+  function saveToBackend(patch) {
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      api.put('/users/settings', patch).catch(() => {});
+    }, 600);
+  }
+
+  // Load voices and persisted settings on mount
   useEffect(() => {
     async function loadVoices() {
       await lumiVoice.loadVoices();
       const voices = lumiVoice.getAvailableVoices();
       setAvailableVoices(voices);
       const bestVoice = lumiVoice.getBestVoice();
-      if (bestVoice) {
-        setSelectedVoice(bestVoice.name);
-      }
+      if (bestVoice) setSelectedVoice(bestVoice.name);
     }
     loadVoices();
 
+    // Load persisted settings from backend
+    api.get('/users/settings').then(res => {
+      const s = res.data?.settings || {};
+      if (s.voiceEnabled  !== undefined) setVoiceEnabled(s.voiceEnabled);
+      if (s.voiceRate     !== undefined) setVoiceRate(s.voiceRate);
+      if (s.voicePitch    !== undefined) setVoicePitch(s.voicePitch);
+      if (s.selectedVoice !== undefined) setSelectedVoice(s.selectedVoice);
+      if (s.affirmations  !== undefined) setAffirmations(s.affirmations);
+      if (s.checkInTime   !== undefined) setCheckInTime(s.checkInTime);
+      if (s.journalFont   !== undefined) setJournalFont(s.journalFont);
+      if (s.journalPenColor !== undefined) setJournalPenColor(s.journalPenColor);
+      if (s.journalPaperStyle !== undefined) setJournalPaperStyle(s.journalPaperStyle);
+    }).catch(() => {});
+
     // Check Google OAuth status
-    import('../lib/api').then(({ default: api }) => {
-      api.get('/oauth/google/status').then(res => setGoogleStatus(res.data)).catch(() => {});
-    });
+    api.get('/oauth/google/status').then(res => setGoogleStatus(res.data)).catch(() => {});
 
     // Load wallpaper scene
     const savedScene = localStorage.getItem('plos_wallpaper_scene') || 'auto';
@@ -99,6 +119,21 @@ export default function Settings() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  // Persist voice settings to backend (debounced)
+  useEffect(() => {
+    saveToBackend({ voiceEnabled, voiceRate, voicePitch, selectedVoice });
+  }, [voiceEnabled, voiceRate, voicePitch, selectedVoice]);
+
+  // Persist affirmations to backend (debounced)
+  useEffect(() => {
+    saveToBackend({ affirmations });
+  }, [affirmations]);
+
+  // Persist journal style to backend (debounced)
+  useEffect(() => {
+    saveToBackend({ journalFont, journalPenColor, journalPaperStyle });
+  }, [journalFont, journalPenColor, journalPaperStyle]);
 
   // Persist Living Background settings to localStorage
   useEffect(() => {
@@ -129,23 +164,24 @@ export default function Settings() {
     }
   }
 
-  // Add affirmation
+  // Add affirmation — useEffect above handles the save
   function addAffirmation() {
     if (newAffirmation.trim() && affirmations.length < 20) {
-      setAffirmations([...affirmations, newAffirmation.trim()]);
+      setAffirmations(prev => [...prev, newAffirmation.trim()]);
       setNewAffirmation('');
     }
   }
 
-  // Remove affirmation
   function removeAffirmation(index) {
-    setAffirmations(affirmations.filter((_, i) => i !== index));
+    setAffirmations(prev => prev.filter((_, i) => i !== index));
   }
 
   // Save display name
   function saveDisplayName() {
     setIsEditingName(false);
-    // TODO: API call to update name
+    if (displayName.trim()) {
+      api.put('/users/profile', { name: displayName.trim() }).catch(() => {});
+    }
   }
 
   // Get preview gradient for selected theme

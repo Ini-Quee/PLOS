@@ -262,11 +262,13 @@ function WeekTab({ palette, openLumi }) {
 
   const [weekSchedules, setWeekSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     api.get('/schedule')
       .then(res => { setWeekSchedules(res.data?.schedules || []); })
-      .catch(() => {})
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
 
@@ -306,7 +308,31 @@ function WeekTab({ palette, openLumi }) {
       <div style={{ fontSize:10, fontWeight:700, letterSpacing:'2px', textTransform:'uppercase', color:'rgba(255,255,255,0.28)', marginBottom:12 }}>Week of {weekLabel}</div>
 
       {loading ? (
-        <div style={{ textAlign:'center', padding:'48px 0', color:'rgba(255,255,255,0.25)', fontSize:13 }}>Loading your week…</div>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:8 }}>
+          {Array.from({length:7}).map((_,i) => (
+            <div key={i} style={{ background:'rgba(255,255,255,0.04)', borderRadius:12, height:120, animation:'shimmer 1.4s infinite',
+              backgroundImage:'linear-gradient(90deg,rgba(255,255,255,0.04) 25%,rgba(255,255,255,0.08) 50%,rgba(255,255,255,0.04) 75%)',
+              backgroundSize:'200% 100%' }} />
+          ))}
+        </div>
+      ) : error ? (
+        <div style={{ textAlign:'center', padding:'48px 0', color:'rgba(255,255,255,0.3)', fontSize:13 }}>
+          Couldn't load your week. <span style={{ color:'#C8955C', cursor:'pointer' }} onClick={() => window.location.reload()}>Retry</span>
+        </div>
+      ) : weekSchedules.length === 0 ? (
+        <div style={{ textAlign:'center', padding:'60px 24px', animation:'fadeUp 0.3s ease' }}>
+          <div style={{ fontSize:40, marginBottom:16 }}>📅</div>
+          <div style={{ fontSize:16, fontWeight:700, color:'#e8e8f0', marginBottom:8 }}>Your week is open</div>
+          <div style={{ fontSize:13, color:'rgba(255,255,255,0.4)', marginBottom:24, lineHeight:1.6 }}>
+            Let Lumi interview you across 8 areas of your life<br />and build your complete weekly schedule.
+          </div>
+          <button
+            onClick={() => navigate('/talk-to-lumi?mode=onboarding')}
+            style={{ padding:'11px 28px', borderRadius:24, border:'none', background:'rgba(200,149,92,0.85)', color:'#0a0a14', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}
+          >
+            ✨ Start Life Audit with Lumi
+          </button>
+        </div>
       ) : (
         <>
           <div style={{ overflowX: isMobile ? 'auto' : 'visible', WebkitOverflowScrolling: 'touch', marginBottom: 8 }}>

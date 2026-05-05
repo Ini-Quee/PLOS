@@ -27,6 +27,7 @@ const lifeAuditRoutes = require('./src/routes/lifeAudit');
 const oauthRoutes     = require('./src/routes/oauth');
 const gmailRoutes     = require('./src/routes/gmail');
 const { router: habitsRoutes } = require('./src/routes/habits');
+const usersRoutes = require('./src/routes/users');
 const demoRoutes   = require('./src/routes/demo');
 const { router: pushRoutes } = require('./src/routes/push');
 
@@ -102,6 +103,7 @@ app.use('/api/oauth',  oauthRoutes);
 app.use('/api/gmail',  gmailRoutes);
 app.use('/api/demo',   demoRoutes);
 app.use('/api/push',   pushRoutes);
+app.use('/api/users',  usersRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({

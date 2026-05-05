@@ -40,10 +40,11 @@ export default function TalkToLumi() {
   const [tasks, setTasks]           = useState([]);
   const [recentJournal, setRecent]  = useState('');
 
-  // Conversation history (persisted in sessionStorage)
+  // Conversation history — sessionStorage as write-through cache, PostgreSQL as source of truth
   const [history, setHistory] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem('lumi_conv') || '[]'); } catch { return []; }
   });
+  const historyLoadedRef = useRef(false);
 
   // Refs for guard flags
   const speakingRef    = useRef(false);
@@ -60,9 +61,34 @@ export default function TalkToLumi() {
     fetchContext();
     api.get('/lumi/memories').then(r => setMemoryCount(r.data?.memories?.length || 0)).catch(() => {});
 
-    if (history.length === 0 && !hasGreetedRef.current) {
-      hasGreetedRef.current = true;
-      setTimeout(() => greet(), 800);
+    // Load persistent conversation history from PostgreSQL (survives page refresh)
+    if (!historyLoadedRef.current) {
+      historyLoadedRef.current = true;
+      api.get('/lumi/history?limit=20')
+        .then(r => {
+          const rows = r.data?.conversations || [];
+          if (rows.length > 0) {
+            // Convert DB rows → chat history format (DB returns newest first, reverse for display)
+            const loaded = rows.reverse().flatMap(row => [
+              { role: 'user',  content: row.user_message,  timestamp: row.created_at },
+              { role: 'model', content: row.lumi_response, timestamp: row.created_at,
+                saved: !!row.saved_data, route: row.route },
+            ]);
+            setHistory(loaded);
+            try { sessionStorage.setItem('lumi_conv', JSON.stringify(loaded.slice(-40))); } catch {}
+            // Don't greet if we already have history
+          } else if (!hasGreetedRef.current) {
+            hasGreetedRef.current = true;
+            setTimeout(() => greet(), 800);
+          }
+        })
+        .catch(() => {
+          // sessionStorage fallback already loaded in useState initializer
+          if (history.length === 0 && !hasGreetedRef.current) {
+            hasGreetedRef.current = true;
+            setTimeout(() => greet(), 800);
+          }
+        });
     }
 
     return () => {
