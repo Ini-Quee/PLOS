@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import './JournalPage.css';
 import api from '../lib/api';
+import BlockEditor from '../components/journal/BlockEditor';
 
 // ─── JOURNAL DATA ─────────────────────────────────────────────────────────────
 const JOURNALS = {
@@ -572,23 +573,30 @@ export default function JournalPage() {
     // templateName is already in state — use the state version (not a local re-derive)
     const _templateName = JOURNALS[journal].templates[tmpl];
 
-    // Blank page for all journal types
+    // Blank page — rich block editor, persisted via pageFields.blocks
     if (tmpl === 0) {
+      const hasLumiContent = Object.keys(pageFields).length > 0;
+      const labelColor = getLabelColor();
       return (
-        <div style={{ position: 'relative', minHeight: '100%' }}>
-          <textarea
-            className="tf blank-page-textarea"
-            placeholder="Start writing..."
-            style={{
-              minHeight: '450px',
-              width: '100%',
-              color: getTextColor(),
-              fontSize: '15px',
-              lineHeight: '28px',
-              paddingLeft: '70px',
-              paddingRight: '20px',
-              paddingTop: '10px'
-            }}
+        <div style={{ position: 'relative', minHeight: '100%', paddingLeft: 4 }}>
+          {hasLumiContent && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14,
+              padding: '6px 12px', borderRadius: 8,
+              background: 'rgba(165,180,252,0.08)',
+              border: '1px solid rgba(165,180,252,0.15)',
+            }}>
+              <span style={{ fontSize: 13 }}>✨</span>
+              <span style={{ fontSize: 11, color: 'rgba(165,180,252,0.8)', fontStyle: 'italic' }}>
+                Lumi filled this page · {fieldsDirty ? 'saving…' : savedOffline ? 'saved offline' : 'saved'}
+              </span>
+            </div>
+          )}
+          <BlockEditor
+            value={Array.isArray(pageFields.blocks) ? pageFields.blocks : []}
+            onChange={(blocks) => setField('blocks', blocks)}
+            accent={accent}
+            textColor={getTextColor()}
           />
         </div>
       );

@@ -361,7 +361,8 @@ function OpenJournal({ journal, onClose }) {
 
   useEffect(() => {
     setLoadingEntries(true);
-    api.get('/journal/entries?limit=20')
+    // Use journal/pages (new structured entries) scoped to this journal type
+    api.get(`/journal/pages?journal_type=${journal.type}&limit=60`)
       .then(res => {
         const all = res.data?.entries || [];
         setEntries(all);
@@ -378,7 +379,11 @@ function OpenJournal({ journal, onClose }) {
   const firstDow = new Date(year, month, 1).getDay();
   const monthLabel = now.toLocaleDateString('en-NG', { month: 'long', year: 'numeric' });
 
-  const writtenDays = entries.map(e => new Date(e.recorded_at).getDate());
+  // journal_page_entries uses entry_date (DATE), not recorded_at
+  const writtenDays = entries.map(e => {
+    const d = e.entry_date || e.recorded_at;
+    return d ? new Date(d + (d.includes('T') ? '' : 'T00:00:00')).getDate() : null;
+  }).filter(Boolean);
   const cells = [...Array(firstDow).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
 
   return (
@@ -549,30 +554,46 @@ function OpenJournal({ journal, onClose }) {
                   <div style={{ fontSize: 13, color: C.warm, marginBottom: 4 }}>This is your space</div>
                   <div style={{ fontSize: 11, color: C.muted }}>Write when you're ready. There's no pressure.</div>
                 </div>
-              ) : entries.map((e, i) => (
-                <div
-                  key={i}
-                  onClick={() => navigate(`/journal/page?id=${e.id}`)}
-                  style={{
-                    background: C.bg3,
-                    border: `1px solid ${C.border2}`,
-                    borderRadius: 10,
-                    padding: '14px 16px',
-                    marginBottom: 10,
-                    cursor: 'pointer',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: journal.accent }}>
-                      {new Date(e.recorded_at).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' })}
+              ) : entries.map((e, i) => {
+                // Build a readable snippet from the fields object
+                const fields = e.fields || {};
+                let snippet = '';
+                if (Array.isArray(fields.blocks)) {
+                  snippet = fields.blocks.filter(b => b.text).map(b => b.text).join(' ').slice(0, 120);
+                } else {
+                  snippet = Object.values(fields)
+                    .filter(v => typeof v === 'string' && v.trim())
+                    .join(' · ')
+                    .slice(0, 120);
+                }
+                const dateStr = e.entry_date || e.recorded_at;
+                const displayDate = dateStr
+                  ? new Date(dateStr + (dateStr.includes('T') ? '' : 'T00:00:00'))
+                      .toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' })
+                  : '';
+                return (
+                  <div
+                    key={e.id || i}
+                    onClick={() => navigate(`/journal/page?type=${e.journal_type}&template=${encodeURIComponent(e.template_name || 'Blank Page')}&date=${e.entry_date || new Date().toISOString().slice(0,10)}`)}
+                    style={{
+                      background: C.bg3,
+                      border: `1px solid ${C.border2}`,
+                      borderRadius: 10,
+                      padding: '14px 16px',
+                      marginBottom: 10,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: journal.accent }}>{displayDate}</div>
+                      <div style={{ fontSize: 10, color: C.muted }}>{e.template_name || 'Blank Page'}</div>
                     </div>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      {e.word_count > 0 && <span style={{ fontSize: 10, color: C.muted }}>{e.word_count} words</span>}
+                    <div style={{ fontSize: 12, color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {snippet || 'Entry saved — tap to read'}
                     </div>
                   </div>
-                  <div style={{ fontSize: 12, color: C.muted, fontStyle: 'italic' }}>Entry is encrypted — tap to read</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -754,23 +775,29 @@ export default function JournalDashboard() {
   const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/journal/entries?limit=200')
+    // Load stats from journal_page_entries (the new system) — scoped by journal_type
+    api.get('/journal/pages?limit=500')
       .then(res => {
         const allEntries = res.data?.entries || [];
         const now = new Date();
         const stats = {};
+
         allEntries.forEach(e => {
-          const d = new Date(e.recorded_at);
+          const type = e.journal_type || 'personal';
+          const dateStr = e.entry_date || e.updated_at;
+          const d = dateStr
+            ? new Date(dateStr + (dateStr.includes('T') ? '' : 'T00:00:00'))
+            : new Date();
           const daysAgo = Math.floor((now - d) / (1000 * 60 * 60 * 24));
-          // We don't have journal_type per entry in the encrypted schema;
-          // count everything toward the library total
-          if (!stats._total) stats._total = { count: 0, days: new Set(), latestDaysAgo: null };
-          stats._total.count++;
-          stats._total.days.add(d.toDateString());
-          if (stats._total.latestDaysAgo === null || daysAgo < stats._total.latestDaysAgo) {
-            stats._total.latestDaysAgo = daysAgo;
+
+          if (!stats[type]) stats[type] = { count: 0, days: new Set(), latestDaysAgo: null };
+          stats[type].count++;
+          stats[type].days.add(d.toDateString());
+          if (stats[type].latestDaysAgo === null || daysAgo < stats[type].latestDaysAgo) {
+            stats[type].latestDaysAgo = daysAgo;
           }
         });
+
         setJournalStats(stats);
       })
       .catch(() => setJournalStats({}))
@@ -811,22 +838,27 @@ export default function JournalDashboard() {
     return getBookTheme(activeBookType, currentSeason);
   }, [activeBookType, currentSeason]);
 
-  // Merge visual templates with real stats
-  const JOURNALS = JOURNAL_TEMPLATES.map(t => ({
-    ...t,
-    entries: journalStats._total?.count || 0,
-    streak: 0,
-    lastActive: journalStats._total?.latestDaysAgo === 0 ? 'Today' : journalStats._total?.latestDaysAgo === 1 ? 'Yesterday' : journalStats._total?.latestDaysAgo != null ? `${journalStats._total.latestDaysAgo} days ago` : 'Ready when you are',
-    completedDays: [],
-  }));
+  function lastActiveLabel(daysAgo) {
+    if (daysAgo === 0) return 'Today';
+    if (daysAgo === 1) return 'Yesterday';
+    if (daysAgo != null) return `${daysAgo} days ago`;
+    return 'Ready when you are';
+  }
 
-  const filtered = filter === 'all' ? JOURNALS : JOURNAL_TEMPLATES.filter((j) => j.type === filter).map(t => ({
-    ...t,
-    entries: journalStats._total?.count || 0,
-    streak: 0,
-    lastActive: journalStats._total?.latestDaysAgo === 0 ? 'Today' : journalStats._total?.latestDaysAgo === 1 ? 'Yesterday' : journalStats._total?.latestDaysAgo != null ? `${journalStats._total.latestDaysAgo} days ago` : 'Ready when you are',
-    completedDays: [],
-  }));
+  function mergeStats(t) {
+    const s = journalStats[t.type] || {};
+    return {
+      ...t,
+      entries: s.count || 0,
+      streak: 0,
+      lastActive: lastActiveLabel(s.latestDaysAgo),
+      completedDays: s.days ? Array.from(s.days).map(ds => new Date(ds).getDate()) : [],
+    };
+  }
+
+  // Merge visual templates with real per-type stats
+  const JOURNALS = JOURNAL_TEMPLATES.map(mergeStats);
+  const filtered = filter === 'all' ? JOURNALS : JOURNAL_TEMPLATES.filter(j => j.type === filter).map(mergeStats);
 
   return (
     <>
@@ -881,8 +913,8 @@ export default function JournalDashboard() {
             </div>
               <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1 }}>My Library</div>
               <div style={{ fontSize: 12, color: C.muted, marginTop: 6 }}>
-                {JOURNAL_TEMPLATES.length} journals · {statsLoading ? '…' : (journalStats._total?.count || 0)} total entries
-                {journalStats._total?.latestDaysAgo === 0 ? ' · updated today' : ''}
+                {JOURNAL_TEMPLATES.length} journals · {statsLoading ? '…' : Object.values(journalStats).reduce((acc, s) => acc + (s.count || 0), 0)} total entries
+                {Object.values(journalStats).some(s => s.latestDaysAgo === 0) ? ' · updated today' : ''}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -1187,9 +1219,9 @@ export default function JournalDashboard() {
           }}
         >
           {[
-            [statsLoading ? '…' : (journalStats._total?.days?.size || 0), 'days written total', C.amber],
-            [statsLoading ? '…' : (journalStats._total?.count || 0), 'total entries written', C.teal],
-            [journalStats._total?.latestDaysAgo === 0 ? '✓' : '—', 'written today', C.purple],
+            [statsLoading ? '…' : Object.values(journalStats).reduce((acc, s) => { s.days?.forEach(d => acc.add(d)); return acc; }, new Set()).size, 'days written total', C.amber],
+            [statsLoading ? '…' : Object.values(journalStats).reduce((acc, s) => acc + (s.count || 0), 0), 'total entries written', C.teal],
+            [Object.values(journalStats).some(s => s.latestDaysAgo === 0) ? '✓' : '—', 'written today', C.purple],
             [JOURNAL_TEMPLATES.length, 'books in library', C.rose],
           ].map(([v, l, c], i) => (
             <div key={i}>
