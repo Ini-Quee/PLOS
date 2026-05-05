@@ -1687,6 +1687,29 @@ export default function Settings() {
               </a>
             </div>
           </SettingsSection>
+
+          {/* Danger Zone */}
+          <SettingsSection title="Danger Zone" icon="⚠️">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0' }}>
+              <div>
+                <div style={{ fontSize: 14, color: '#F5F0E8', fontWeight: 600, marginBottom: 4 }}>Delete Account</div>
+                <div style={{ fontSize: 12, color: '#A89880' }}>Permanently deletes all your data. This cannot be undone.</div>
+              </div>
+              <button
+                onClick={async () => {
+                  if (!window.confirm('Are you sure? This will permanently delete your account and all your data. This cannot be undone.')) return;
+                  try {
+                    await api.delete('/users/me');
+                    await logout();
+                    navigate('/login');
+                  } catch { toast.error('Could not delete account. Please try again.'); }
+                }}
+                style={{ padding: '8px 18px', borderRadius: 10, border: '1px solid rgba(248,113,113,0.4)', background: 'transparent', color: '#f87171', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+              >
+                Delete →
+              </button>
+            </div>
+          </SettingsSection>
         </div>
       </div>
 

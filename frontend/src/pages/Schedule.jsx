@@ -643,6 +643,7 @@ export default function Schedule() {
     <SidebarLayout>
       <style>{`
         @keyframes fadeUp { from { opacity:0; transform:translateY(14px) } to { opacity:1; transform:translateY(0) } }
+        @keyframes shimmer { 0% { background-position:200% 0 } 100% { background-position:-200% 0 } }
         .planner-scroll::-webkit-scrollbar { width:4px }
         .planner-scroll::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.08); border-radius:2px }
       `}</style>

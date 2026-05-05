@@ -357,4 +357,44 @@ router.get(
   }
 );
 
+// POST /api/journal/analyze — server-side journal entry analysis via AI
+// Called by Journal.jsx after saving an entry, replaces the old client-side Groq call
+router.post('/analyze', async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text?.trim()) return res.status(400).json({ error: 'text is required' });
+    if (text.length > 8000) return res.status(400).json({ error: 'text too long' });
+
+    const { getLegacyClient } = require('../services/aiClient');
+    const aiClient = getLegacyClient();
+    if (!aiClient) {
+      return res.status(503).json({ error: 'AI not configured' });
+    }
+
+    const prompt = `Analyze this journal entry and return a JSON object with exactly these fields:
+{"mood":"one word","themes":["up to 5 short phrases"],"commitments":["action items"],"schedule_suggestions":["activities with times if mentioned"],"summary":"2-3 sentences"}
+Return ONLY valid JSON. No markdown, no explanation.
+
+Journal entry:
+"""
+${text.trim()}
+"""`;
+
+    const response = await aiClient.chat.completions.create({
+      model: 'llama-3.1-8b-instant',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3,
+      max_tokens: 512,
+    });
+
+    const raw = response.choices[0]?.message?.content?.trim() || '';
+    // Strip markdown code fences if present
+    const jsonStr = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+    const analysis = JSON.parse(jsonStr);
+    res.json({ analysis });
+  } catch {
+    res.status(500).json({ error: 'Analysis failed' });
+  }
+});
+
 module.exports = router;

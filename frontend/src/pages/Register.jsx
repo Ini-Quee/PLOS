@@ -527,16 +527,13 @@ export default function Register() {
           fontFamily: "'Inter', sans-serif",
         }}>
           Already have an account?{' '}
-          <Link
-            to="/login"
-            style={{
-              color: '#F5A623',
-              textDecoration: 'none',
-              fontWeight: 500,
-            }}
-          >
+          <Link to="/login" style={{ color: '#F5A623', textDecoration: 'none', fontWeight: 500 }}>
             Sign in
           </Link>
+        </p>
+        <p style={{ marginTop: '12px', textAlign: 'center', fontSize: '12px', color: '#555', fontFamily: "'Inter', sans-serif" }}>
+          By creating an account you agree to our{' '}
+          <Link to="/privacy" style={{ color: '#A89880', textDecoration: 'underline' }}>Privacy Policy</Link>
         </p>
       </div>
     </div>

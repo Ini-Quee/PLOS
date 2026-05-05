@@ -36,7 +36,9 @@
       "Bash(git add *)",
       "Bash(npm install *)",
       "Bash(grep -r \"console\\\\\\\\.log\" /c/Users/HP/PLOS/PLOS/backend/src --include=\"*.js\")",
-      "Bash(grep -E \"\\\\$\\\\{|template\")"
+      "Bash(grep -E \"\\\\$\\\\{|template\")",
+      "Bash(node_modules/.bin/vite build *)",
+      "Bash(kill %1)"
     ]
   }
 }

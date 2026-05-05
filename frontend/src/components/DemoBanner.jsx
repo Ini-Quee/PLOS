@@ -25,8 +25,12 @@ export default function DemoBanner() {
     setResetting(false)
   }
 
+  const BANNER_HEIGHT = 32;
+
   return (
     <>
+      {/* Spacer so content isn't hidden behind the fixed banner */}
+      <div style={{ height: BANNER_HEIGHT }} />
       <div style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
         background: 'linear-gradient(90deg, rgba(139,92,246,0.92), rgba(200,149,92,0.8))',

@@ -164,24 +164,24 @@ router.post('/reset', authenticate, async (req, res) => {
 
     // ── Seed budget transactions ─────────────────────────────────────────────
     const budgetItems = [
-      { amount: 2500, category: 'food',          description: 'Lunch', type: 'expense' },
-      { amount: 1800, category: 'transport',      description: 'Uber to client', type: 'expense' },
-      { amount: 50000,category: 'income',         description: 'Freelance payment', type: 'income' },
-      { amount: 5000, category: 'entertainment',  description: 'Netflix', type: 'expense' },
+      { amount: 2500,  category: 'food',      note: 'Lunch',             type: 'expense' },
+      { amount: 1800,  category: 'transport', note: 'Uber to client',    type: 'expense' },
+      { amount: 50000, category: 'freelance', note: 'Freelance payment', type: 'income'  },
+      { amount: 5000,  category: 'bills',     note: 'Netflix',           type: 'expense' },
     ];
 
     for (const b of budgetItems) {
       await pool.query(
-        `INSERT INTO budget_entries (user_id, amount, category, description, type, currency)
-         VALUES ($1,$2,$3,$4,$5,'NGN')`,
-        [uid, b.amount, b.category, b.description, b.type]
+        `INSERT INTO budget_entries (user_id, amount, category, note, type)
+         VALUES ($1,$2,$3,$4,$5)`,
+        [uid, b.amount, b.category, b.note, b.type]
       ).catch(() => {});
     }
 
     // ── Seed savings goal ────────────────────────────────────────────────────
     await pool.query(
-      `INSERT INTO savings_goals (user_id, name, emoji, target_amount, saved_amount, currency, target_date)
-       VALUES ($1,'Emergency Fund','🏦',500000,203000,'NGN', NOW() + INTERVAL '6 months')`,
+      `INSERT INTO savings_goals (user_id, name, emoji, target_amount, saved_amount, deadline)
+       VALUES ($1,'Emergency Fund','🏦',500000,203000, NOW() + INTERVAL '6 months')`,
       [uid]
     ).catch(() => {});
 

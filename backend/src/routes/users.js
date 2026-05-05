@@ -59,4 +59,15 @@ router.put('/profile', async (req, res) => {
   }
 });
 
+// DELETE /api/users/me — GDPR Article 17 data deletion
+router.delete('/me', async (req, res) => {
+  try {
+    // Cascade deletes handle all child tables via FK ON DELETE CASCADE
+    await pool.query('DELETE FROM users WHERE id = $1', [req.user.id]);
+    res.status(204).end();
+  } catch {
+    res.status(500).json({ error: 'Failed to delete account' });
+  }
+});
+
 module.exports = router;
