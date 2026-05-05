@@ -110,11 +110,22 @@ app.use('/api/push',   pushRoutes);
 app.use('/api/users',   usersRoutes);
 app.use('/api/billing', billingRoutes);
 
-app.get('/api/health', (req, res) => {
+app.get('/api/health', async (req, res) => {
+  // Quick DB ping to confirm database is reachable
+  let dbOk = false;
+  try {
+    await pool.query('SELECT 1');
+    dbOk = true;
+  } catch {}
+
+  const { isAvailable } = require('./src/services/redisClient');
   res.json({
-    status: 'ok',
+    status: dbOk ? 'ok' : 'degraded',
+    db: dbOk ? 'connected' : 'unreachable',
+    redis: isAvailable() ? 'connected' : 'offline (fallback active)',
     timestamp: new Date().toISOString(),
     version: '0.1.0',
+    environment: process.env.NODE_ENV || 'development',
   });
 });
 
