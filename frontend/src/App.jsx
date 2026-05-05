@@ -24,6 +24,8 @@ import Habits from './pages/Habits';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import Atmosphere from './components/Atmosphere';
 import DemoBanner from './components/DemoBanner';
+import { ToastProvider } from './hooks/useToast';
+import ToastStack from './components/ui/ToastStack';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useState, useEffect } from 'react';
 
@@ -300,12 +302,15 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Atmosphere section="all">
-          <DemoBanner />
-          <ErrorBoundary>
-            <AppRoutes />
-          </ErrorBoundary>
-        </Atmosphere>
+        <ToastProvider>
+          <Atmosphere section="all">
+            <DemoBanner />
+            <ErrorBoundary>
+              <AppRoutes />
+            </ErrorBoundary>
+          </Atmosphere>
+          <ToastStack />
+        </ToastProvider>
       </AuthProvider>
     </BrowserRouter>
   );

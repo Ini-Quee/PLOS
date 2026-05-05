@@ -5,7 +5,9 @@ import { useAtmos } from '../components/Atmosphere'
 import { useLumi } from '../hooks/useLumi'
 import api from '../lib/api'
 import { useAuth } from '../lib/auth'
-import OnboardingModal from '../components/OnboardingModal'
+import OnboardingFlow from '../components/OnboardingFlow'
+import OnboardingBanner from '../components/OnboardingBanner'
+import SkeletonCard from '../components/ui/SkeletonCard'
 import { useIsMobile } from '../hooks/useIsMobile'
 import ErrorBoundary from '../components/ErrorBoundary'
 import { usePushNotifications } from '../hooks/usePushNotifications'
@@ -527,37 +529,49 @@ export default function Dashboard() {
   const [savingsGoals, setSavingsGoals] = useState([])
   const [hasLifeAudit, setHasLifeAudit] = useState(false)
   const [journalStreak, setJournalStreak] = useState(0)
-  const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('plos_onboarded'))
+  const [loading, setLoading] = useState(true)
+  const sessions = typeof window !== 'undefined'
+    ? Number(localStorage.getItem('plos_sessions') || 0)
+    : 0
+  const onboarded = typeof window !== 'undefined' && !!localStorage.getItem('plos_onboarded')
+  const bannerDismissed = typeof window !== 'undefined' && !!localStorage.getItem('plos_banner_dismissed')
+  // Show full flow for first 3 sessions; after that show persistent banner only
+  const [showOnboarding, setShowOnboarding] = useState(() => !onboarded && sessions < 3)
+  const showBanner = !onboarded && sessions >= 3 && !bannerDismissed
 
   useEffect(() => {
-    api.get('/schedule/today')
-      .then(r => setScheduleItems(r.data?.schedules || []))
-      .catch(() => {})
+    const controller = new AbortController();
+    const { signal } = controller;
 
-    api.get('/savings')
-      .then(r => setSavingsGoals(r.data?.goals || []))
-      .catch(() => {})
-
-    api.get('/lumi/life-audit/preview')
-      .then(() => setHasLifeAudit(true))
-      .catch(() => setHasLifeAudit(false))
-
-    api.get('/journal/pages?limit=60')
-      .then(r => {
-        const entries = r.data?.entries || []
-        const dates = new Set(entries.map(e => e.entry_date))
-        let streak = 0
-        const today = new Date()
+    Promise.allSettled([
+      api.get('/schedule/today', { signal }),
+      api.get('/savings', { signal }),
+      api.get('/lumi/life-audit/preview', { signal }),
+      api.get('/journal/pages?limit=60', { signal }),
+    ]).then(([schedRes, savingsRes, auditRes, journalRes]) => {
+      if (signal.aborted) return;
+      if (schedRes.status === 'fulfilled')
+        setScheduleItems(schedRes.value.data?.schedules || []);
+      if (savingsRes.status === 'fulfilled')
+        setSavingsGoals(savingsRes.value.data?.goals || []);
+      setHasLifeAudit(auditRes.status === 'fulfilled');
+      if (journalRes.status === 'fulfilled') {
+        const entries = journalRes.value.data?.entries || [];
+        const dates = new Set(entries.map(e => e.entry_date));
+        let streak = 0;
+        const today = new Date();
         for (let i = 0; i < 60; i++) {
-          const d = new Date(today)
-          d.setDate(today.getDate() - i)
-          const ds = d.toISOString().slice(0, 10)
-          if (dates.has(ds)) streak++
-          else if (i > 0) break
+          const d = new Date(today);
+          d.setDate(today.getDate() - i);
+          if (dates.has(d.toISOString().slice(0, 10))) streak++;
+          else if (i > 0) break;
         }
-        setJournalStreak(streak)
-      })
-      .catch(() => {})
+        setJournalStreak(streak);
+      }
+      setLoading(false);
+    });
+
+    return () => controller.abort();
   }, [])
 
   const topGoal = savingsGoals.find(g => !g.is_complete)
@@ -827,6 +841,9 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Onboarding banner — shown after 3+ sessions if not yet onboarded */}
+        {showBanner && <OnboardingBanner />}
+
         {/* Dashboard Grid */}
         <div style={{
           display: 'grid',
@@ -834,11 +851,27 @@ export default function Dashboard() {
           gap: isMobile ? 10 : 14,
           padding: isMobile ? '12px 14px 20px' : '20px 28px 28px',
         }}>
-          {/* Row 1: stat cards */}
-          <StatCard icon="📖" label="Journal streak" value={String(journalStreak)} sub="days in a row" badge={journalStreak > 0 ? undefined : "Start journaling"} badgeType="warn" accentColor={C.amber} delay={0.05} />
-          <StatCard icon="💪" label="Workouts" value={String(scheduleItems.filter(t => t.category === 'health' && t.completed).length)} sub={`of ${scheduleItems.filter(t => t.category === 'health').length} today`} badge={scheduleItems.filter(t => t.category === 'health').length > 0 ? undefined : "Log your first workout"} badgeType="warn" accentColor={C.teal} delay={0.1} />
-          <StatCard icon="💰" label="Savings goal" value={topGoal ? topGoal.emoji + ' ' + Math.round((topGoal.saved_amount / topGoal.target_amount) * 100) + '%' : '₦0'} sub={topGoal ? topGoal.name : 'of ₦0 target'} badge={topGoal ? undefined : "Set a savings goal"} badgeType="warn" accentColor={C.purple} delay={0.15} />
-          <StatCard icon="⚡" label="Habits today" value={scheduleItems.filter(t => t.completed).length + '/' + scheduleItems.length} sub="done today" badge={scheduleItems.length > 0 ? undefined : "Add your first habit"} badgeType="warn" accentColor={C.pink} delay={0.2} />
+          {/* Row 1: stat cards — skeleton while loading */}
+          {loading ? (
+            [0,1,2,3].map(i => <SkeletonCard key={i} height={90} lines={2} />)
+          ) : scheduleItems.length === 0 && journalStreak === 0 && savingsGoals.length === 0 ? (
+            // Zero state hero — user has no data yet
+            <div style={{ gridColumn: isMobile ? 'span 2' : 'span 4', background:'linear-gradient(135deg,rgba(200,149,92,0.1),rgba(139,92,246,0.08))', border:'1px solid rgba(200,149,92,0.25)', borderRadius:16, padding: isMobile ? '20px 16px' : '28px 28px', display:'flex', alignItems:'center', gap:16, animation:'fadeUp 0.4s ease both', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+              <div style={{ fontSize:40 }}>✨</div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:16, fontWeight:700, color:'#e8e8f0', marginBottom:6 }}>Your life plan starts here</div>
+                <div style={{ fontSize:13, color:'rgba(255,255,255,0.45)', lineHeight:1.6 }}>Let Lumi interview you across 8 areas of your life and build your complete weekly schedule in 10 minutes.</div>
+              </div>
+              <button onClick={() => navigate('/talk-to-lumi?mode=onboarding')} style={{ padding:'11px 22px', borderRadius:24, border:'none', background:'rgba(200,149,92,0.85)', color:'#000', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}>Start with Lumi →</button>
+            </div>
+          ) : (
+            <>
+              <StatCard icon="📖" label="Journal streak" value={String(journalStreak)} sub="days in a row" badge={journalStreak > 0 ? undefined : "Start journaling"} badgeType="warn" accentColor={C.amber} delay={0.05} />
+              <StatCard icon="💪" label="Workouts" value={String(scheduleItems.filter(t => t.category === 'health' && t.completed).length)} sub={`of ${scheduleItems.filter(t => t.category === 'health').length} today`} badge={scheduleItems.filter(t => t.category === 'health').length > 0 ? undefined : "Log your first workout"} badgeType="warn" accentColor={C.teal} delay={0.1} />
+              <StatCard icon="💰" label="Savings goal" value={topGoal ? topGoal.emoji + ' ' + Math.round((topGoal.saved_amount / topGoal.target_amount) * 100) + '%' : '₦0'} sub={topGoal ? topGoal.name : 'of ₦0 target'} badge={topGoal ? undefined : "Set a savings goal"} badgeType="warn" accentColor={C.purple} delay={0.15} />
+              <StatCard icon="⚡" label="Habits today" value={scheduleItems.filter(t => t.completed).length + '/' + scheduleItems.length} sub="done today" badge={scheduleItems.length > 0 ? undefined : "Add your first habit"} badgeType="warn" accentColor={C.pink} delay={0.2} />
+            </>
+          )}
 
           {/* Row 2: Calendar + Lumi + Reading */}
           <div style={{ gridColumn: isMobile ? 'span 2' : 'span 2' }}>
@@ -875,7 +908,7 @@ export default function Dashboard() {
         </div>
       </SidebarLayout>
       {showOnboarding && (
-        <OnboardingModal
+        <OnboardingFlow
           userName={user?.name}
           onDone={() => setShowOnboarding(false)}
         />

@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx vite *)",
+      "Bash(sed -i \"s/backgroundColor: '#1A1A1A'/backgroundColor: 'rgba\\(8,8,18,0.55\\)', backdropFilter: 'blur\\(18px\\)', WebkitBackdropFilter: 'blur\\(18px\\)'/g\" Settings.jsx)",
+      "Bash(sed -i \"s/backgroundColor: '#242424'/backgroundColor: 'rgba\\(12,12,24,0.62\\)'/g\" Settings.jsx)",
+      "Bash(sed -i \"s/backgroundColor: '#0D0D0D'/backgroundColor: 'rgba\\(4,4,10,0.72\\)'/g\" Settings.jsx)",
+      "Bash(sed -i \"s/backgroundColor: '#F5A623'/backgroundColor: '#C8955C'/g\" Settings.jsx)",
+      "Bash(sed -i \"s/color: '#F5A623'/color: '#C8955C'/g\" Settings.jsx)",
+      "Bash(sed -i \"s/backgroundColor: '#1A1A1A'/backgroundColor: 'rgba\\(8,8,18,0.55\\)', backdropFilter: 'blur\\(18px\\)', WebkitBackdropFilter: 'blur\\(18px\\)'/g\" JournalDashboard.jsx)",
+      "Bash(sed -i \"s/backgroundColor: '#242424'/backgroundColor: 'rgba\\(12,12,24,0.62\\)'/g\" JournalDashboard.jsx)",
+      "Bash(sed -i \"s/background: '#1A1A1A'/background: 'rgba\\(8,8,18,0.55\\)'/g\" JournalDashboard.jsx)",
+      "Bash(sed -i \"s/background: '#0f0f1c'/background: 'transparent'/g\" JournalDashboard.jsx)",
+      "Bash(sed -i \"s/backgroundColor: '#0f0f1c'/backgroundColor: 'transparent'/g\" JournalDashboard.jsx)",
+      "Bash(xargs sed *)",
+      "Bash(sed -i -e 's/rgba\\(6,6,14,0\\\\.52\\)/rgba\\(6,6,14,0.30\\)/g' -e 's/rgba\\(10,10,20,0\\\\.62\\)/rgba\\(10,10,20,0.38\\)/g' -e 's/rgba\\(14,14,28,0\\\\.72\\)/rgba\\(14,14,28,0.48\\)/g' -e 's/rgba\\(16,9,3,0\\\\.58\\)/rgba\\(16,9,3,0.34\\)/g' components/layout/SidebarLayout.jsx)",
+      "Bash(sed -i -e 's/rgba\\(10, 8, 6, 0\\\\.52\\)/rgba\\(10, 8, 6, 0.30\\)/g' -e 's/rgba\\(16, 12, 8, 0\\\\.65\\)/rgba\\(16, 12, 8, 0.42\\)/g' index.css)",
+      "Bash(sed -i -e 's/rgba\\(8, 7, 6, 0\\\\.52\\)/rgba\\(8, 7, 6, 0.30\\)/g' -e 's/rgba\\(12, 10, 8, 0\\\\.62\\)/rgba\\(12, 10, 8, 0.40\\)/g' pages/JournalPage.css)",
+      "Bash(sed -i -e 's/rgba\\(6,6,14,0\\\\.52\\)/rgba\\(6,6,14,0.30\\)/g' pages/Dashboard.jsx)",
+      "Bash(xargs grep *)",
+      "Bash(node --check C:/Users/HP/PLOS/PLOS/frontend/src/lib/livingBackgroundConfig.js)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Read(//c/Users/HP/Desktop/**)",
+      "Bash(python3 -c ' *)",
+      "Bash(python -c ' *)",
+      "Bash(node -e ' *)",
+      "Bash(powershell *)",
+      "Bash(node --check backend/server.js)",
+      "Bash(node --check backend/src/routes/budget.js)",
+      "Bash(git commit *)",
+      "Bash(xargs -I {} basename {})",
+      "Bash(node -e \"require\\('./src/services/lumiRouter'\\)\")",
+      "Bash(node -e \"require\\('./src/routes/lumi'\\)\")",
+      "Bash(node *)",
+      "Bash(git add *)",
+      "Bash(npm install *)",
+      "Bash(grep -r \"console\\\\\\\\.log\" /c/Users/HP/PLOS/PLOS/backend/src --include=\"*.js\")",
+      "Bash(grep -E \"\\\\$\\\\{|template\")"
+    ]
+  }
+}

@@ -4,6 +4,7 @@ import { useAtmos } from '../components/Atmosphere'
 import api from '../lib/api'
 import { useIsMobile } from '../hooks/useIsMobile'
 import ErrorBoundary from '../components/ErrorBoundary'
+import { useToast } from '../hooks/useToast'
 
 // ─── Heatmap helpers ──────────────────────────────────────────────────────────
 const WEEKS_DESKTOP = 13
@@ -569,6 +570,7 @@ const CATEGORIES = ['personal','health','focus','mindset','finance','social']
 export default function Habits() {
   useAtmos()
   const isMobile = useIsMobile()
+  const toast = useToast()
   const [habits, setHabits] = useState([])
   const [loading, setLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -606,6 +608,7 @@ export default function Habits() {
             h.id === habit.id ? { ...h, _offline: true } : h
           ))
         }
+        if (!wasCompleted) toast.success(`${habit.emoji || '✅'} ${habit.title} — done!`)
       })
       .catch(() => load())
   }

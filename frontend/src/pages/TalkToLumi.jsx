@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import LumiOrb from '../components/lumi/LumiOrb';
 import * as lumiVoice from '../lib/lumi-voice';
@@ -12,6 +12,8 @@ import api from '../lib/api';
  */
 export default function TalkToLumi() {
   const navigate  = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isOnboarding = searchParams.get('mode') === 'onboarding';
   const { user }  = useAuth();
 
   const aiName = localStorage.getItem('lumi_name') || 'Lumi';
@@ -630,10 +632,16 @@ export default function TalkToLumi() {
 
       {/* ── Header ── */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'18px 28px', borderBottom:`1px solid ${C.brd}`, backdropFilter:'blur(16px)', background:'rgba(14,10,6,0.45)', flexShrink:0 }}>
-        <button onClick={() => navigate('/dashboard')}
-          style={{ background:'none', border:`1px solid ${C.brd}`, borderRadius:9, padding:'7px 14px', color: C.muted, fontSize:13, cursor:'pointer', fontFamily:'inherit' }}>
-          ← Back
-        </button>
+        {isOnboarding ? (
+          <div style={{ fontSize:12, color: C.muted, display:'flex', alignItems:'center', gap:6 }}>
+            <span style={{ color: C.amber, fontWeight:600 }}>Step 3 of 3</span> — Life Audit
+          </div>
+        ) : (
+          <button onClick={() => navigate('/dashboard')}
+            style={{ background:'none', border:`1px solid ${C.brd}`, borderRadius:9, padding:'7px 14px', color: C.muted, fontSize:13, cursor:'pointer', fontFamily:'inherit' }}>
+            ← Back
+          </button>
+        )}
 
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           <div style={{ width:38, height:38, borderRadius:'50%', background:`radial-gradient(circle,#ffbe4d,${C.accent})`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>✨</div>
@@ -872,9 +880,16 @@ export default function TalkToLumi() {
               ))}
             </div>
             <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-              <button onClick={confirmLifeAuditSchedule}
+              <button onClick={async () => {
+                await confirmLifeAuditSchedule();
+                if (isOnboarding) {
+                  localStorage.setItem('plos_onboarded', 'true');
+                  localStorage.removeItem('plos_onboarding_step');
+                  setTimeout(() => navigate('/schedule'), 1200);
+                }
+              }}
                 style={{ padding:'10px 22px', borderRadius:20, border:'none', background: C.amber, color:'#000', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
-                Create My Schedule ✓
+                {isOnboarding ? 'Create My Schedule → See My Week' : 'Create My Schedule ✓'}
               </button>
               <button onClick={() => startLifeAudit(false)}
                 style={{ padding:'10px 16px', borderRadius:20, border:`1px solid ${C.brd}`, background:'transparent', color: C.muted, fontSize:12, cursor:'pointer', fontFamily:'inherit' }}>
