@@ -887,7 +887,13 @@ export default function Dashboard() {
           <ErrorBoundary compact label="Budget"><BudgetCard /></ErrorBoundary>
           <ErrorBoundary compact label="Habits"><HabitsCard /></ErrorBoundary>
 
-          {/* Row 4: Insight card (monthly review) */}
+          {/* Row 4: Today's data — content, journal, life audit, savings */}
+          <ErrorBoundary compact label="Content"><ContentTodayCard /></ErrorBoundary>
+          <ErrorBoundary compact label="Journal Today"><JournalTodayCard /></ErrorBoundary>
+          <ErrorBoundary compact label="Life Audit"><LifeAuditCard /></ErrorBoundary>
+          <ErrorBoundary compact label="Savings"><SavingsCard /></ErrorBoundary>
+
+          {/* Row 5: Insight card (monthly review) */}
           <div style={{ gridColumn: isMobile ? 'span 2' : 'span 2' }}>
             <ErrorBoundary compact label="Insights"><InsightCard /></ErrorBoundary>
           </div>
@@ -905,6 +911,11 @@ export default function Dashboard() {
 
           {/* Goals — full width */}
           <div style={{ gridColumn: isMobile ? 'span 2' : 'span 4' }}><GoalsCard /></div>
+
+          {/* Affirmations — full width */}
+          <div style={{ gridColumn: isMobile ? 'span 2' : 'span 4' }}>
+            <ErrorBoundary compact label="Affirmations"><AffirmationsWidget /></ErrorBoundary>
+          </div>
         </div>
       </SidebarLayout>
       {showOnboarding && (
@@ -914,5 +925,278 @@ export default function Dashboard() {
         />
       )}
     </>
+  )
+}
+
+// ─── Affirmations Widget ───────────────────────────────────────────────────────
+function AffirmationsWidget() {
+  const { palette } = useAtmos()
+  const AC = palette.accent
+  const [affirmations, setAffirmations] = useState([])
+  const [newText, setNewText] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(0)
+
+  useEffect(() => {
+    api.get('/users/settings').then(res => {
+      const list = res.data?.settings?.affirmations || []
+      setAffirmations(list)
+      if (list.length > 0) {
+        const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000)
+        setActiveIndex(dayOfYear % list.length)
+      }
+    }).catch(() => {})
+  }, [])
+
+  function save(list) {
+    setAffirmations(list)
+    api.put('/users/settings', { affirmations: list }).catch(() => {})
+  }
+
+  function addAffirmation() {
+    const text = newText.trim()
+    if (!text || affirmations.length >= 20) return
+    save([...affirmations, text])
+    setNewText('')
+    setAdding(false)
+  }
+
+  function remove(i) {
+    save(affirmations.filter((_, idx) => idx !== i))
+  }
+
+  const current = affirmations[activeIndex]
+
+  return (
+    <div style={{ background: 'rgba(6,6,14,0.30)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', border: `1px solid ${AC}22`, borderRadius: 16, padding: '20px 22px', animation: 'fadeUp 0.5s 0.7s ease both' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <div style={{ fontSize: 12, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span>✨</span> Today's Affirmation
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {affirmations.length > 1 && (
+            <>
+              <button onClick={() => setActiveIndex(i => (i - 1 + affirmations.length) % affirmations.length)} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 14, padding: '2px 6px' }}>‹</button>
+              <span style={{ fontSize: 11, color: C.muted }}>{activeIndex + 1}/{affirmations.length}</span>
+              <button onClick={() => setActiveIndex(i => (i + 1) % affirmations.length)} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 14, padding: '2px 6px' }}>›</button>
+            </>
+          )}
+          <button onClick={() => setAdding(a => !a)} style={{ background: `${AC}18`, border: `1px solid ${AC}30`, borderRadius: 8, color: AC, fontSize: 12, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit' }}>
+            {adding ? 'Cancel' : '+ Add'}
+          </button>
+        </div>
+      </div>
+
+      {current ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <p style={{ flex: 1, margin: 0, fontFamily: "'DM Serif Display', serif", fontStyle: 'italic', fontSize: 18, color: C.cream, lineHeight: 1.6 }}>
+            "{current}"
+          </p>
+          <button onClick={() => remove(activeIndex)} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 12, padding: '4px 8px', flexShrink: 0, fontFamily: 'inherit' }}>✕</button>
+        </div>
+      ) : (
+        <p style={{ margin: 0, color: C.muted, fontSize: 13, fontStyle: 'italic' }}>No affirmations yet — add one to get started.</p>
+      )}
+
+      {adding && (
+        <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
+          <input
+            autoFocus
+            type="text"
+            value={newText}
+            onChange={e => setNewText(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') addAffirmation() }}
+            placeholder="Write your affirmation…"
+            maxLength={200}
+            style={{ flex: 1, padding: '9px 13px', borderRadius: 10, border: `1px solid ${AC}30`, background: 'rgba(20,12,6,0.6)', color: C.cream, fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
+          />
+          <button onClick={addAffirmation} style={{ padding: '9px 16px', borderRadius: 10, border: 'none', background: AC, color: '#080503', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Save</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Journal type accent colours ──────────────────────────────────────────────
+const JOURNAL_COLORS = {
+  personal:  '#C8955C',
+  spiritual: '#9B7FD4',
+  budget:    '#5BA88A',
+  wellness:  '#7ABFB8',
+  goals:     '#7AAEE8',
+  business:  '#D4A06A',
+}
+
+// ─── Platform emojis ──────────────────────────────────────────────────────────
+const PLATFORM_EMOJI = {
+  twitter: '𝕏', instagram: '📸', linkedin: '💼', facebook: '👥',
+  tiktok: '🎵', youtube: '▶️', threads: '🧵', default: '📢',
+}
+
+// ─── Content Today Card ───────────────────────────────────────────────────────
+function ContentTodayCard() {
+  const navigate = useNavigate()
+  const [posts, setPosts] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.get('/content/posts/today')
+      .then(r => setPosts(r.data?.posts || []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  return (
+    <div style={{ background: C.bg2, border: '1px solid ' + C.border, borderRadius: 16, padding: 18, animation: 'fadeUp 0.5s 0.35s ease both' }}>
+      <div style={{ fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span>📢</span> Content Today
+      </div>
+      {loading ? (
+        <div style={{ fontSize: 12, color: C.muted }}>Loading…</div>
+      ) : posts.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '10px 0' }}>
+          <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>No posts scheduled today</div>
+          <button onClick={() => navigate('/content-planner')} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid ' + C.teal + '44', background: 'transparent', color: C.teal, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>Go to Content Planner →</button>
+        </div>
+      ) : (
+        <>
+          <div style={{ fontSize: 28, fontWeight: 800, color: C.teal, lineHeight: 1, marginBottom: 8 }}>{posts.length}</div>
+          <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>post{posts.length !== 1 ? 's' : ''} due today</div>
+          {posts.slice(0, 3).map((p, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderTop: i > 0 ? '1px solid ' + C.border : 'none' }}>
+              <span style={{ fontSize: 14 }}>{PLATFORM_EMOJI[p.platform] || PLATFORM_EMOJI.default}</span>
+              <span style={{ fontSize: 12, color: C.text, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title}</span>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  )
+}
+
+// ─── Journal Today Card ───────────────────────────────────────────────────────
+function JournalTodayCard() {
+  const navigate = useNavigate()
+  const [entries, setEntries] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.get('/journal/pages/today')
+      .then(r => setEntries(r.data?.entries || []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  return (
+    <div style={{ background: C.bg2, border: '1px solid ' + C.border, borderRadius: 16, padding: 18, animation: 'fadeUp 0.5s 0.40s ease both' }}>
+      <div style={{ fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span>📖</span> Journal Today
+      </div>
+      {loading ? (
+        <div style={{ fontSize: 12, color: C.muted }}>Loading…</div>
+      ) : entries.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '10px 0' }}>
+          <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>Nothing written today</div>
+          <button onClick={() => navigate('/journal')} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid ' + C.amber + '44', background: 'transparent', color: C.amber, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>Open Journal →</button>
+        </div>
+      ) : (
+        <>
+          <div style={{ fontSize: 28, fontWeight: 800, color: C.amber, lineHeight: 1, marginBottom: 8 }}>{entries.length}</div>
+          <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>entr{entries.length !== 1 ? 'ies' : 'y'} today</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {entries.map((e, i) => (
+              <span key={i} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 20, background: (JOURNAL_COLORS[e.journal_type] || C.amber) + '22', color: JOURNAL_COLORS[e.journal_type] || C.amber, fontWeight: 500 }}>
+                {e.journal_type}
+              </span>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+// ─── Life Audit Card ──────────────────────────────────────────────────────────
+function LifeAuditCard() {
+  const navigate = useNavigate()
+  const [audit, setAudit] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.get('/lumi/life-audit/preview')
+      .then(r => { if (r.data?.timeAudit) setAudit(r.data) })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  return (
+    <div style={{ background: C.bg2, border: '1px solid ' + C.border, borderRadius: 16, padding: 18, animation: 'fadeUp 0.5s 0.45s ease both' }}>
+      <div style={{ fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span>✨</span> Life Plan
+      </div>
+      {loading ? (
+        <div style={{ fontSize: 12, color: C.muted }}>Loading…</div>
+      ) : !audit ? (
+        <div style={{ textAlign: 'center', padding: '10px 0' }}>
+          <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>No life plan yet</div>
+          <button onClick={() => navigate('/talk-to-lumi')} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid ' + C.purple + '44', background: 'transparent', color: C.purple, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>Start with Lumi →</button>
+        </div>
+      ) : (
+        <>
+          <div style={{ fontSize: 28, fontWeight: 800, color: C.purple, lineHeight: 1, marginBottom: 4 }}>{audit.timeAudit.scheduledHours}h</div>
+          <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>scheduled · {audit.timeAudit.freeHours}h free · {audit.timeAudit.totalBlocks} blocks</div>
+          {audit.timeAudit.isOverScheduled && (
+            <div style={{ fontSize: 10, padding: '3px 8px', borderRadius: 20, background: 'rgba(224,82,82,0.15)', color: '#E05252', display: 'inline-block' }}>Over-scheduled</div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+// ─── Savings Card ─────────────────────────────────────────────────────────────
+function SavingsCard() {
+  const navigate = useNavigate()
+  const [goals, setGoals] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.get('/savings')
+      .then(r => setGoals((r.data?.goals || []).filter(g => !g.is_complete)))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  return (
+    <div style={{ background: C.bg2, border: '1px solid ' + C.border, borderRadius: 16, padding: 18, animation: 'fadeUp 0.5s 0.50s ease both' }}>
+      <div style={{ fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span>🏦</span> Savings Goals
+      </div>
+      {loading ? (
+        <div style={{ fontSize: 12, color: C.muted }}>Loading…</div>
+      ) : goals.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '10px 0' }}>
+          <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>No active savings goals</div>
+          <button onClick={() => navigate('/budget')} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid ' + C.teal + '44', background: 'transparent', color: C.teal, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>Set a goal →</button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {goals.slice(0, 3).map((g, i) => {
+            const pct = Math.min(100, Math.round((g.saved_amount / g.target_amount) * 100)) || 0
+            return (
+              <div key={i}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 12, color: C.text }}>{g.emoji} {g.name}</span>
+                  <span style={{ fontSize: 11, color: C.teal, fontWeight: 600 }}>{pct}%</span>
+                </div>
+                <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.08)' }}>
+                  <div style={{ height: '100%', borderRadius: 2, width: pct + '%', background: C.teal, transition: 'width 0.6s ease' }} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
   )
 }

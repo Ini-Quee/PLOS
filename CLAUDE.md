@@ -1,5 +1,7 @@
 # PLOS — Project Instructions for Claude
 
+> **Architecture & commands reference**: see `CLAUDE_ARCH.md` — read it first for dev commands, route map, background system, and DB migration rules.
+
 ## What this app is
 PLOS is a life-planning productivity app for people with ADHD. Lumi is the AI assistant.
 Every design decision prioritises zero friction. Lumi does the thinking so the user doesn't have to.
@@ -12,6 +14,22 @@ Every design decision prioritises zero friction. Lumi does the thinking so the u
 ---
 
 ## START HERE — DO THESE IN ORDER
+
+### NEXT TASK — Dashboard Discovery Panel (do this first next session)
+Settings holds information users need to see daily — billing status, connected accounts, integrations — but nobody opens Settings to discover those. Move that information to the Dashboard as a visible panel or section.
+
+**What to add to Dashboard.jsx:**
+- **Account status strip** — show current plan (Free / Pro), upgrade CTA if free, "Manage billing →" link if Pro
+- **Integrations status** — show Gmail connection status (connected / not connected), Google account, push notifications enabled/disabled — each with a one-tap action button
+- **Quick links** — "Change theme", "Lumi voice settings", "Notification time" — the settings users actually want fast access to, shown as chips/cards, not buried in a settings page
+
+**The principle:** Dashboard = what you need to know and act on today. Settings = change something you rarely change. Billing, Gmail connection, and notification setup are things users need to discover and act on, not configure once and forget.
+
+**Files to touch:**
+- `frontend/src/pages/Dashboard.jsx` — add a `AccountPanel` or `DiscoveryStrip` widget at the bottom
+- No backend changes needed — all data is already fetched in Settings.jsx, reuse the same endpoints
+
+---
 
 ### 0. Commit current journal work (5 min)
 Three uncommitted changes:

@@ -25,8 +25,8 @@ self.addEventListener('push', e => {
   e.waitUntil(
     self.registration.showNotification(data.title || 'PLOS', {
       body: data.body || '',
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-72.png',
+      icon: '/icons/icon.svg',
+      badge: '/favicon.svg',
       tag: data.tag || 'plos-notification',
       data: data.url ? { url: data.url } : {},
       actions: data.actions || [],

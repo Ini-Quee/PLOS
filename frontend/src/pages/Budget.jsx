@@ -4,6 +4,7 @@ import api from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { encryptText, decryptText } from '../lib/encryption';
 import { useAtmos } from '../components/Atmosphere';
+import LumiBudgetPanel from '../components/budget/LumiBudgetPanel';
 
 // ─── Category config ────────────────────────────────────────────────────────────
 const EXPENSE_CATS = [
@@ -397,10 +398,17 @@ export default function Budget() {
     } catch { showToast('Failed to delete', true); }
   }
 
+  // Lumi panel
+  const [lumiOpen, setLumiOpen] = useState(false);
+
   // Computed
   const income        = summary.monthIncome || summary.declaredIncome || 0;
   const spent         = summary.monthExpense || 0;
   const surplus       = income - spent;
+  const declaredInc   = summary.declaredIncome || 0;
+  const safeToSpend   = declaredInc > 0
+    ? Math.max(0, declaredInc - spent - savingsGoals.filter(g => !g.is_complete).reduce((s, g) => s + Number(g.target_amount || 0), 0))
+    : null;
   const todayEntries  = entries.filter(e => e.entry_date?.slice(0,10) === todayISO());
   const monthEntries  = entries.filter(e => e.entry_date?.slice(0,7) === todayISO().slice(0,7));
   const spendPct      = income > 0 ? Math.min((spent/income)*100, 100) : 0;
@@ -535,8 +543,9 @@ export default function Budget() {
             <div style={{ fontSize:20, fontWeight:600, letterSpacing:'-0.4px' }}>{greeting}, {userName} 👋</div>
             <div style={{ fontSize:13, color:'var(--text2)', marginTop:2 }}>{new Date().toLocaleDateString('en-NG',{weekday:'long',day:'numeric',month:'long',year:'numeric'})} · Your money picture</div>
           </div>
-          <div style={{ display:'flex', gap:8 }}>
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
             <button className="pave-btn pave-btn-ghost" onClick={() => setSection('income')}>📥 Log income</button>
+            <button className="pave-btn pave-btn-ghost" onClick={() => setLumiOpen(true)} style={{ border:'1px solid rgba(200,149,92,0.35)', color:'#C8955C' }}>✨ Ask Lumi</button>
             <button className="pave-btn pave-btn-accent" onClick={() => setShowAdd(true)}>+ Add expense</button>
           </div>
         </div>
@@ -566,6 +575,25 @@ export default function Budget() {
               </div>
               {pctBar(todaySpend, dailyLimit)}
             </div>
+          )}
+        </div>
+
+        {/* Safe to Spend */}
+        <div className="pave-card" style={{ marginBottom:16, padding:'18px 22px', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:12 }}>
+          {safeToSpend === null ? (
+            <div style={{ fontSize:13, color:'var(--text3)', fontStyle:'italic' }}>
+              Set your monthly income in the <button onClick={() => setSection('budget')} style={{ background:'none', border:'none', color:'var(--accent)', cursor:'pointer', fontSize:13, fontFamily:'inherit', textDecoration:'underline', padding:0 }}>Budget tab</button> to unlock Safe to Spend
+            </div>
+          ) : (
+            <>
+              <div>
+                <div style={{ fontSize:10, fontWeight:600, color:'var(--text3)', letterSpacing:'0.6px', textTransform:'uppercase', marginBottom:4 }}>Safe to spend this month</div>
+                <div style={{ fontSize:44, fontWeight:700, letterSpacing:'-1.5px', color:'#C8955C', lineHeight:1 }}>{fmt(safeToSpend)}</div>
+              </div>
+              <div style={{ fontSize:12, color:'var(--text3)', maxWidth:160, textAlign:'right', lineHeight:1.5 }}>
+                After income, spending &amp; savings goals
+              </div>
+            </>
           )}
         </div>
 
@@ -1187,6 +1215,13 @@ export default function Budget() {
       )}
 
       <style>{`@keyframes slideUp{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}`}</style>
+
+      {/* ── Lumi Budget Panel ── */}
+      <LumiBudgetPanel
+        open={lumiOpen}
+        onClose={() => setLumiOpen(false)}
+        onEntryLogged={load}
+      />
     </>
   );
 }

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { AnimatePresence, motion } from 'framer-motion';
 import { AuthProvider, useAuth } from './lib/auth';
 import { pageTransitions } from './styles/motion';
+import { initializeSeasonDetection } from './lib/seasonDetection';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -29,6 +30,12 @@ import { ToastProvider } from './hooks/useToast';
 import ToastStack from './components/ui/ToastStack';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useState, useEffect } from 'react';
+
+// Apply saved theme immediately (before any component mounts)
+(function () {
+  const saved = localStorage.getItem('plos_theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+})();
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -301,6 +308,12 @@ function AppRoutes() {
 }
 
 export default function App() {
+  useEffect(() => {
+    initializeSeasonDetection().then(() => {
+      window.dispatchEvent(new Event('atmos-scene-changed'));
+    });
+  }, []);
+
   return (
     <BrowserRouter>
       <AuthProvider>

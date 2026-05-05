@@ -260,6 +260,28 @@ export const SCENES = {
     region: ['usa', 'europe', 'southern_hemisphere'],
   },
 
+  nigeria_rain_city: {
+    id: 'nigeria_rain_city',
+    label: 'Lagos in the Rain',
+    photo: 'https://images.unsplash.com/photo-1586348943529-beaae6c28db9?w=1920&q=85&fit=crop&auto=format',
+    fallback: 'linear-gradient(180deg, #060d0a 0%, #0d1f14 30%, #1a3a20 60%, #0e1a10 100%)',
+    overlay: 'rgba(6, 14, 8, 0.38)',
+    particles: 'rain',
+    palette: {
+      accent: '#6BBF8A',
+      accentRgb: '107,191,138',
+      surface: 'rgba(6, 12, 8, 0.60)',
+      border: 'rgba(140,210,160,0.07)',
+      glow: 'rgba(107,191,138,0.15)',
+      text: '#D4EED8',
+      muted: '#527A5A',
+    },
+    time: ['all'],
+    season: ['rainy', 'wet'],
+    section: ['all'],
+    region: ['nigeria', 'tropics'],
+  },
+
   autumn_forest: {
     id: 'autumn_forest',
     label: 'Autumn Forest',
@@ -297,6 +319,17 @@ export function getTimeOfDay() {
 
 // ─── Scene Picker ─────────────────────────────────────────────────────────────
 export function pickScene({ section = 'all' } = {}) {
+  // User-uploaded / pasted custom photo takes highest priority
+  try {
+    const customRaw = localStorage.getItem('plos_custom_scene');
+    if (customRaw) {
+      const custom = JSON.parse(customRaw);
+      if (custom?.photo) {
+        return { ...SCENES.morning_coffee, ...custom, id: 'custom', particles: null };
+      }
+    }
+  } catch {}
+
   const override = localStorage.getItem('plos_atmos_scene');
   if (override && SCENES[override]) return SCENES[override];
 

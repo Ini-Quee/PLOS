@@ -5,19 +5,19 @@
 
 /* Card variants */
 .plos-card--default {
-  background: #1C1C27;
-  border: 1px solid #2D2D3A;
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-border);
 }
 
 .plos-card--elevated {
-  background: #13131A;
-  border: 1px solid #2D2D3A;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 .plos-card--glass {
-  background: rgba(28, 28, 39, 0.5);
-  border: 1px solid #2D2D3A;
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-border);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
@@ -97,7 +97,7 @@
   justify-content: space-between;
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid #2D2D3A;
+  border-top: 1px solid var(--color-border);
 }
 
 /* Loading skeleton */
@@ -113,9 +113,9 @@
 .plos-card--loading .card-content {
   background: linear-gradient(
     90deg,
-    #1C1C27 25%,
-    #2D2D3A 50%,
-    #1C1C27 75%
+    rgba(20, 12, 6, 0.88) 25%,
+    rgba(35, 22, 12, 0.95) 50%,
+    rgba(20, 12, 6, 0.88) 75%
   );
   background-size: 200% 100%;
   animation: skeleton 1.5s ease-in-out infinite;

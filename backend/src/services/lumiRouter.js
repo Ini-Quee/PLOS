@@ -205,7 +205,7 @@ async function clearConvHistory(userId) {
 }
 
 // ─── Main entry point ───────────────────────────────────────────────────────────
-async function routeLumiInput(userId, text, context = {}) {
+async function routeLumiInput(userId, text, context = {}, source = 'dashboard') {
   try {
     const pendingData = pending.get(userId);
     if (pendingData) return await handleConfirmation(userId, text, pendingData);
@@ -227,7 +227,7 @@ async function routeLumiInput(userId, text, context = {}) {
     // Load Redis conversation history so Lumi remembers what was said earlier
     const convHistory = await getConvHistory(userId);
 
-    const extraction = await extractAndClassify(userId, text, context, convHistory);
+    const extraction = await extractAndClassify(userId, text, context, convHistory, source);
     if (!extraction) throw new Error('Extraction returned null');
 
     const result = await executeExtraction(userId, text, extraction);
@@ -256,7 +256,7 @@ async function routeLumiInput(userId, text, context = {}) {
 }
 
 // ─── Step 1: Extract + Emotional Intelligence ───────────────────────────────────
-async function extractAndClassify(userId, text, context, convHistory = []) {
+async function extractAndClassify(userId, text, context, convHistory = [], source = 'dashboard') {
   const customJournals = context.customJournalTypes || [];
   const customJournalBlock = customJournals.length > 0
     ? customJournals.map(j => `  "${j.type_key}" (${j.label}): keywords → ${(j.routing_keywords||[]).join(', ')}`).join('\n')
@@ -349,6 +349,19 @@ SPIRITUAL JOURNAL:
   "Faith walk / God showed me / I saw God in..."
     → journal_page_entry: journal_type="spiritual", template_name="Faith Walk"
        fields: { "god_at_work": "...", "trusting_him_with": "...", "step_of_faith": "..." }
+
+═══════════════════════════════════════════════════════════
+BUDGET EMOTIONAL TONE${source === 'budget_page' ? ' — ACTIVE (user is on the Budget page)' : ''}
+═══════════════════════════════════════════════════════════
+${source === 'budget_page' ? `These rules are ACTIVE for this conversation:
+- NEVER say "you overspent" — say "you've used more than planned in [category]"
+- NEVER suggest cuts or what to reduce — only reflect what was logged
+- NEVER calculate a "bad" total — just confirm what was captured
+- If the user is vague about an amount, say "No pressure — log it whenever you're ready"
+- When an entry is saved, end with ONE warm line that celebrates the act of tracking, not the number
+  Examples: "Every naira tracked is clarity." / "That awareness adds up." / "Your picture is getting clearer."
+- If income is logged: "Income captured. Your month is taking shape."
+- NEVER prescribe, recommend cuts, or suggest the user should spend less on anything` : `When source is 'budget_page', apply non-judgmental, warm tone. Never prescribe. Only reflect.`}
 
 BUDGET JOURNAL (ALSO logs to budget_entries table):
   "I spent ₦X on Y / paid for / bought..."

@@ -36,7 +36,7 @@ export default function Settings() {
   }, []);
 
   // Settings state
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState(() => localStorage.getItem('plos_theme') || 'dark');
   const [livingBackground, setLivingBackground] = useState(() => {
     return localStorage.getItem('plos_living_background') === 'true';
   });
@@ -59,13 +59,6 @@ export default function Settings() {
   const [journalPenColor, setJournalPenColor] = useState('#1A1A1A');
   const [journalPaperStyle, setJournalPaperStyle] = useState('linen');
 
-  // Affirmations
-  const [affirmations, setAffirmations] = useState([
-    'I am disciplined enough to build the life I want.',
-    'I show up fully every single day.',
-    'I am capable of more than I imagine.',
-  ]);
-  const [newAffirmation, setNewAffirmation] = useState('');
 
   // Account
   const [displayName, setDisplayName] = useState(user?.name || '');
@@ -82,6 +75,13 @@ export default function Settings() {
   // Cinematic Wallpaper
   const [showWallpaperPicker, setShowWallpaperPicker] = useState(false);
   const [currentWallpaperScene, setCurrentWallpaperScene] = useState('auto');
+
+  // Custom background photo
+  const [customPhotoInput, setCustomPhotoInput] = useState('');
+  const [customPhotoActive, setCustomPhotoActive] = useState(() => {
+    try { return !!JSON.parse(localStorage.getItem('plos_custom_scene') || 'null')?.photo; }
+    catch { return false; }
+  });
 
   const saveTimer = useRef(null);
 
@@ -110,7 +110,6 @@ export default function Settings() {
       if (s.voiceRate     !== undefined) setVoiceRate(s.voiceRate);
       if (s.voicePitch    !== undefined) setVoicePitch(s.voicePitch);
       if (s.selectedVoice !== undefined) setSelectedVoice(s.selectedVoice);
-      if (s.affirmations  !== undefined) setAffirmations(s.affirmations);
       if (s.checkInTime   !== undefined) setCheckInTime(s.checkInTime);
       if (s.journalFont   !== undefined) setJournalFont(s.journalFont);
       if (s.journalPenColor !== undefined) setJournalPenColor(s.journalPenColor);
@@ -125,9 +124,10 @@ export default function Settings() {
     setCurrentWallpaperScene(savedScene);
   }, []);
 
-  // Apply theme
+  // Apply theme and persist
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('plos_theme', theme);
   }, [theme]);
 
   // Persist voice settings to backend (debounced)
@@ -135,10 +135,6 @@ export default function Settings() {
     saveToBackend({ voiceEnabled, voiceRate, voicePitch, selectedVoice });
   }, [voiceEnabled, voiceRate, voicePitch, selectedVoice]);
 
-  // Persist affirmations to backend (debounced)
-  useEffect(() => {
-    saveToBackend({ affirmations });
-  }, [affirmations]);
 
   // Persist journal style to backend (debounced)
   useEffect(() => {
@@ -158,6 +154,21 @@ export default function Settings() {
     localStorage.setItem('plos_bg_intensity', motionIntensity);
   }, [motionIntensity]);
 
+  function applyCustomPhoto() {
+    const url = customPhotoInput.trim();
+    if (!url) return;
+    localStorage.setItem('plos_custom_scene', JSON.stringify({ photo: url, fallback: 'linear-gradient(180deg, #080503 0%, #140C06 100%)' }));
+    setCustomPhotoActive(true);
+    setCustomPhotoInput('');
+    window.dispatchEvent(new Event('atmos-scene-changed'));
+  }
+
+  function removeCustomPhoto() {
+    localStorage.removeItem('plos_custom_scene');
+    setCustomPhotoActive(false);
+    window.dispatchEvent(new Event('atmos-scene-changed'));
+  }
+
   async function handleLogout() {
     await logout();
     navigate('/login');
@@ -172,18 +183,6 @@ export default function Settings() {
         voiceName: selectedVoice,
       });
     }
-  }
-
-  // Add affirmation — useEffect above handles the save
-  function addAffirmation() {
-    if (newAffirmation.trim() && affirmations.length < 20) {
-      setAffirmations(prev => [...prev, newAffirmation.trim()]);
-      setNewAffirmation('');
-    }
-  }
-
-  function removeAffirmation(index) {
-    setAffirmations(prev => prev.filter((_, i) => i !== index));
   }
 
   // Save display name
@@ -221,7 +220,6 @@ export default function Settings() {
     { id: 'voice', title: "Lumi's Voice", icon: '🎙️' },
     { id: 'appearance', title: 'Appearance', icon: '🎨' },
     { id: 'journal', title: 'Journal Style', icon: '📖' },
-    { id: 'affirmations', title: 'My Affirmations', icon: '✨' },
     { id: 'account', title: 'Account', icon: '👤' },
     { id: 'security', title: 'Security', icon: '🛡️' },
     { id: 'email', title: 'Email', icon: '📧' },
@@ -587,6 +585,38 @@ export default function Settings() {
                 </button>
               </div>
             </div>
+
+            {/* Custom photo URL */}
+            <div style={{ marginTop: 20 }}>
+              <label style={{ display: 'block', marginBottom: 8, color: '#A89880', fontSize: 14, fontFamily: "'Inter', sans-serif" }}>
+                Custom Background Photo
+              </label>
+              {customPhotoActive ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 12, background: 'rgba(200,149,92,0.08)', border: '1px solid rgba(200,149,92,0.25)' }}>
+                  <span style={{ fontSize: 13, color: '#EAE0D5', flex: 1 }}>Custom photo active</span>
+                  <button onClick={removeCustomPhoto} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(224,82,82,0.4)', background: 'transparent', color: '#E05252', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <input
+                    type="url"
+                    value={customPhotoInput}
+                    onChange={e => setCustomPhotoInput(e.target.value)}
+                    placeholder="Paste any photo URL…"
+                    onKeyDown={e => { if (e.key === 'Enter') applyCustomPhoto(); }}
+                    style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(200,149,92,0.2)', background: 'rgba(20,12,6,0.6)', color: '#EAE0D5', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
+                  />
+                  <button onClick={applyCustomPhoto} style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: '#C8955C', color: '#080503', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Set
+                  </button>
+                </div>
+              )}
+              <p style={{ margin: '6px 0 0', color: '#5E5048', fontSize: 12, fontFamily: "'Inter', sans-serif" }}>
+                Works with any image URL (Unsplash, your own photos, etc.)
+              </p>
+            </div>
           </SettingsSection>
 
           {/* Section 3: Appearance */}
@@ -610,10 +640,10 @@ export default function Settings() {
                   style={{
                     flex: 1,
                     padding: '12px',
-                    backgroundColor: theme === 'dark' ? '#F5A623' : '#242424',
+                    backgroundColor: theme === 'dark' ? '#C8955C' : '#1A100A',
                     border: 'none',
                     borderRadius: '12px',
-                    color: theme === 'dark' ? '#0D0D0D' : '#F5F0E8',
+                    color: theme === 'dark' ? '#080503' : '#EAE0D5',
                     fontSize: '14px',
                     cursor: 'pointer',
                     fontWeight: theme === 'dark' ? 600 : 400,
@@ -624,22 +654,22 @@ export default function Settings() {
                   🌙 Dark
                 </button>
                 <button
-                  onClick={() => setTheme('light')}
+                  onClick={() => setTheme('coloured')}
                   style={{
                     flex: 1,
                     padding: '12px',
-                    backgroundColor: theme === 'light' ? '#F5A623' : '#242424',
+                    backgroundColor: theme === 'coloured' ? '#D4A06A' : '#1A100A',
                     border: 'none',
                     borderRadius: '12px',
-                    color: theme === 'light' ? '#0D0D0D' : '#F5F0E8',
+                    color: theme === 'coloured' ? '#080503' : '#EAE0D5',
                     fontSize: '14px',
                     cursor: 'pointer',
-                    fontWeight: theme === 'light' ? 600 : 400,
+                    fontWeight: theme === 'coloured' ? 600 : 400,
                     fontFamily: "'Inter', sans-serif",
                     transition: 'all 0.2s',
                   }}
                 >
-                  ☀️ Light
+                  🌿 Coloured
                 </button>
               </div>
             </div>
@@ -959,163 +989,6 @@ export default function Settings() {
             </div>
           </SettingsSection>
 
-          {/* Section 4: My Affirmations */}
-          <SettingsSection title="My Affirmations" icon="✨">
-            <p
-              style={{
-                margin: '0 0 16px 0',
-                color: '#A89880',
-                fontSize: '14px',
-                fontFamily: "'Inter', sans-serif",
-              }}
-            >
-              Lumi reads these to you during morning check-ins. Keep them positive and personal.
-            </p>
-
-            {/* Add new affirmation */}
-            <div style={{ marginBottom: '20px' }}>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <input
-                  type="text"
-                  value={newAffirmation}
-                  onChange={(e) => setNewAffirmation(e.target.value)}
-                  placeholder="Add a new affirmation..."
-                  maxLength={200}
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    backgroundColor: 'rgba(12,12,24,0.40)',
-                    border: '1px solid #2E2E2E',
-                    borderRadius: '12px',
-                    color: '#F5F0E8',
-                    fontSize: '14px',
-                    fontFamily: "'Inter', sans-serif",
-                    outline: 'none',
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') addAffirmation();
-                  }}
-                />
-                <button
-                  onClick={addAffirmation}
-                  disabled={!newAffirmation.trim() || affirmations.length >= 20}
-                  style={{
-                    padding: '12px 20px',
-                    backgroundColor:
-                      !newAffirmation.trim() || affirmations.length >= 20
-                        ? '#2E2E2E'
-                        : '#F5A623',
-                    border: 'none',
-                    borderRadius: '12px',
-                    color:
-                      !newAffirmation.trim() || affirmations.length >= 20
-                        ? '#6B5F52'
-                        : '#0D0D0D',
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    cursor:
-                      !newAffirmation.trim() || affirmations.length >= 20
-                        ? 'not-allowed'
-                        : 'pointer',
-                    fontFamily: "'Inter', sans-serif",
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  Add
-                </button>
-              </div>
-              <p
-                style={{
-                  margin: '8px 0 0 0',
-                  color: '#6B5F52',
-                  fontSize: '12px',
-                  fontFamily: "'Inter', sans-serif",
-                }}
-              >
-                {affirmations.length}/20 affirmations
-              </p>
-            </div>
-
-            {/* Affirmations list */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {affirmations.map((affirmation, index) => (
-                <div
-                  key={index}
-                  style={{
-                    padding: '16px',
-                    backgroundColor: 'rgba(245, 166, 35, 0.08)',
-                    borderRadius: '12px',
-                    borderLeft: '4px solid #F5A623',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '12px',
-                  }}
-                >
-                  <p
-                    style={{
-                      margin: 0,
-                      color: '#F5F0E8',
-                      fontSize: '15px',
-                      fontFamily: "'DM Serif Display', serif",
-                      fontStyle: 'italic',
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    "{affirmation}"
-                  </p>
-                  <button
-                    onClick={() => removeAffirmation(index)}
-                    style={{
-                      padding: '6px 12px',
-                      backgroundColor: 'transparent',
-                      border: '1px solid #2E2E2E',
-                      borderRadius: '8px',
-                      color: '#6B5F52',
-                      fontSize: '12px',
-                      cursor: 'pointer',
-                      fontFamily: "'Inter', sans-serif",
-                      transition: 'all 0.2s',
-                      flexShrink: 0,
-                    }}
-                    onMouseEnter={(e) => {
-                      e.target.style.color = '#E05252';
-                      e.target.style.borderColor = '#E05252';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.target.style.color = '#6B5F52';
-                      e.target.style.borderColor = '#2E2E2E';
-                    }}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            {affirmations.length === 0 && (
-              <div
-                style={{
-                  padding: '40px',
-                  textAlign: 'center',
-                  backgroundColor: 'rgba(12,12,24,0.40)',
-                  borderRadius: '12px',
-                  border: '1px dashed #2E2E2E',
-                }}
-              >
-                <p
-                  style={{
-                    margin: 0,
-                    color: '#6B5F52',
-                    fontSize: '14px',
-                    fontFamily: "'Inter', sans-serif",
-                  }}
-                >
-                  No affirmations yet. Add one above to get started.
-                </p>
-              </div>
-            )}
-          </SettingsSection>
 
           {/* Section 5: Account */}
           <SettingsSection title="Account" icon="👤">

@@ -56,7 +56,7 @@ router.post('/message', authenticate, attachTier, async (req, res) => {
     const context = await buildUserContext(userId);
 
     // Route through Lumi - she will converse, analyze, then suggest
-    const result = await routeLumiInput(userId, text, context);
+    const result = await routeLumiInput(userId, text, context, source);
 
     // Save conversation for context
     await pool.query(

@@ -1,15 +1,18 @@
 {
   "name": "PLOS — Personal Life OS",
   "short_name": "PLOS",
-  "description": "Your AI-powered personal life operating system",
+  "description": "Your AI-powered personal life operating system. Plan your day, track habits, journal, and manage money — all with Lumi, your AI companion.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0F0F1E",
+  "background_color": "#080503",
   "theme_color": "#C8955C",
   "orientation": "portrait-primary",
   "icons": [
-    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" },
-    { "src": "/favicon.svg",    "sizes": "any", "type": "image/svg+xml" }
+    { "src": "/icons/icon.svg",  "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" },
+    { "src": "/favicon.svg",     "sizes": "any", "type": "image/svg+xml" }
   ],
-  "categories": ["productivity", "lifestyle", "health"]
+  "categories": ["productivity", "lifestyle", "health", "finance"],
+  "lang": "en",
+  "dir": "ltr",
+  "scope": "/"
 }
