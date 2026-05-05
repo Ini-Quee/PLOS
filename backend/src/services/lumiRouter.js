@@ -356,6 +356,13 @@ BUDGET JOURNAL (ALSO logs to budget_entries table):
     → journal_page_entry: journal_type="budget", template_name="Daily Expenses"
        fields: { "rows": [{ "description": "Y", "category": "food/transport/etc", "amount": "X" }] }
 
+  CRITICAL BUDGET RULE — NEVER GUESS AN AMOUNT:
+  If the user mentions spending/paying but does NOT include a specific amount (e.g., "I bought food today",
+  "I spent on transport", "I paid for something"), do NOT create a budget_entry action.
+  Instead, ask: "How much did you spend on [item]?" — return actions: [] and ask in lumiResponse.
+  NEVER carry forward yesterday's amount. Every transaction needs its own number.
+  If amount = 0 or amount is null, treat it as missing and ask.
+
   "My income this month / I received / salary / freelance..."
     → budget_entry action (income type) PLUS
     → journal_page_entry: journal_type="budget", template_name="Income Tracker"
@@ -555,7 +562,12 @@ async function executeExtraction(userId, originalText, extraction) {
 
         case 'budget_entry': {
           const amount = parseFloat(d.amount);
-          if (!amount || isNaN(amount) || amount <= 0) break;
+          // Missing or zero amount — never guess, ask the user
+          if (!amount || isNaN(amount) || amount <= 0) {
+            const category = normaliseCategory(d.category) || d.note || 'that';
+            extraction.lumiResponse = `How much did you spend on ${category}? I want to log the exact amount for you.`;
+            break;
+          }
           const row = await pool.query(
             `INSERT INTO budget_entries
                (user_id, amount, currency, category, note, type, entry_date, source)
