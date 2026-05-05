@@ -4,6 +4,7 @@ const { pool } = require('../db/connection');
 const { authenticate } = require('../middleware/authenticate');
 const { validateInput } = require('../middleware/validateInput');
 const { auditLog } = require('../middleware/auditLog');
+const { attachTier, isPro, FREE_LIMITS } = require('../middleware/checkTier');
 
 const router = express.Router();
 router.use(authenticate);
@@ -90,12 +91,22 @@ router.get('/today', async (req, res) => {
 // Side-effect: if journal_type='budget' and template_name='Daily Expenses', each
 // non-empty row in fields.rows is upserted into budget_entries (two-way sync).
 router.post('/',
+  attachTier,
   validateInput(writeSchema),
   auditLog('journal_page_write', 'journal_page_entries'),
   async (req, res) => {
     const uid = req.user.id;
     const { journal_type, template_name, fields, source = 'user' } = req.body;
     const entry_date = req.body.entry_date || new Date().toISOString().slice(0, 10);
+
+    // Free tier: only personal journal type
+    if (!isPro(req) && !FREE_LIMITS.journal_types.includes(journal_type)) {
+      return res.status(403).json({
+        error: `Free accounts can only access the Personal journal. Upgrade to Pro to unlock all 6 journal types.`,
+        upgrade: true,
+        code: 'JOURNAL_TYPE_LOCKED',
+      });
+    }
 
     try {
       const result = await pool.query(

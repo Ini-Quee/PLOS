@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/authenticate');
 const { pool } = require('../db/connection');
+const { attachTier, isPro, FREE_LIMITS } = require('../middleware/checkTier');
 
 router.use(authenticate);
 
@@ -64,10 +65,24 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', attachTier, async (req, res) => {
   const { title, emoji, category, target_days, identity_label } = req.body;
   if (!title?.trim()) return res.status(400).json({ error: 'Title is required' });
   try {
+    // Free tier: max 3 active habits
+    if (!isPro(req)) {
+      const { rows: countRows } = await pool.query(
+        `SELECT COUNT(*) AS count FROM habits WHERE user_id = $1 AND is_active = true`,
+        [req.user.id]
+      );
+      if (Number(countRows[0]?.count || 0) >= FREE_LIMITS.habits_max) {
+        return res.status(403).json({
+          error: `Free accounts are limited to ${FREE_LIMITS.habits_max} habits. Upgrade to Pro for unlimited habits.`,
+          upgrade: true,
+          code: 'HABITS_LIMIT',
+        });
+      }
+    }
     const { rows } = await pool.query(
       `INSERT INTO habits (user_id, title, emoji, category, target_days, identity_label)
        VALUES ($1, $2, $3, $4, $5, $6)

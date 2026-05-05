@@ -5,6 +5,7 @@ import api from '../lib/api'
 import { useIsMobile } from '../hooks/useIsMobile'
 import ErrorBoundary from '../components/ErrorBoundary'
 import { useToast } from '../hooks/useToast'
+import UpgradePrompt from '../components/ui/UpgradePrompt'
 
 // ─── Heatmap helpers ──────────────────────────────────────────────────────────
 const WEEKS_DESKTOP = 13
@@ -571,6 +572,7 @@ export default function Habits() {
   useAtmos()
   const isMobile = useIsMobile()
   const toast = useToast()
+  const [showHabitsUpgrade, setShowHabitsUpgrade] = useState(false)
   const [habits, setHabits] = useState([])
   const [loading, setLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -645,7 +647,13 @@ export default function Habits() {
       setNewTitle(''); setNewEmoji('✅'); setNewCategory('personal')
       setNewIdentity(''); setNewPartnerEmail(''); setNewStake('')
       setShowAddForm(false)
-    }).catch(() => {})
+      setShowHabitsUpgrade(false)
+    }).catch(err => {
+      if (err.response?.status === 403 && err.response?.data?.upgrade) {
+        setShowAddForm(false)
+        setShowHabitsUpgrade(true)
+      }
+    })
   }
 
   const completed = habits.filter(h => h.completed_today).length
@@ -773,6 +781,12 @@ export default function Habits() {
 
         {loading && (
           <div style={{ color: C.muted, fontSize: 14, textAlign: 'center', padding: '40px 0' }}>Loading…</div>
+        )}
+
+        {showHabitsUpgrade && (
+          <div style={{ marginBottom: 16 }}>
+            <UpgradePrompt feature="Free accounts are limited to 3 habits. Upgrade to Pro for unlimited habits." compact />
+          </div>
         )}
 
         {!loading && habits.length === 0 && (

@@ -14,6 +14,7 @@ const {
 const { executeActions, getUserFullContext } = require('../services/lumiActions');
 const { pool } = require('../db/connection');
 const { getLegacyClient } = require('../services/aiClient');
+const { attachTier, isPro, FREE_LIMITS } = require('../middleware/checkTier');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -23,9 +24,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  * Main endpoint for all Lumi text interactions
  * Lumi is a conversational AI companion - she talks first, saves later
  */
-const DAILY_MSG_LIMIT = 50;
-
-router.post('/message', authenticate, async (req, res) => {
+router.post('/message', authenticate, attachTier, async (req, res) => {
   try {
     const userId = req.user.id;
     const { text, source = 'dashboard', conversationHistory = [] } = req.body;
@@ -34,17 +33,21 @@ router.post('/message', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Text is required' });
     }
 
-    // Per-user daily message cap — protects the Groq token budget
+    // Tier-aware daily message cap
+    const dailyLimit = isPro(req) ? 200 : FREE_LIMITS.lumi_messages_per_day;
     const { rows: countRows } = await pool.query(
       `SELECT COUNT(*) AS count FROM lumi_conversations
        WHERE user_id = $1 AND created_at >= CURRENT_DATE`,
       [userId]
     );
     const todayCount = Number(countRows[0]?.count || 0);
-    if (todayCount >= DAILY_MSG_LIMIT) {
+    if (todayCount >= dailyLimit) {
       return res.status(429).json({
-        error: `You've had ${DAILY_MSG_LIMIT} conversations with me today — that's a lot of thinking! I'll be back to full capacity tomorrow morning. In the meantime, your journal and habits are always here for you.`,
+        error: isPro(req)
+          ? `You've had ${dailyLimit} conversations with me today. I'll be back tomorrow!`
+          : `You've used your ${dailyLimit} free messages today. Upgrade to Pro for unlimited Lumi access.`,
         rateLimited: true,
+        upgrade: !isPro(req),
         retryAfter: 'tomorrow',
       });
     }

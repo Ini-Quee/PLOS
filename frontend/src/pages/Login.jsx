@@ -298,21 +298,30 @@ export default function Login() {
         </form>
 
         {/* Demo login */}
-        <div style={{ marginTop: 16, textAlign: 'center' }}>
-          <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>or</div>
+        <div style={{ marginTop: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <div style={{ flex: 1, height: 1, background: '#2E2E2E' }} />
+            <span style={{ fontSize: 11, color: '#555' }}>or see it in action</span>
+            <div style={{ flex: 1, height: 1, background: '#2E2E2E' }} />
+          </div>
           <button
             onClick={handleDemoLogin}
             disabled={demoLoading}
             style={{
-              width: '100%', padding: '11px', borderRadius: 12,
-              border: '1px solid rgba(139,92,246,0.4)',
-              background: 'rgba(139,92,246,0.1)', color: '#a78bfa',
-              fontSize: 13, fontWeight: 600, cursor: demoLoading ? 'wait' : 'pointer',
-              fontFamily: "'Inter', sans-serif", opacity: demoLoading ? 0.6 : 1,
+              width: '100%', padding: '13px', borderRadius: 12,
+              border: 'none',
+              background: demoLoading ? 'rgba(200,149,92,0.4)' : 'rgba(200,149,92,0.85)',
+              color: '#0D0D0D',
+              fontSize: 14, fontWeight: 700, cursor: demoLoading ? 'wait' : 'pointer',
+              fontFamily: "'Inter', sans-serif",
+              letterSpacing: '0.01em',
             }}
           >
             {demoLoading ? 'Loading demo…' : '🎬 Try Investor Demo'}
           </button>
+          <div style={{ fontSize: 11, color: '#444', textAlign: 'center', marginTop: 8 }}>
+            Pre-loaded with real data · No account needed
+          </div>
         </div>
 
         <p style={{

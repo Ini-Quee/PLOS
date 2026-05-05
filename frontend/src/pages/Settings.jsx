@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import api from '../lib/api';
+import { useToast } from '../hooks/useToast';
 import * as lumiVoice from '../lib/lumi-voice';
 import { THEME_LIBRARY } from '../lib/livingBackgroundConfig';
 import WallpaperPicker from '../components/WallpaperPicker';
@@ -22,8 +23,17 @@ export default function Settings() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const toast = useToast();
   const oauthSuccess = searchParams.get('oauth_success');
   const oauthError   = searchParams.get('oauth_error');
+  const upgraded     = searchParams.get('upgraded');
+
+  // Show upgrade success toast once
+  useEffect(() => {
+    if (upgraded === 'true') {
+      toast.success('🎉 Welcome to Pro! All features unlocked.');
+    }
+  }, []);
 
   // Settings state
   const [theme, setTheme] = useState('dark');
@@ -1246,6 +1256,40 @@ export default function Settings() {
             >
               Change Password
             </button>
+          </SettingsSection>
+
+          {/* Billing */}
+          <SettingsSection title="Billing" icon="💳">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0 20px' }}>
+              <div>
+                <div style={{ fontSize: 14, color: '#F5F0E8', fontWeight: 600, marginBottom: 4 }}>
+                  {user?.subscription_tier === 'pro' ? '✨ Pro' : 'Free plan'}
+                </div>
+                <div style={{ fontSize: 12, color: '#A89880' }}>
+                  {user?.subscription_tier === 'pro'
+                    ? 'All features unlocked'
+                    : '10 Lumi messages/day · 3 habits · Personal journal only'}
+                </div>
+              </div>
+              {user?.subscription_tier === 'pro' ? (
+                <button
+                  onClick={async () => {
+                    try { const r = await api.post('/billing/portal'); window.location.href = r.data.url; }
+                    catch { toast.error('Could not open billing portal.'); }
+                  }}
+                  style={{ padding: '8px 18px', borderRadius: 10, border: '1px solid rgba(0,212,170,0.3)', background: 'transparent', color: '#00d4aa', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  Manage →
+                </button>
+              ) : (
+                <button
+                  onClick={() => navigate('/upgrade')}
+                  style={{ padding: '8px 18px', borderRadius: 10, border: 'none', background: 'rgba(200,149,92,0.85)', color: '#0a0a14', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  Upgrade to Pro →
+                </button>
+              )}
+            </div>
           </SettingsSection>
 
           {/* Section 6: Security */}

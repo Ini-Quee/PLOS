@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
+import UpgradePrompt from '../components/ui/UpgradePrompt';
 import LumiOrb from '../components/lumi/LumiOrb';
 import * as lumiVoice from '../lib/lumi-voice';
 import * as lumiListen from '../lib/lumi-listen';
@@ -35,6 +36,7 @@ export default function TalkToLumi() {
   const [importBlocks, setImportBlocks]     = useState(null);
   const [pendingEmail, setPendingEmail]     = useState(null);    // email preview state
   const [memoryCount, setMemoryCount]       = useState(0);
+  const [showUpgrade, setShowUpgrade]       = useState(false);
 
   // Context
   const [tasks, setTasks]           = useState([]);
@@ -491,8 +493,12 @@ export default function TalkToLumi() {
       }, 3000);
 
     } catch (err) {
-      console.error('Lumi error:', err);
       processingRef.current = false;
+      // Handle tier limit (429 with upgrade flag)
+      if (err.response?.status === 429 && err.response?.data?.upgrade) {
+        setShowUpgrade(true);
+        return;
+      }
       const fallback = `Sorry ${user?.name?.split(' ')[0] || 'there'}, I had trouble with that. Could you try again?`;
       await speak(fallback);
     }
@@ -992,6 +998,11 @@ export default function TalkToLumi() {
           </div>
         )}
 
+        {showUpgrade && (
+          <div style={{ margin: '8px 0' }}>
+            <UpgradePrompt feature="You've used all your free Lumi messages for today. Upgrade to Pro for unlimited access." />
+          </div>
+        )}
         <div ref={bottomRef} />
       </div>
 

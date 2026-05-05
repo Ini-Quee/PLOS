@@ -104,6 +104,7 @@ router.post(
           id: user.id,
           email: user.email,
           name: user.name,
+          subscription_tier: 'free',
         },
       });
     } catch (error) {
@@ -227,6 +228,13 @@ router.post(
         path: '/api/auth/refresh',
       });
 
+      // Fetch subscription tier separately (not in the login query above)
+      const tierRow = await pool.query(
+        `SELECT subscription_tier, subscription_expires_at FROM users WHERE id = $1`,
+        [user.id]
+      );
+      const tier = tierRow.rows[0]?.subscription_tier || 'free';
+
       res.json({
         accessToken,
         user: {
@@ -234,6 +242,7 @@ router.post(
           email: user.email,
           name: user.name,
           mfaEnabled: user.mfa_enabled,
+          subscription_tier: tier,
         },
       });
     } catch (error) {
@@ -480,7 +489,8 @@ router.post(
 router.get('/me', authenticate, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, email, name, mfa_enabled, created_at
+      `SELECT id, email, name, mfa_enabled, created_at,
+              subscription_tier, subscription_expires_at
        FROM users WHERE id = $1`,
       [req.user.id]
     );

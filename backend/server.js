@@ -27,7 +27,8 @@ const lifeAuditRoutes = require('./src/routes/lifeAudit');
 const oauthRoutes     = require('./src/routes/oauth');
 const gmailRoutes     = require('./src/routes/gmail');
 const { router: habitsRoutes } = require('./src/routes/habits');
-const usersRoutes = require('./src/routes/users');
+const usersRoutes   = require('./src/routes/users');
+const billingRoutes = require('./src/routes/billing');
 const demoRoutes   = require('./src/routes/demo');
 const { router: pushRoutes } = require('./src/routes/push');
 
@@ -75,6 +76,9 @@ app.use(
   })
 );
 
+// Stripe webhook needs raw body — mount BEFORE express.json()
+app.use('/api/billing/webhook', express.raw({ type: 'application/json' }));
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
@@ -103,7 +107,8 @@ app.use('/api/oauth',  oauthRoutes);
 app.use('/api/gmail',  gmailRoutes);
 app.use('/api/demo',   demoRoutes);
 app.use('/api/push',   pushRoutes);
-app.use('/api/users',  usersRoutes);
+app.use('/api/users',   usersRoutes);
+app.use('/api/billing', billingRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({

@@ -21,6 +21,7 @@ import Settings from './pages/Settings';
 import TalkToLumi from './pages/TalkToLumi';
 import Budget from './pages/Budget';
 import Habits from './pages/Habits';
+import Upgrade from './pages/Upgrade';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import Atmosphere from './components/Atmosphere';
 import DemoBanner from './components/DemoBanner';
@@ -292,6 +293,7 @@ function AppRoutes() {
         {/* Settings/privacy — redirect to settings */}
         <Route path="/settings/privacy" element={<Navigate to="/settings" replace />} />
         <Route path="/privacy" element={<AnimatedRoute><PrivacyPolicy /></AnimatedRoute>} />
+        <Route path="/upgrade" element={<ProtectedRoute><AnimatedRoute><Upgrade /></AnimatedRoute></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </AnimatePresence>
