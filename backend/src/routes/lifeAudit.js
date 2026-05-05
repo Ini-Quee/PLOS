@@ -17,7 +17,7 @@
 
 const express  = require('express');
 const { authenticate } = require('../middleware/authenticate');
-const { getRedisClient } = require('../middleware/rateLimiter');
+const redisClient = require('../services/redisClient');
 const { pool } = require('../db/connection');
 const { extractAndSaveMemories } = require('../services/lumiRouter');
 const { getLegacyClient } = require('../services/aiClient');
@@ -116,28 +116,47 @@ const LIFE_CATEGORIES = [
 
 const SESSION_TTL = 4 * 60 * 60; // 4 hours in seconds
 
-// ─── Redis helpers ──────────────────────────────────────────────────────────────
+// ─── Session helpers (Redis primary, PostgreSQL fallback) ──────────────────────
 async function getSession(userId) {
   try {
-    const client = await getRedisClient();
-    const raw = await client.get(`life_audit:${userId}`);
-    return raw ? JSON.parse(raw) : null;
+    if (redisClient.isAvailable()) {
+      const raw = await redisClient.getClient().get(`life_audit:${userId}`);
+      return raw ? JSON.parse(raw) : null;
+    }
+    // PostgreSQL fallback
+    const { rows } = await pool.query(
+      `SELECT session_data FROM lumi_audit_sessions WHERE user_id = $1
+       AND updated_at > NOW() - INTERVAL '4 hours'`,
+      [userId]
+    );
+    return rows.length > 0 ? rows[0].session_data : null;
   } catch { return null; }
 }
 
 async function saveSession(userId, session) {
   try {
-    const client = await getRedisClient();
-    await client.setEx(`life_audit:${userId}`, SESSION_TTL, JSON.stringify(session));
+    if (redisClient.isAvailable()) {
+      await redisClient.getClient().setEx(`life_audit:${userId}`, SESSION_TTL, JSON.stringify(session));
+      return;
+    }
+    // PostgreSQL fallback
+    await pool.query(
+      `INSERT INTO lumi_audit_sessions (user_id, session_data, updated_at)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (user_id) DO UPDATE SET session_data = $2, updated_at = NOW()`,
+      [userId, session]
+    );
   } catch (err) {
-    console.error('[LifeAudit] Redis save error:', err.message);
+    console.error('[LifeAudit] session save error:', err.message);
   }
 }
 
 async function clearSession(userId) {
   try {
-    const client = await getRedisClient();
-    await client.del(`life_audit:${userId}`);
+    if (redisClient.isAvailable()) {
+      await redisClient.getClient().del(`life_audit:${userId}`);
+    }
+    await pool.query(`DELETE FROM lumi_audit_sessions WHERE user_id = $1`, [userId]);
   } catch {}
 }
 

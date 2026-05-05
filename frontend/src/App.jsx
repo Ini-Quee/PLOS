@@ -21,11 +21,8 @@ import Settings from './pages/Settings';
 import TalkToLumi from './pages/TalkToLumi';
 import Budget from './pages/Budget';
 import Habits from './pages/Habits';
-import ColorPreview from './pages/ColorPreview';
-import DesignSystemPreview from './pages/DesignSystemPreview';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import Atmosphere from './components/Atmosphere';
-import LumiOrchestrator from './components/LumiOrchestrator';
 import DemoBanner from './components/DemoBanner';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useState, useEffect } from 'react';
@@ -279,14 +276,6 @@ function AppRoutes() {
           }
         />
         <Route
-          path="/color-preview"
-          element={<AnimatedRoute><ColorPreview /></AnimatedRoute>}
-        />
-        <Route
-          path="/design-system"
-          element={<AnimatedRoute><DesignSystemPreview /></AnimatedRoute>}
-        />
-        <Route
           path="/habits"
           element={
             <ProtectedRoute>
@@ -316,7 +305,6 @@ export default function App() {
           <ErrorBoundary>
             <AppRoutes />
           </ErrorBoundary>
-          <LumiOrchestrator />
         </Atmosphere>
       </AuthProvider>
     </BrowserRouter>

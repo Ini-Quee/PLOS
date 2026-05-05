@@ -42,14 +42,10 @@ router.post('/message', authenticate, async (req, res) => {
     );
     const todayCount = Number(countRows[0]?.count || 0);
     if (todayCount >= DAILY_MSG_LIMIT) {
-      return res.json({
-        success: true,
-        message: `You've had ${DAILY_MSG_LIMIT} conversations with me today — that's a lot of thinking! I'll be back to full capacity tomorrow morning. In the meantime, your journal and habits are always here for you.`,
-        route: 'limit',
-        saved: false,
-        savedItems: [],
-        needsConfirmation: false,
+      return res.status(429).json({
+        error: `You've had ${DAILY_MSG_LIMIT} conversations with me today — that's a lot of thinking! I'll be back to full capacity tomorrow morning. In the meantime, your journal and habits are always here for you.`,
         rateLimited: true,
+        retryAfter: 'tomorrow',
       });
     }
 

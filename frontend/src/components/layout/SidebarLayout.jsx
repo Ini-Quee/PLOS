@@ -16,7 +16,7 @@ export const C = {
   amber2: '#DBA870',
   cream: '#f5f0e8',
   warm: '#c9b99a',
-  muted: '#7a7a8a',
+  muted: '#9a9aaa',
   border: 'rgba(255,255,255,0.07)',
   border2: 'rgba(255,255,255,0.05)',
   teal: '#00d4aa',
@@ -28,27 +28,23 @@ export const C = {
 };
 
 // ─── Navigation Items ──────────────────────────────────────────────────────────
+// Tier 1 (Today) — always visible, highest priority
+// Tier 2 (Life) — core feature modules
+// Tier 3 (More) — settings only
+// Hidden from nav: Projects, Contacts, Books, Content, Goals, Calendar, Jobs
 export const NAV_ITEMS = {
-  main: [
-    { icon: '◈',  label: 'Dashboard',    path: '/dashboard'       },
-    { icon: '📅', label: 'Planner',      path: '/schedule'        },
-    { icon: '📖', label: 'Journal',      path: '/journal'         },
+  today: [
+    { icon: '◈',  label: 'Dashboard',    path: '/dashboard'    },
+    { icon: '📅', label: 'Planner',      path: '/schedule'     },
+    { icon: '✨', label: 'Talk to Lumi', path: '/talk-to-lumi', lumi: true },
   ],
   life: [
-    { icon: '💰', label: 'Budget',       path: '/budget'          },
-    { icon: '🔥', label: 'Habits',       path: '/habits'          },
-    { icon: '🎯', label: 'Goals',        path: '/year-plan'       },
-    { icon: '📚', label: 'Reading',      path: '/books'           },
-    { icon: '📣', label: 'Content',      path: '/content-planner' },
+    { icon: '📖', label: 'Journal',      path: '/journal'      },
+    { icon: '🔥', label: 'Habits',       path: '/habits'       },
+    { icon: '💰', label: 'Budget',       path: '/budget'       },
   ],
-  pro: [
-    { icon: '✨', label: 'Talk to Lumi', path: '/talk-to-lumi'    },
-    { icon: '📋', label: 'Projects',     path: '/projects'        },
-    { icon: '📇', label: 'Contacts',     path: '/contacts'        },
-  ],
-  security: [
-    { icon: '⚙️', label: 'Settings',    path: '/settings'        },
-    { icon: '🛡️', label: 'Encryption: ON', path: null            },
+  more: [
+    { icon: '⚙️', label: 'Settings',    path: '/settings'     },
   ],
 };
 
@@ -134,17 +130,21 @@ function MFAWidget() {
 }
 
 // ─── Sidebar Navigation Item ─────────────────────────────────────────────────────
-function NavItem({ icon, label, path, isActive, onClick }) {
+function NavItem({ icon, label, path, isActive, onClick, lumi = false }) {
   const navigate = useNavigate();
 
   const handleClick = () => {
-    if (path) {
-      navigate(path);
-    }
-    if (onClick) {
-      onClick();
-    }
+    if (path) navigate(path);
+    if (onClick) onClick();
   };
+
+  // Lumi item gets a distinct amber-tinted background regardless of active state
+  const lumiBase = lumi
+    ? { background: 'rgba(200,149,92,0.14)', border: '1px solid rgba(200,149,92,0.25)', color: C.amber }
+    : {};
+  const activeStyle = isActive
+    ? { background: lumi ? 'rgba(200,149,92,0.22)' : 'rgba(245,166,35,0.12)', color: C.amber }
+    : {};
 
   return (
     <div
@@ -157,26 +157,28 @@ function NavItem({ icon, label, path, isActive, onClick }) {
         borderRadius: 10,
         cursor: path ? 'pointer' : 'default',
         fontSize: 13,
-        fontWeight: 500,
-        color: isActive ? C.amber : C.muted,
-        background: isActive ? 'rgba(245,166,35,0.12)' : 'transparent',
+        fontWeight: lumi ? 600 : 500,
+        color: isActive ? C.amber : (lumi ? C.amber : C.muted),
+        background: 'transparent',
         marginBottom: 2,
         transition: 'all 0.15s ease',
+        ...lumiBase,
+        ...activeStyle,
       }}
       onMouseEnter={(e) => {
-        if (path && !isActive) {
+        if (path && !isActive && !lumi) {
           e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
           e.currentTarget.style.color = C.text;
         }
       }}
       onMouseLeave={(e) => {
-        if (path && !isActive) {
+        if (path && !isActive && !lumi) {
           e.currentTarget.style.background = 'transparent';
           e.currentTarget.style.color = C.muted;
         }
       }}
     >
-      <span style={{ fontSize: 15, width: 20, textAlign: 'center' }}>{icon}</span>
+      <span style={{ fontSize: lumi ? 17 : 15, width: 20, textAlign: 'center' }}>{icon}</span>
       {label}
     </div>
   );
@@ -348,18 +350,10 @@ export function Sidebar() {
   const currentPath = location.pathname;
   const { palette } = useAtmos();
 
-  // Determine active item based on current path
   const isActive = (path) => {
-    if (path === '/dashboard' && currentPath === '/dashboard') return true;
-    if (path === '/journal' && currentPath.startsWith('/journal')) return true;
-    if (path === '/schedule' && currentPath === '/schedule') return true;
-    if (path === '/budget' && currentPath === '/budget') return true;
-    if (path === '/habits' && currentPath === '/habits') return true;
-    if (path === '/goals' && currentPath === '/goals') return true;
-    if (path === '/books' && currentPath === '/books') return true;
-    if (path === '/talk-to-lumi' && currentPath === '/talk-to-lumi') return true;
-    if (path === '/health' && currentPath === '/health') return true;
-    return false;
+    if (!path) return false;
+    if (path === '/journal') return currentPath.startsWith('/journal');
+    return currentPath === path;
   };
 
   return (
@@ -406,49 +400,22 @@ export function Sidebar() {
         PLOS<span style={{ color: palette.text, opacity: 0.3 }}>.</span>
       </div>
 
-      {/* Main Navigation */}
-      {NAV_ITEMS.main.map((item) => (
-        <NavItem
-          key={item.label}
-          {...item}
-          isActive={isActive(item.path)}
-        />
+      {/* Today — Dashboard, Planner, Lumi */}
+      {NAV_ITEMS.today.map((item) => (
+        <NavItem key={item.label} {...item} isActive={isActive(item.path)} />
       ))}
 
-      {/* Life Section */}
+      {/* Life — Journal, Habits, Budget */}
       <SectionHeader label="Life" />
       {NAV_ITEMS.life.map((item) => (
-        <NavItem
-          key={item.label}
-          {...item}
-          isActive={isActive(item.path)}
-        />
+        <NavItem key={item.label} {...item} isActive={isActive(item.path)} />
       ))}
 
-      {/* Pro Section */}
-      <SectionHeader label="Pro" />
-      {NAV_ITEMS.pro.map((item) => (
-        <NavItem
-          key={item.label}
-          {...item}
-          isActive={isActive(item.path)}
-        />
+      {/* More — Settings */}
+      <SectionHeader label="More" />
+      {NAV_ITEMS.more.map((item) => (
+        <NavItem key={item.label} {...item} isActive={isActive(item.path)} />
       ))}
-
-      {/* Security Section */}
-      <SectionHeader label="Security" />
-      <MFAWidget />
-      {NAV_ITEMS.security.map((item) => (
-        <NavItem
-          key={item.label}
-          {...item}
-          isActive={isActive(item.path)}
-        />
-      ))}
-
-      {/* Season Widget */}
-      <SectionHeader label="Atmosphere" />
-      <SeasonWidget />
 
       {/* User Profile */}
       <UserProfile />
@@ -456,13 +423,13 @@ export function Sidebar() {
   );
 }
 
-// ─── Mobile bottom nav ────────────────────────────────────────────────────────
+// ─── Mobile bottom nav (5 items: Home | Planner | Lumi center | Journal | Habits)
 const BOTTOM_NAV = [
-  { icon: '◈',  label: 'Home',    path: '/dashboard'    },
-  { icon: '📖', label: 'Journal', path: '/journal'      },
-  { icon: '📅', label: 'Planner', path: '/schedule'     },
-  { icon: '🔥', label: 'Habits',  path: '/habits'       },
-  { icon: '✨', label: 'Lumi',    path: '/talk-to-lumi' },
+  { icon: '◈',  label: 'Home',    path: '/dashboard',    lumi: false },
+  { icon: '📅', label: 'Planner', path: '/schedule',     lumi: false },
+  { icon: '✨', label: 'Lumi',    path: '/talk-to-lumi', lumi: true  },
+  { icon: '📖', label: 'Journal', path: '/journal',      lumi: false },
+  { icon: '🔥', label: 'Habits',  path: '/habits',       lumi: false },
 ];
 
 function BottomNav({ palette }) {
@@ -488,7 +455,32 @@ function BottomNav({ palette }) {
       alignItems: 'center',
     }}>
       {BOTTOM_NAV.map(item => {
-        const isActive = active(item.path);
+        const isAct = active(item.path);
+        if (item.lumi) {
+          return (
+            <button
+              key={item.path}
+              onClick={() => navigate(item.path)}
+              style={{
+                flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+                justifyContent: 'center', gap: 2, height: '100%',
+                background: 'none', border: 'none', cursor: 'pointer',
+              }}
+            >
+              <div style={{
+                width: 44, height: 44, borderRadius: 14,
+                background: isAct ? 'rgba(200,149,92,0.35)' : 'rgba(200,149,92,0.18)',
+                border: `1.5px solid rgba(200,149,92,0.45)`,
+                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                justifyContent: 'center', gap: 1,
+                marginBottom: 2,
+              }}>
+                <span style={{ fontSize: 20, lineHeight: 1 }}>{item.icon}</span>
+              </div>
+              <span style={{ fontSize: 9, fontWeight: 600, color: C.amber }}>{item.label}</span>
+            </button>
+          );
+        }
         return (
           <button
             key={item.path}
@@ -497,13 +489,13 @@ function BottomNav({ palette }) {
               flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
               justifyContent: 'center', gap: 2, height: '100%',
               background: 'none', border: 'none', cursor: 'pointer',
-              color: isActive ? palette.accent : C.muted,
+              color: isAct ? palette.accent : C.muted,
               transition: 'color 0.15s',
             }}
           >
             <span style={{ fontSize: 18, lineHeight: 1 }}>{item.icon}</span>
-            <span style={{ fontSize: 9, fontWeight: isActive ? 700 : 400 }}>{item.label}</span>
-            {isActive && (
+            <span style={{ fontSize: 9, fontWeight: isAct ? 700 : 400 }}>{item.label}</span>
+            {isAct && (
               <div style={{
                 position: 'absolute', bottom: 0,
                 width: 28, height: 2, borderRadius: 2,
@@ -549,15 +541,17 @@ function MobileDrawer({ open, onClose, palette }) {
           <div style={{ fontSize:20, fontWeight:800, color:palette.accent }}>PLOS.</div>
           <button onClick={onClose} style={{ background:'none', border:'none', color:C.muted, fontSize:20, cursor:'pointer' }}>✕</button>
         </div>
-        {Object.entries(NAV_ITEMS).map(([section, items]) => (
-          <div key={section}>
-            {section !== 'main' && <SectionHeader label={section.charAt(0).toUpperCase() + section.slice(1)} />}
-            {items.map(item => (
-              <NavItem key={item.label} {...item} isActive={isActive(item.path)} onClick={onClose} />
-            ))}
-          </div>
+        {NAV_ITEMS.today.map(item => (
+          <NavItem key={item.label} {...item} isActive={isActive(item.path)} onClick={onClose} />
         ))}
-        <SeasonWidget />
+        <SectionHeader label="Life" />
+        {NAV_ITEMS.life.map(item => (
+          <NavItem key={item.label} {...item} isActive={isActive(item.path)} onClick={onClose} />
+        ))}
+        <SectionHeader label="More" />
+        {NAV_ITEMS.more.map(item => (
+          <NavItem key={item.label} {...item} isActive={isActive(item.path)} onClick={onClose} />
+        ))}
       </div>
     </>
   );

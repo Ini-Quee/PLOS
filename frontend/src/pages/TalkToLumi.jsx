@@ -4,7 +4,6 @@ import { useAuth } from '../lib/auth';
 import LumiOrb from '../components/lumi/LumiOrb';
 import * as lumiVoice from '../lib/lumi-voice';
 import * as lumiListen from '../lib/lumi-listen';
-import { sendToLumi as callGroq } from '../lib/gemini';
 import api from '../lib/api';
 
 /**
@@ -441,15 +440,7 @@ export default function TalkToLumi() {
       let aiResponse = backendResponse?.message;
 
       if (!aiResponse) {
-        aiResponse = await callGroq({
-          userMessage: message,
-          conversationHistory: history.slice(-18),
-          userName: user?.name || 'there',
-          aiName,
-          todaysPlan: tasks,
-          recentJournal: recentJournal,
-          currentTime: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-        });
+        aiResponse = `I'm having trouble connecting right now. Please try again in a moment.`;
       }
 
       // 3. Add to history and display

@@ -13,6 +13,7 @@
  */
 
 const express  = require('express');
+const crypto   = require('crypto');
 const { pool } = require('../db/connection');
 const { authenticate } = require('../middleware/authenticate');
 
@@ -39,7 +40,7 @@ const SCOPES = [
 ];
 
 // GET /api/oauth/google — redirect to Google consent screen
-router.get('/google', authenticate, (req, res) => {
+router.get('/google', authenticate, async (req, res) => {
   const oauth2 = getOAuth2Client();
   if (!oauth2 || !process.env.GOOGLE_CLIENT_ID) {
     return res.status(503).json({
@@ -48,10 +49,20 @@ router.get('/google', authenticate, (req, res) => {
     });
   }
 
+  // Generate a cryptographically random CSRF state token and store it
+  const state = crypto.randomBytes(32).toString('hex');
+  await pool.query(
+    `INSERT INTO oauth_states (state, user_id) VALUES ($1, $2)`,
+    [state, req.user.id]
+  );
+
+  // Purge expired state tokens opportunistically
+  pool.query(`DELETE FROM oauth_states WHERE expires_at < NOW()`).catch(() => {});
+
   const url = oauth2.generateAuthUrl({
     access_type: 'offline',
     scope: SCOPES,
-    state: req.user.id, // pass userId through OAuth flow
+    state,
     prompt: 'consent',
   });
 
@@ -60,12 +71,31 @@ router.get('/google', authenticate, (req, res) => {
 
 // GET /api/oauth/google/callback — exchange code for tokens
 router.get('/google/callback', async (req, res) => {
-  const { code, state: userId, error } = req.query;
+  const { code, state, error } = req.query;
 
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5174';
 
   if (error) {
     return res.redirect(`${frontendUrl}/settings?oauth_error=${encodeURIComponent(error)}`);
+  }
+
+  // Validate CSRF state token
+  if (!state) {
+    return res.redirect(`${frontendUrl}/settings?oauth_error=missing_state`);
+  }
+
+  let userId;
+  try {
+    const stateRow = await pool.query(
+      `DELETE FROM oauth_states WHERE state = $1 AND expires_at > NOW() RETURNING user_id`,
+      [state]
+    );
+    if (stateRow.rows.length === 0) {
+      return res.redirect(`${frontendUrl}/settings?oauth_error=invalid_state`);
+    }
+    userId = stateRow.rows[0].user_id;
+  } catch (err) {
+    return res.redirect(`${frontendUrl}/settings?oauth_error=state_check_failed`);
   }
 
   const oauth2 = getOAuth2Client();
@@ -90,10 +120,8 @@ router.get('/google/callback', async (req, res) => {
        expiry_date ? new Date(expiry_date) : null, SCOPES]
     );
 
-    console.log(`[OAuth] Google connected for user ${userId}`);
     res.redirect(`${frontendUrl}/settings?oauth_success=google`);
   } catch (err) {
-    console.error('[OAuth] callback error:', err.message);
     res.redirect(`${frontendUrl}/settings?oauth_error=${encodeURIComponent(err.message)}`);
   }
 });

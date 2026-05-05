@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import api from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { encryptText } from '../lib/encryption';
-import { analyzeJournalEntryWithGemini } from '../lib/gemini';
 
 import BookSpread from '../components/journal/BookSpread';
 import ErrorBoundary from '../components/ErrorBoundary';
@@ -82,9 +81,13 @@ export default function Journal() {
 
       const entryId = response.data.entry.id;
 
-      // Step 3: Analyze with Gemini (client-side, zero-knowledge)
+      // Step 3: Analyze via backend (keeps API keys server-side)
       setAnalyzing(true);
-      const aiAnalysis = await analyzeJournalEntryWithGemini(text);
+      let aiAnalysis = null;
+      try {
+        const analysisRes = await api.post('/journal/analyze', { text });
+        aiAnalysis = analysisRes.data?.analysis || null;
+      } catch { /* analysis is optional — continue saving without it */ }
 
       if (aiAnalysis) {
         // Step 4: Encrypt the analysis

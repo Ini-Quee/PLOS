@@ -10,8 +10,9 @@
 [![Build](https://img.shields.io/badge/build-passing-brightgreen?style=flat-square)](.)
 [![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
 [![Stack](https://img.shields.io/badge/stack-React%20%2B%20Node%20%2B%20PostgreSQL-blueviolet?style=flat-square)](.)
-[![AI](https://img.shields.io/badge/AI-Groq%20LLaMA%203.1-orange?style=flat-square)](.)
+[![AI](https://img.shields.io/badge/AI-Groq%20LLaMA%203.3-orange?style=flat-square)](.)
 [![Encrypted](https://img.shields.io/badge/data-zero--knowledge%20encrypted-success?style=flat-square)](.)
+[![Freemium](https://img.shields.io/badge/model-freemium%20SaaS-yellow?style=flat-square)](.)
 
 </div>
 
@@ -267,15 +268,38 @@ FRONTEND_URL=http://localhost:5173
 
 ---
 
+## Business model
+
+| | Free | Pro ($9/month) |
+|---|---|---|
+| Lumi messages/day | 10 | Unlimited |
+| Journal types | 1 | All 6 |
+| Habits | 3 | Unlimited |
+| Planner | Today view | Full week + life audit |
+| AI insights & memory | — | ✓ |
+| Push notifications | — | ✓ |
+
+Payments via Stripe. Subscription management via Stripe Customer Portal.
+
+---
+
+## Security architecture
+
+- API keys server-side only — never in frontend code
+- Journal entries AES-256-GCM encrypted client-side before transmission
+- OAuth CSRF protection via cryptographic random state tokens (DB-backed, 10min TTL)
+- Rate limiting on all auth and AI endpoints (Redis primary, in-memory fallback)
+- TOTP MFA with 30-second windows
+- Transaction-safe DB migrations — partial failures roll back cleanly
+
+---
+
 ## Roadmap
 
-- [ ] Mobile app (React Native)
-- [ ] Push notifications and alarm integration
-- [ ] Email reminders via SendGrid
-- [ ] Offline mode with local SQLite sync
-- [ ] Lumi voice output (text-to-speech responses)
+- [ ] PWA install (Add to Home Screen) — 90% done
+- [ ] Stripe billing live
+- [ ] Mobile app (React Native) — v2
 - [ ] Regional cultural scenes (40+ countries)
-- [ ] Budget tracker with bank sync
 - [ ] Habit streak leaderboard (opt-in)
 
 ---

@@ -113,10 +113,13 @@ api.interceptors.response.use(
       try {
         const refreshToken = localStorage.getItem('refreshToken');
         
-        // No refresh token — clear everything and redirect
+        // No refresh token — clear auth keys only (preserve offline queue, preferences)
         if (!refreshToken) {
           setAccessToken(null);
-          localStorage.clear();
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('user');
+          sessionStorage.removeItem('plos_encryption_password');
           window.location.href = '/login';
           return Promise.reject(error);
         }
@@ -137,10 +140,13 @@ api.interceptors.response.use(
         originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
         return api(originalRequest);
       } catch (refreshError) {
-        // Refresh failed — reject queued requests and clear everything
+        // Refresh failed — clear auth keys only (preserve offline queue, preferences)
         processQueue(refreshError, null);
         setAccessToken(null);
-        localStorage.clear();
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+        sessionStorage.removeItem('plos_encryption_password');
         window.location.href = '/login';
         return Promise.reject(refreshError);
       } finally {

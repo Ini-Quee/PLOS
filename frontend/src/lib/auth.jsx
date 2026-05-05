@@ -44,7 +44,7 @@ export function AuthProvider({ children }) {
       setUserState(storedUser);
     }
     
-    const storedPassword = localStorage.getItem(ENCRYPTION_PASSWORD_KEY);
+    const storedPassword = sessionStorage.getItem(ENCRYPTION_PASSWORD_KEY);
     if (storedPassword) {
       setEncryptionPasswordState(storedPassword);
     }
@@ -53,9 +53,9 @@ export function AuthProvider({ children }) {
   // Helper to set encryption password (persists to localStorage)
   function setEncryptionPassword(password) {
     if (password) {
-      localStorage.setItem(ENCRYPTION_PASSWORD_KEY, password);
+      sessionStorage.setItem(ENCRYPTION_PASSWORD_KEY, password);
     } else {
-      localStorage.removeItem(ENCRYPTION_PASSWORD_KEY);
+      sessionStorage.removeItem(ENCRYPTION_PASSWORD_KEY);
     }
     setEncryptionPasswordState(password);
   }

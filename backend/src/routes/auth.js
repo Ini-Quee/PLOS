@@ -416,8 +416,7 @@ router.post(
         period: 30,
       });
 
-     const isValid =
-  totp.validate({ token: code, window: 2 }) !== null;
+      const isValid = totp.validate({ token: code, window: 1 }) !== null;
 
       if (!isValid) {
         return res.status(400).json({

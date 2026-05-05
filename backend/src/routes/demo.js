@@ -11,8 +11,8 @@ const { authenticate } = require('../middleware/authenticate');
 
 const router = express.Router();
 
-const DEMO_EMAIL    = 'demo@plos.app';
-const DEMO_PASSWORD = 'PLOSdemo2025!';
+const DEMO_EMAIL    = process.env.DEMO_EMAIL    || 'demo@plos.app';
+const DEMO_PASSWORD = process.env.DEMO_PASSWORD || 'PLOSdemo2025!';
 const DEMO_NAME     = 'Alex (Demo)';
 
 async function getOrCreateDemo() {
