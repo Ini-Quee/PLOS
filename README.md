@@ -207,17 +207,6 @@ npm run dev
 
 Open `http://localhost:5173`
 
-### Environment Variables
-
-```env
-# backend/.env
-PORT=3000
-DATABASE_URL=postgresql://user:pass@localhost:5432/plos
-JWT_SECRET=your-64-char-secret
-JWT_REFRESH_SECRET=your-other-64-char-secret
-GROQ_API_KEY=gsk_...
-FRONTEND_URL=http://localhost:5173
-```
 
 ---
 
