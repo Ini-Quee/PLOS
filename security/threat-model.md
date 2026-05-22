@@ -1,222 +1,89 @@
-# Threat Model
+# PLOS Threat Model
 
-## STRIDE Analysis for PLOS
+Methodology: STRIDE
 
-STRIDE is a threat modeling methodology that identifies six categories of security threats:
-- **S**poofing
-- **T**ampering
-- **R**epudiation
-- **I**nformation Disclosure
-- **D**enial of Service
-- **E**levation of Privilege
+Scope: React frontend, Express API, PostgreSQL database, authentication flows, AI API usage, planned Azure deployment.
 
----
+## Assets
 
-## 1. Spoofing (Authentication Threats)
+- User accounts and profile data
+- Password hashes
+- JWT access tokens
+- Refresh tokens
+- Journal, habit, budget, schedule, and goal data
+- OAuth tokens for third-party integrations
+- AI provider API keys
+- PostgreSQL connection string
+- Audit logs
 
-### Threats
-- **Credential Stuffing**: Attacker uses leaked credentials from other breaches
-- **Session Hijacking**: Attacker steals session token/cookie
-- **Phishing**: User tricked into entering credentials on fake site
+## Trust Boundaries
 
-### Mitigations
-| Threat | Mitigation | Status |
-|--------|-----------|--------|
-| Credential Stuffing | Rate limiting (5 attempts/15 min) | ✅ |
-| Credential Stuffing | MFA (TOTP) | ✅ |
-| Session Hijacking | HTTP-only cookies for refresh tokens | ✅ |
-| Session Hijacking | Short-lived access tokens (15 min) | ✅ |
-| Phishing | MFA prevents single-factor compromise | ✅ |
+- Browser to backend API
+- Backend API to PostgreSQL
+- Backend API to Redis
+- Backend API to external AI providers
+- Backend API to Google and Stripe integrations
+- Future Azure runtime to Key Vault, Monitor, and managed database services
 
----
+## STRIDE Review
 
-## 2. Tampering (Integrity Threats)
+| STRIDE Category | Threat | Risk | Current or Recommended Mitigation | Status |
+| --- | --- | --- | --- | --- |
+| Spoofing | Credential stuffing against login | Account takeover | Login rate limiting, MFA support, account lockout after repeated failures | Implemented |
+| Spoofing | Fake or replayed JWT | Unauthorized API access | JWT signature validation, short access-token expiry, server-side refresh-token storage | Implemented |
+| Spoofing | Session hijacking through stolen refresh token | Persistent account access | HTTP-only cookie, secure cookie in production, refresh-token hashing, rotation, reuse revocation | Implemented |
+| Tampering | User modifies another user's records | Data integrity loss | Authenticated routes, parameterized SQL, ownership checks in route queries, PostgreSQL RLS review recommended | Partially implemented |
+| Tampering | Request body manipulation | Invalid or malicious data writes | Zod and express-validator middleware patterns; expand validation across all routes | Partially implemented |
+| Repudiation | User denies sensitive action | Weak investigation trail | Authentication and mutation audit logging with user, IP, user agent, status, and details | Implemented |
+| Repudiation | Missing admin action history | Investigation gaps | Define admin-only actions before adding admin features; log all admin changes | Planned |
+| Information Disclosure | Secrets committed to Git | API key or database compromise | `.env` ignored, `.env.example` provided, Key Vault planned | Partially implemented |
+| Information Disclosure | Verbose errors expose internals | Reconnaissance aid | Generic client errors and server-side error logging with request ID | Implemented |
+| Information Disclosure | Cloud database exposed publicly | Data breach | Private networking, firewall rules, least-privilege DB access, Defender for Cloud | Planned |
+| Denial of Service | API abuse or AI endpoint abuse | Cost increase and availability loss | Route rate limits, subscription/tier limits for Lumi messages, Redis rate-limit backend | Partially implemented |
+| Denial of Service | Large uploads exhaust memory | API instability | Multer file-size limits for memory uploads | Implemented |
+| Elevation of Privilege | User changes JWT claims | Privilege escalation | JWT server-side verification; no trusted client-side role claims | Implemented |
+| Elevation of Privilege | Over-permissive cloud identity | Cloud resource compromise | Managed Identity with least privilege and Key Vault access policies | Planned |
 
-### Threats
-- **Data Modification**: Attacker modifies journal entries
-- **SQL Injection**: Malicious SQL in user input
-- **Man-in-the-Middle**: Intercepts and modifies traffic
+## Focused Threats
 
-### Mitigations
-| Threat | Mitigation | Status |
-|--------|-----------|--------|
-| Data Modification | Row Level Security (RLS) | ✅ |
-| Data Modification | Ownership validation on updates | ✅ |
-| SQL Injection | Parameterized queries | ✅ |
-| SQL Injection | express-validator input sanitization | ✅ |
-| MitM | TLS 1.3 for all connections | ✅ |
-| MitM | HSTS headers | ✅ |
+### Authentication Threats
 
----
+Primary risks include password guessing, credential stuffing, MFA bypass attempts, stolen tokens, and user enumeration. PLOS currently uses bcrypt password hashing, generic login errors, rate limiting, account lockout, short-lived JWTs, refresh-token rotation, and MFA support.
 
-## 3. Repudiation (Non-repudiation Threats)
+### API Abuse
 
-### Threats
-- **Denial of Actions**: User denies performing action
-- **Audit Log Tampering**: Attacker modifies audit logs
+Sensitive routes can be abused for brute force, data scraping, or AI cost exhaustion. Authentication routes and selected write-heavy routes are rate limited. Lumi messages now have an IP-based limiter in addition to product-tier message limits. Week 2 should add consistent rate limits to all expensive or write-heavy routes.
 
-### Mitigations
-| Threat | Mitigation | Status |
-|--------|-----------|--------|
-| Denial of Actions | Comprehensive audit logging | ✅ |
-| Denial of Actions | Immutable log entries | ✅ |
-| Audit Tampering | Database-level append-only logs | ✅ |
-| Audit Tampering | Include IP, user agent, timestamp | ✅ |
+### Session Hijacking
 
-**Audit Log Schema**:
-```sql
-CREATE TABLE audit_logs (
-  id UUID PRIMARY KEY,
-  user_id UUID,
-  action VARCHAR(100),      -- e.g., 'login', 'journal_create'
-  method VARCHAR(10),       -- HTTP method
-  path TEXT,                -- API endpoint
-  ip_address INET,          -- Source IP
-  user_agent TEXT,          -- Browser info
-  status_code INTEGER,      -- HTTP response
-  duration_ms INTEGER,      -- Request duration
-  request_body JSONB,       -- Sanitized request
-  created_at TIMESTAMP      -- Immutable timestamp
-);
-```
+Refresh tokens are delivered through an HTTP-only cookie and stored server-side only as hashes. Refreshing rotates the token and revokes the previous token. Reuse of a revoked token revokes all refresh tokens for the user.
 
----
+### Credential Stuffing
 
-## 4. Information Disclosure (Confidentiality Threats)
+Login and registration endpoints are rate limited. Accounts lock temporarily after repeated failed login attempts. MFA helps reduce the impact of password reuse.
 
-### Threats
-- **Data Breach**: Database compromised, entries exposed
-- **Insider Threat**: Developer/admin reads user data
-- **Cloud Provider Access**: Hosting provider sees data
-- **Network Eavesdropping**: Unencrypted traffic intercepted
+### Cloud Exposure Risks
 
-### Mitigations
-| Threat | Mitigation | Status |
-|--------|-----------|--------|
-| Data Breach | Client-side encryption (AES-256-GCM) | ✅ |
-| Data Breach | Zero-knowledge architecture | ✅ |
-| Insider Threat | Encryption keys never on server | ✅ |
-| Cloud Provider | Same as insider threat | ✅ |
-| Eavesdropping | TLS 1.3 for all traffic | ✅ |
-| Eavesdropping | HSTS with preload | ✅ |
+Future Azure deployment must avoid public database exposure, unrestricted inbound API access, public storage containers, overly broad managed identities, and logging of sensitive data.
 
-**Encryption Flow**:
-```
-User Password → PBKDF2 → Encryption Key
-Plaintext Journal → AES-256-GCM → Ciphertext
-Ciphertext → Server Storage (no plaintext!)
-```
+### Insecure Secrets Management
 
----
+Current local development uses `.env` files excluded from Git. Production should move secrets to Azure Key Vault, access them through Managed Identity, and rotate database/API credentials on a documented schedule.
 
-## 5. Denial of Service (Availability Threats)
+## Highest Priority Risks
 
-### Threats
-- **Resource Exhaustion**: Too many requests crash server
-- **Slowloris**: Slow connections consume resources
-- **Large Payload**: Oversized requests cause OOM
+| Priority | Risk | Reason |
+| --- | --- | --- |
+| High | Secret exposure | Cloud and API credentials would allow direct compromise |
+| High | Account takeover | Personal data and integrations make authentication critical |
+| Medium | API abuse | AI and write endpoints can create cost and availability impact |
+| Medium | Cloud misconfiguration | A public database or permissive identity can bypass app controls |
+| Medium | Incomplete validation coverage | Some routes still need stronger schema validation |
 
-### Mitigations
-| Threat | Mitigation | Status |
-|--------|-----------|--------|
-| Resource Exhaustion | Rate limiting (100 req/15 min) | ✅ |
-| Resource Exhaustion | Redis-backed rate limiting | ✅ |
-| Slowloris | Connection timeouts | ✅ |
-| Slowloris | Request timeouts | ✅ |
-| Large Payload | Body size limit (10MB) | ✅ |
-| Large Payload | Request validation | ✅ |
+## Week 2 Recommendations
 
----
-
-## 6. Elevation of Privilege (Authorization Threats)
-
-### Threats
-- **Broken Access Control**: User accesses another's data
-- **Privilege Escalation**: User gains admin access
-- **IDOR**: Insecure Direct Object Reference
-
-### Mitigations
-| Threat | Mitigation | Status |
-|--------|-----------|--------|
-| Broken Access Control | JWT authentication required | ✅ |
-| Broken Access Control | Row Level Security (RLS) | ✅ |
-| Broken Access Control | Ownership validation | ✅ |
-| Privilege Escalation | No admin roles in current design | ✅ |
-| IDOR | UUIDs for all resources (not sequential IDs) | ✅ |
-| IDOR | Authorization checks on every request | ✅ |
-
----
-
-## Data Flow Diagram
-
-```
-┌─────────────┐     HTTPS      ┌─────────────┐
-│   Browser   │ ◄────────────► │   Nginx     │
-│ (Encryption)│                │   (Reverse   │
-│             │                │    Proxy)   │
-└─────────────┘                └──────┬──────┘
-                                        │
-                                        │ HTTPS
-                                        ▼
-                               ┌─────────────────┐
-                               │  Express API     │
-                               │  - Rate Limit    │
-                               │  - Validation    │
-                               │  - Auth          │
-                               └────────┬────────┘
-                                        │
-                                        │ SQL
-                                        ▼
-                               ┌─────────────────┐
-                               │  PostgreSQL      │
-                               │  - RLS Enabled   │
-                               │  - Encrypted     │
-                               └─────────────────┘
-```
-
----
-
-## Attack Scenarios
-
-### Scenario 1: Database Breach
-**Attack**: Attacker gains full database access
-**Impact**: Journal entries encrypted, unrecoverable without passwords
-**Evidence**: Only ciphertext in database
-
-### Scenario 2: Stolen Refresh Token
-**Attack**: XSS steals HTTP-only cookie (theoretically impossible)
-**Impact**: Attacker gets 7-day session
-**Mitigation**: Short-lived access tokens limit damage window
-
-### Scenario 3: SQL Injection
-**Attack**: Malicious input in journal entry
-**Mitigation**: Parameterized queries + validation
-**Test**: Attempt `'; DROP TABLE users; --`
-**Result**: 400 Bad Request
-
-### Scenario 4: Privilege Escalation
-**Attack**: User modifies JWT to change user_id
-**Impact**: None - RLS enforces database-level access
-**Test**: Modify token payload
-**Result**: Database blocks unauthorized queries
-
----
-
-## Risk Assessment Matrix
-
-| Threat | Likelihood | Impact | Risk | Status |
-|--------|-----------|--------|------|--------|
-| Data Breach | Low | High | Medium | ✅ Mitigated (encryption) |
-| Credential Stuffing | High | Medium | High | ✅ Mitigated (rate limit + MFA) |
-| SQL Injection | Low | Critical | Medium | ✅ Mitigated (parameterized) |
-| XSS | Medium | Medium | Medium | ✅ Mitigated (CSP + validation) |
-| Privilege Escalation | Low | High | Medium | ✅ Mitigated (RLS) |
-| DoS | Medium | Low | Low | ✅ Mitigated (rate limiting) |
-
----
-
-## References
-
-- OWASP Threat Modeling: https://owasp.org/www-community/Application_Threat_Modeling
-- STRIDE: https://docs.microsoft.com/en-us/previous-versions/commerce-server/ee823878(v=cs.20)
-- PASTA Threat Modeling: https://versprite.com/blog/pasta-threat-modeling/
+- Add route inventory with authentication, validation, and rate-limit status
+- Add GitHub Actions for secret scanning and dependency scanning
+- Add PostgreSQL least-privilege user documentation
+- Add Azure network diagram
+- Add alert rules for failed login spikes and token reuse
