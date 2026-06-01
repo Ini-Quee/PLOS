@@ -16,6 +16,7 @@ const express  = require('express');
 const crypto   = require('crypto');
 const { pool } = require('../db/connection');
 const { authenticate } = require('../middleware/authenticate');
+const { encrypt, decrypt } = require('../crypto/tokenCipher');
 
 const router = express.Router();
 
@@ -116,7 +117,7 @@ router.get('/google/callback', async (req, res) => {
          refresh_token = COALESCE(EXCLUDED.refresh_token, user_oauth_tokens.refresh_token),
          expires_at    = EXCLUDED.expires_at,
          updated_at    = NOW()`,
-      [userId, access_token, refresh_token || null,
+      [userId, encrypt(access_token), encrypt(refresh_token || null),
        expiry_date ? new Date(expiry_date) : null, SCOPES]
     );
 
@@ -160,7 +161,7 @@ router.delete('/google', authenticate, async (req, res) => {
     if (r.rows.length > 0) {
       const oauth2 = getOAuth2Client();
       if (oauth2) {
-        oauth2.revokeToken(r.rows[0].access_token).catch(() => {});
+        oauth2.revokeToken(decrypt(r.rows[0].access_token)).catch(() => {});
       }
     }
     res.json({ success: true, message: 'Google account disconnected.' });

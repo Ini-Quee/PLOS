@@ -10,8 +10,29 @@
  */
 
 const express  = require('express');
+const { z }    = require('zod');
 const { pool } = require('../db/connection');
+const logger = require('../lib/logger');
 const { authenticate } = require('../middleware/authenticate');
+const { validateInput } = require('../middleware/validateInput');
+
+const sendSchema = z.object({
+  to: z.string().email('Invalid email address'),
+  subject: z.string().max(500).optional(),
+  body: z.string().min(1, 'Email body is required').max(10000),
+});
+
+const scheduleSchema = z.object({
+  to: z.string().email('Invalid email address'),
+  subject: z.string().max(500).optional(),
+  body: z.string().min(1, 'Email body is required').max(10000),
+  send_at: z.string().datetime('Invalid datetime'),
+});
+
+const extractSchema = z.object({
+  context: z.string().min(10, 'Context must be at least 10 characters').max(5000),
+});
+const { decrypt, encrypt } = require('../crypto/tokenCipher');
 
 const router = express.Router();
 router.use(authenticate);
@@ -34,7 +55,9 @@ async function getGmailClient(userId) {
     throw new Error('Google account not connected. Visit Settings → Connect Google to enable Gmail.');
   }
 
-  const { access_token, refresh_token, expires_at } = tokenRow.rows[0];
+  const { access_token: _at, refresh_token: _rt, expires_at } = tokenRow.rows[0];
+  const access_token = decrypt(_at);
+  const refresh_token = decrypt(_rt);
 
   const oauth2 = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
@@ -49,7 +72,7 @@ async function getGmailClient(userId) {
       await pool.query(
         `UPDATE user_oauth_tokens SET access_token=$1, expires_at=$2, updated_at=NOW()
          WHERE user_id=$3 AND provider='google'`,
-        [tokens.access_token, tokens.expiry_date ? new Date(tokens.expiry_date) : null, userId]
+        [encrypt(tokens.access_token), tokens.expiry_date ? new Date(tokens.expiry_date) : null, userId]
       ).catch(() => {});
     }
   });
@@ -72,9 +95,8 @@ function buildMimeMessage({ to, subject, body, from }) {
 }
 
 // POST /api/gmail/send
-router.post('/send', async (req, res) => {
+router.post('/send', validateInput(sendSchema), async (req, res) => {
   const { to, subject, body } = req.body;
-  if (!to || !body) return res.status(400).json({ error: 'to and body are required' });
 
   try {
     const gmail = await getGmailClient(req.user.id);
@@ -100,7 +122,7 @@ router.post('/send', async (req, res) => {
       message: `Email sent to ${to} ✓`,
     });
   } catch (err) {
-    console.error('[Gmail] send error:', err.message);
+    logger.error({ action: 'gmail_send', err: err.message }, 'send failed');
     if (err.message.includes('not connected') || err.message.includes('not installed')) {
       return res.status(503).json({ error: err.message });
     }
@@ -109,9 +131,8 @@ router.post('/send', async (req, res) => {
 });
 
 // POST /api/gmail/schedule — schedule email to send at a future date
-router.post('/schedule', async (req, res) => {
+router.post('/schedule', validateInput(scheduleSchema), async (req, res) => {
   const { to, subject, body, send_at } = req.body;
-  if (!to || !body || !send_at) return res.status(400).json({ error: 'to, body, and send_at are required' });
 
   try {
     const r = await pool.query(
@@ -128,8 +149,63 @@ router.post('/schedule', async (req, res) => {
       message: `Email to ${to} scheduled for ${new Date(send_at).toLocaleDateString()} ✓`,
     });
   } catch (err) {
-    console.error('[Gmail] schedule error:', err.message);
+    logger.error({ action: 'gmail_schedule', err: err.message }, 'schedule failed');
     res.status(500).json({ error: 'Failed to schedule email' });
+  }
+});
+
+// POST /api/gmail/extract — extract email fields from pasted context using Groq
+router.post('/extract', validateInput(extractSchema), async (req, res) => {
+  const { context } = req.body;
+
+  let Groq;
+  try { Groq = require('groq-sdk'); } catch {
+    return res.status(503).json({ error: 'Groq SDK not available' });
+  }
+
+  const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+  const prompt = `You are an email extraction assistant. Given client notes or context, extract email sending details.
+
+Context:
+${context.slice(0, 2000)}
+
+Respond with ONLY a JSON object (no markdown, no explanation):
+{
+  "to": "<email address found in context, or empty string if none>",
+  "name": "<recipient first name>",
+  "subject": "<concise email subject line>",
+  "body": "<professional email body, 3-5 sentences, signed off naturally>",
+  "cta": "<the main call to action in one sentence>"
+}`;
+
+  try {
+    const completion = await groq.chat.completions.create({
+      model: 'llama-3.1-8b-instant',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3,
+      max_tokens: 600,
+    });
+
+    const raw = completion.choices[0]?.message?.content?.trim() || '{}';
+    let parsed;
+    try {
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+    } catch {
+      parsed = {};
+    }
+
+    res.json({
+      to: parsed.to || '',
+      name: parsed.name || '',
+      subject: parsed.subject || '',
+      body: parsed.body || '',
+      cta: parsed.cta || '',
+    });
+  } catch (err) {
+    logger.error({ action: 'gmail_extract', err: err.message }, 'extract failed');
+    res.status(500).json({ error: 'Extraction failed', detail: err.message });
   }
 });
 
