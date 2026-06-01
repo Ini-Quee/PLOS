@@ -1,4 +1,5 @@
 const { pool } = require('../db/connection');
+const logger = require('../lib/logger');
 
 /**
  * Per-route audit log factory — explicit action + resource labels.
@@ -22,7 +23,7 @@ function auditLog(action, resource) {
           status,
           JSON.stringify({ method: req.method, path: req.path, statusCode: res.statusCode }),
         ]
-      ).catch(err => console.error('Audit log error:', err));
+      ).catch(err => logger.error({ err: err.message }, 'audit log error'));
       return originalJson(body);
     };
 
@@ -64,7 +65,7 @@ function globalAuditLog(req, res, next) {
           body_keys:  req.body ? Object.keys(req.body) : [],
         }),
       ]
-    ).catch(err => console.error('Global audit log error:', err));
+    ).catch(err => logger.error({ err: err.message }, 'global audit log error'));
 
     return originalJson(body);
   };

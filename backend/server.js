@@ -9,9 +9,11 @@ const cookieParser = require('cookie-parser');
 const { runMigrations, pool } = require('./src/db/connection');
 const { validateEnv } = require('./src/lib/validateEnv');
 const redisClient = require('./src/services/redisClient');
+const logger = require('./src/lib/logger');
 const { globalAuditLog } = require('./src/middleware/auditLog');
 const authRoutes = require('./src/routes/auth');
 const journalRoutes = require('./src/routes/journal');
+const journalV2Routes = require('./src/routes/journalV2');
 const scheduleRoutes = require('./src/routes/schedule');
 const projectsRoutes = require('./src/routes/projects');
 const booksRoutes = require('./src/routes/books');
@@ -34,6 +36,18 @@ const { router: pushRoutes } = require('./src/routes/push');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const isProduction = process.env.NODE_ENV === 'production';
+
+app.disable('x-powered-by');
+if (isProduction) {
+  app.set('trust proxy', 1);
+}
+
+app.use((req, res, next) => {
+  req.id = req.get('x-request-id') || require('crypto').randomUUID();
+  res.setHeader('X-Request-ID', req.id);
+  next();
+});
 
 app.use(
   helmet({
@@ -54,11 +68,15 @@ app.use(
   })
 );
 
+const configuredOrigins = (process.env.FRONTEND_URL || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 const ALLOWED_ORIGINS = [
-  process.env.FRONTEND_URL,
-  'http://localhost:5173',
-  'http://localhost:5174',
-].filter(Boolean);
+  ...configuredOrigins,
+  ...(isProduction ? [] : ['http://localhost:5173', 'http://localhost:5174']),
+];
 
 app.use(
   cors({
@@ -90,6 +108,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api', globalAuditLog);
 
 app.use('/api/journal', journalRoutes);
+app.use('/api/journal/v2', journalV2Routes);
 app.use('/api/schedule', scheduleRoutes);
 app.use('/api/projects', projectsRoutes);
 app.use('/api/books', booksRoutes);
@@ -134,9 +153,10 @@ app.use((req, res) => {
 });
 
 app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
+  logger.error({ requestId: req.id, method: req.method, path: req.originalUrl, err: err.message }, 'unhandled error');
   res.status(500).json({
     error: 'An internal error occurred',
+    requestId: req.id,
   });
 });
 
@@ -146,7 +166,7 @@ async function start() {
     await redisClient.init();
     await runMigrations();
     app.listen(PORT, () => {
-      console.log('PLOS API running on http://localhost:' + PORT);
+    logger.info({ port: PORT }, 'PLOS API started');
     });
 
     // Spawn background worker for cron jobs (idempotent, isolated from HTTP process)
@@ -157,16 +177,16 @@ async function start() {
         detached: false,
         stdio: 'inherit',
       });
-      worker.on('error', (err) => console.error('[CronWorker] Error:', err.message));
+      worker.on('error', (err) => logger.error({ err: err.message }, 'cron worker error'));
       worker.on('exit', (code) => {
-        if (code !== 0) console.error('[CronWorker] Exited with code', code);
+        if (code !== 0) logger.error({ code }, 'cron worker exited');
       });
-      console.log('[CronWorker] Started (PID:', worker.pid, ')');
+      logger.info({ pid: worker.pid }, 'cron worker started');
     } catch (err) {
-      console.warn('[CronWorker] Could not start background worker:', err.message);
+    logger.warn({ err: err.message }, 'cron worker not started');
     }
   } catch (error) {
-    console.error('Failed to start server:', error);
+    logger.error({ err: error.message }, 'server start failed');
     process.exit(1);
   }
 }

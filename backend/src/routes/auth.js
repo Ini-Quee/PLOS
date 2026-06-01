@@ -6,8 +6,19 @@ const { TOTP, Secret } = require('otpauth');
 const QRCode = require('qrcode');
 const { z } = require('zod');
 const { pool } = require('../db/connection');
+const logger = require('../lib/logger');
 const { validateInput } = require('../middleware/validateInput');
 const { rateLimiter } = require('../middleware/rateLimiter');
+const { pool: _auditPool } = require('../db/connection');
+async function writeAudit(req, action, status) {
+  try {
+    await _auditPool.query(
+      `INSERT INTO audit_logs (user_id, action, resource, ip_address, user_agent, status, details)
+       VALUES ($1,$2,'auth',$3,$4,$5,$6)`,
+      [req.user?.id || null, action, req.ip, req.get('user-agent'), status, JSON.stringify({ path: req.path })]
+    );
+  } catch {}
+}
 const { auditLog } = require('../middleware/auditLog');
 const { authenticate } = require('../middleware/authenticate');
 
@@ -50,6 +61,7 @@ router.post(
       );
 
       if (existingUser.rows.length > 0) {
+        await writeAudit(req, 'register_duplicate', 'failure');
         return res.status(409).json({
           error:
             'Unable to create account. If this email is already registered, please log in.',
@@ -108,7 +120,7 @@ router.post(
         },
       });
     } catch (error) {
-      console.error('Registration error:', error);
+      logger.error({ action: 'register', err: error.message }, 'registration failed');
       res.status(500).json({
         error: 'An error occurred during registration',
       });
@@ -161,6 +173,8 @@ router.post(
           [newAttempts, lockUntil, user.id]
         );
 
+        if (lockUntil) await writeAudit(req, 'account_locked', 'failure');
+        await writeAudit(req, 'login_failure', 'failure');
         return res.status(401).json({
           error: 'Invalid email or password',
         });
@@ -228,6 +242,8 @@ router.post(
         path: '/api/auth/refresh',
       });
 
+      await writeAudit(req, 'login_success', 'success');
+
       // Fetch subscription tier separately (not in the login query above)
       const tierRow = await pool.query(
         `SELECT subscription_tier, subscription_expires_at FROM users WHERE id = $1`,
@@ -246,7 +262,7 @@ router.post(
         },
       });
     } catch (error) {
-      console.error('Login error:', error);
+      logger.error({ action: 'login', err: error.message }, 'login failed');
       res.status(500).json({
         error: 'An error occurred during login',
       });
@@ -292,6 +308,7 @@ router.post(
       const storedToken = result.rows[0];
 
       if (storedToken.revoked) {
+        await writeAudit(req, 'token_reuse_detected', 'failure');
         await pool.query(
           'UPDATE refresh_tokens SET revoked = TRUE WHERE user_id = $1',
           [storedToken.user_id]
@@ -349,7 +366,7 @@ router.post(
         accessToken: newAccessToken,
       });
     } catch (error) {
-      console.error('Token refresh error:', error);
+      logger.error({ action: 'token_refresh', err: error.message }, 'refresh failed');
       res.status(500).json({
         error: 'An error occurred during token refresh',
       });
@@ -390,7 +407,7 @@ router.post(
           'Scan the QR code with your authenticator app, then verify with a code to enable MFA.',
       });
     } catch (error) {
-      console.error('MFA setup error:', error);
+      logger.error({ action: 'mfa_setup', err: error.message }, 'mfa setup failed');
       res.status(500).json({
         error: 'An error occurred during MFA setup',
       });
@@ -428,6 +445,7 @@ router.post(
       const isValid = totp.validate({ token: code, window: 1 }) !== null;
 
       if (!isValid) {
+        await writeAudit(req, 'mfa_verify_failure', 'failure');
         return res.status(400).json({
           error: 'Invalid MFA code. Please try again.',
         });
@@ -438,11 +456,13 @@ router.post(
         [req.user.id]
       );
 
+      await writeAudit(req, 'mfa_enabled', 'success');
+
       res.json({
         message: 'MFA enabled successfully',
       });
     } catch (error) {
-      console.error('MFA verify error:', error);
+      logger.error({ action: 'mfa_verify', err: error.message }, 'mfa verify failed');
       res.status(500).json({
         error: 'An error occurred during MFA verification',
       });
@@ -478,7 +498,7 @@ router.post(
 
       res.json({ message: 'Logged out successfully' });
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error({ action: 'logout', err: error.message }, 'logout failed');
       res.status(500).json({
         error: 'An error occurred during logout',
       });
@@ -503,7 +523,7 @@ router.get('/me', authenticate, async (req, res) => {
 
     res.json({ user: result.rows[0] });
   } catch (error) {
-    console.error('Get user error:', error);
+    logger.error({ action: 'me', err: error.message }, 'get user failed');
     res.status(500).json({
       error: 'An error occurred',
     });
