@@ -207,24 +207,16 @@ export const testEncryption = async () => {
     const testText = 'Hello, PLOS!';
     const testPassword = 'test-password-123';
 
-    console.log('Testing encryption...');
     const encrypted = await encryptText(testText, testPassword);
-    console.log('Encrypted:', encrypted);
-
-    console.log('Testing decryption...');
     const decrypted = await decryptText(
       encrypted.encryptedContent,
       encrypted.encryptionIv,
       encrypted.encryptionSalt,
       testPassword
     );
-    console.log('Decrypted:', decrypted);
 
-    const success = decrypted === testText;
-    console.log('Test passed:', success);
-    return success;
+    return decrypted === testText;
   } catch (error) {
-    console.error('Encryption test failed:', error);
     return false;
   }
 };

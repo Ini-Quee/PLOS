@@ -20,10 +20,12 @@ function initVapid() {
     const keys = webpush.generateVAPIDKeys();
     process.env.VAPID_PUBLIC_KEY  = keys.publicKey;
     process.env.VAPID_PRIVATE_KEY = keys.privateKey;
-    console.warn('[Push] VAPID keys not found in .env — generated ephemeral keys.');
-    console.warn('[Push] Add these to .env for stable push notifications:');
-    console.warn(`  VAPID_PUBLIC_KEY=${keys.publicKey}`);
-    console.warn(`  VAPID_PRIVATE_KEY=${keys.privateKey}`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[Push] VAPID keys not found in .env — generated ephemeral keys.');
+      console.warn('[Push] Add these to .env for stable push notifications:');
+      console.warn(`  VAPID_PUBLIC_KEY=${keys.publicKey}`);
+      console.warn(`  VAPID_PRIVATE_KEY=${keys.privateKey}`);
+    }
   }
   webpush.setVapidDetails(
     `mailto:${process.env.VAPID_EMAIL || 'admin@plos.app'}`,
