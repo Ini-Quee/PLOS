@@ -24,6 +24,8 @@
 # Required — app will not start without these
 DATABASE_URL          = (Railway sets this automatically)
 JWT_SECRET            = (generate: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))")
+JWT_ACCESS_EXPIRY     = 15m
+TOKEN_ENC_KEY         = (generate: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
 
 # AI (at least one required for Lumi)
 GROQ_API_KEY          = (from console.groq.com — free tier)
