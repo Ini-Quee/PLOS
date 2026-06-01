@@ -216,7 +216,7 @@ export const testEncryption = async () => {
     );
 
     return decrypted === testText;
-  } catch (error) {
+  } catch {
     return false;
   }
 };
