@@ -12,19 +12,39 @@ const {
   extractAndSaveMemories,
 } = require('../services/lumiRouter');
 const { executeActions, getUserFullContext } = require('../services/lumiActions');
+const { getCheckInForUser } = require('../services/lumiPatterns');
+const { proposeLumiActions } = require('../services/lumiActionPlanner');
+const { executeAction } = require('../services/lumiActionExecutor');
+const { cancelProposal, loadProposedActions, markActionStatus } = require('../services/lumiActionAudit');
 const { pool } = require('../db/connection');
 const { getLegacyClient } = require('../services/aiClient');
-const { attachTier, isPro, FREE_LIMITS } = require('../middleware/checkTier');
+const { attachTier, isPro, FREE_LIMITS, lumiMessageLimitsDisabled } = require('../middleware/checkTier');
+const { rateLimiter } = require('../middleware/rateLimiter');
 
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
+
+function appAgentEnabled() {
+  return process.env.LUMI_APP_AGENT_ENABLED === 'true';
+}
+
+function requireAppAgent(req, res, next) {
+  if (appAgentEnabled()) return next();
+  return res.status(404).json({
+    error: 'Lumi app agent is not enabled',
+    code: 'LUMI_APP_AGENT_DISABLED',
+  });
+}
 
 /**
  * POST /api/lumi/message
  * Main endpoint for all Lumi text interactions
  * Lumi is a conversational AI companion - she talks first, saves later
  */
-router.post('/message', authenticate, attachTier, async (req, res) => {
+router.post('/message', rateLimiter(30, 900, 'lumi_message'), authenticate, attachTier, async (req, res) => {
   try {
     const userId = req.user.id;
     const { text, source = 'dashboard', conversationHistory = [] } = req.body;
@@ -34,14 +54,14 @@ router.post('/message', authenticate, attachTier, async (req, res) => {
     }
 
     // Tier-aware daily message cap
-    const dailyLimit = isPro(req) ? 200 : FREE_LIMITS.lumi_messages_per_day;
+    const dailyLimit = isPro(req) ? FREE_LIMITS.lumi_pro_messages_per_day : FREE_LIMITS.lumi_messages_per_day;
     const { rows: countRows } = await pool.query(
       `SELECT COUNT(*) AS count FROM lumi_conversations
        WHERE user_id = $1 AND created_at >= CURRENT_DATE`,
       [userId]
     );
     const todayCount = Number(countRows[0]?.count || 0);
-    if (todayCount >= dailyLimit) {
+    if (!lumiMessageLimitsDisabled() && todayCount >= dailyLimit) {
       return res.status(429).json({
         error: isPro(req)
           ? `You've had ${dailyLimit} conversations with me today. I'll be back tomorrow!`
@@ -114,7 +134,10 @@ router.post('/confirm-journal-page', authenticate, async (req, res) => {
     const userId = req.user.id;
     const { pendingJournalPage } = req.body;
 
-    if (!pendingJournalPage?.journal_type || !pendingJournalPage?.template_name || !pendingJournalPage?.fields) {
+    const hasSinglePage = pendingJournalPage?.journal_type && pendingJournalPage?.template_name && pendingJournalPage?.fields;
+    const hasMultiplePages = Array.isArray(pendingJournalPage?.entries) && pendingJournalPage.entries.length > 0;
+
+    if (!hasSinglePage && !hasMultiplePages) {
       return res.status(400).json({ error: 'Missing journal page data' });
     }
 
@@ -133,6 +156,7 @@ router.post('/confirm-journal-page', authenticate, async (req, res) => {
     res.json({
       success: true,
       entry: result.entry,
+      entries: result.entries || null,
       message: `Saved to your ${pendingJournalPage.template_name} page in the ${label} journal ✓`,
     });
   } catch (error) {
@@ -457,6 +481,103 @@ router.get('/context', authenticate, async (req, res) => {
   } catch (err) {
     console.error('Lumi context error:', err);
     res.status(500).json({ error: 'Failed to load context' });
+  }
+});
+
+/**
+ * GET /api/lumi/check-in
+ * Returns one optional proactive insight. No notifications, no auto-actions.
+ */
+router.get('/check-in', authenticate, async (req, res) => {
+  try {
+    const result = await getCheckInForUser(req.user.id);
+    res.json(result);
+  } catch (err) {
+    console.error('Lumi check-in error:', err);
+    res.json({ hasCheckIn: false, message: null, pattern: null });
+  }
+});
+
+/**
+ * POST /api/lumi/actions/propose
+ * Feature-flagged full app agent proposal endpoint.
+ */
+router.post('/actions/propose', authenticate, attachTier, requireAppAgent, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { text, source = 'dashboard', timeframe = '30days' } = req.body;
+    if (!text?.trim()) return res.status(400).json({ error: 'Text is required' });
+
+    const context = await buildUserContext(userId);
+    const result = await proposeLumiActions(userId, text.trim(), req, context, { source, timeframe });
+    if (!result.success && result.blocked) {
+      return res.status(400).json(result);
+    }
+    if (!result.success) {
+      return res.status(422).json(result);
+    }
+    res.json(result);
+  } catch (err) {
+    console.error('Lumi action propose error:', err);
+    res.status(500).json({ error: 'Failed to propose Lumi action' });
+  }
+});
+
+/**
+ * POST /api/lumi/actions/confirm
+ * Executes confirmed full app agent proposal actions.
+ */
+router.post('/actions/confirm', authenticate, requireAppAgent, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { proposalId, confirmedActionIds = [] } = req.body;
+    if (!proposalId) return res.status(400).json({ error: 'proposalId is required' });
+
+    const rows = await loadProposedActions(userId, proposalId, confirmedActionIds);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'No pending actions found for this proposal' });
+    }
+
+    const results = [];
+    for (const row of rows) {
+      const action = row.action_data || {};
+      try {
+        await markActionStatus(userId, row.action_id, 'confirmed');
+        const data = await executeAction(userId, action, row.id);
+        await markActionStatus(userId, row.action_id, 'executed');
+        results.push({ actionId: row.action_id, type: row.action_type, success: true, data });
+      } catch (err) {
+        await markActionStatus(userId, row.action_id, 'failed', err.message);
+        results.push({ actionId: row.action_id, type: row.action_type, success: false, error: err.message });
+      }
+    }
+
+    const refresh = [...new Set(rows.flatMap((row) => row.action_data?.refresh || []))];
+    res.json({
+      success: true,
+      results,
+      refresh,
+      allOk: results.every((r) => r.success),
+    });
+  } catch (err) {
+    console.error('Lumi action confirm error:', err);
+    res.status(500).json({ error: 'Failed to execute Lumi actions' });
+  }
+});
+
+/**
+ * POST /api/lumi/actions/cancel
+ * Cancels pending full app agent proposal actions.
+ */
+router.post('/actions/cancel', authenticate, requireAppAgent, async (req, res) => {
+  try {
+    const { proposalId, reason } = req.body;
+    if (!proposalId) return res.status(400).json({ error: 'proposalId is required' });
+    const cancelled = await cancelProposal(req.user.id, proposalId, reason || null);
+    res.json({ success: true, cancelled });
+  } catch (err) {
+    console.error('Lumi action cancel error:', err);
+    res.status(500).json({ error: 'Failed to cancel Lumi action proposal' });
   }
 });
 
