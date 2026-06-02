@@ -122,7 +122,7 @@ export default function Register() {
     if (/[^A-Za-z0-9]/.test(password)) strength++;
 
     const labels = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong'];
-    const colors = ['#E05252', '#E05252', '#F5A623', '#4CAF7D', '#4CAF7D'];
+    const colors = ['#E05252', '#E05252', '#7A8B52', '#4CAF7D', '#4CAF7D'];
     
     return { 
       strength, 
@@ -158,12 +158,12 @@ export default function Register() {
             width: '64px',
             height: '64px',
             borderRadius: '50%',
-            backgroundColor: 'rgba(245, 166, 35, 0.12)',
+            backgroundColor: 'rgba(122, 139, 82, 0.12)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             margin: '0 auto 16px',
-            boxShadow: '0 0 24px rgba(245, 166, 35, 0.25)',
+            boxShadow: '0 0 24px rgba(122, 139, 82, 0.25)',
           }}>
             <span style={{ fontSize: '32px' }}>✨</span>
           </div>
@@ -182,7 +182,7 @@ export default function Register() {
             margin: 0,
             fontFamily: "'Inter', sans-serif",
           }}>
-            Set up your PLOS account
+            Set up your IniQ account
           </p>
         </div>
 
@@ -234,8 +234,8 @@ export default function Register() {
               }}
               onFocus={(e) => {
                 if (!fieldErrors.name) {
-                  e.target.style.borderColor = '#F5A623';
-                  e.target.style.boxShadow = '0 0 0 2px rgba(245, 166, 35, 0.2)';
+                  e.target.style.borderColor = '#7A8B52';
+                  e.target.style.boxShadow = '0 0 0 2px rgba(122, 139, 82, 0.2)';
                 }
               }}
               onBlur={(e) => {
@@ -287,8 +287,8 @@ export default function Register() {
               }}
               onFocus={(e) => {
                 if (!fieldErrors.email) {
-                  e.target.style.borderColor = '#F5A623';
-                  e.target.style.boxShadow = '0 0 0 2px rgba(245, 166, 35, 0.2)';
+                  e.target.style.borderColor = '#7A8B52';
+                  e.target.style.boxShadow = '0 0 0 2px rgba(122, 139, 82, 0.2)';
                 }
               }}
               onBlur={(e) => {
@@ -340,8 +340,8 @@ export default function Register() {
               }}
               onFocus={(e) => {
                 if (!fieldErrors.password) {
-                  e.target.style.borderColor = '#F5A623';
-                  e.target.style.boxShadow = '0 0 0 2px rgba(245, 166, 35, 0.2)';
+                  e.target.style.borderColor = '#7A8B52';
+                  e.target.style.boxShadow = '0 0 0 2px rgba(122, 139, 82, 0.2)';
                 }
               }}
               onBlur={(e) => {
@@ -424,8 +424,8 @@ export default function Register() {
               }}
               onFocus={(e) => {
                 if (!fieldErrors.confirmPassword) {
-                  e.target.style.borderColor = '#F5A623';
-                  e.target.style.boxShadow = '0 0 0 2px rgba(245, 166, 35, 0.2)';
+                  e.target.style.borderColor = '#7A8B52';
+                  e.target.style.boxShadow = '0 0 0 2px rgba(122, 139, 82, 0.2)';
                 }
               }}
               onBlur={(e) => {
@@ -494,7 +494,7 @@ export default function Register() {
               padding: '14px',
               borderRadius: '12px',
               border: 'none',
-              backgroundColor: '#F5A623',
+              backgroundColor: '#7A8B52',
               color: '#0D0D0D',
               fontSize: '14px',
               fontWeight: 600,
@@ -506,12 +506,12 @@ export default function Register() {
             }}
             onMouseEnter={(e) => {
               if (!loading) {
-                e.target.style.backgroundColor = '#E09415';
+                e.target.style.backgroundColor = '#8FA060';
                 e.target.style.transform = 'translateY(-1px)';
               }
             }}
             onMouseLeave={(e) => {
-              e.target.style.backgroundColor = '#F5A623';
+              e.target.style.backgroundColor = '#7A8B52';
               e.target.style.transform = 'translateY(0)';
             }}
           >
@@ -527,7 +527,7 @@ export default function Register() {
           fontFamily: "'Inter', sans-serif",
         }}>
           Already have an account?{' '}
-          <Link to="/login" style={{ color: '#F5A623', textDecoration: 'none', fontWeight: 500 }}>
+          <Link to="/login" style={{ color: '#7A8B52', textDecoration: 'none', fontWeight: 500 }}>
             Sign in
           </Link>
         </p>

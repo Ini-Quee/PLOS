@@ -35,6 +35,7 @@ export default function TalkToLumi() {
   const [importText, setImportText]         = useState('');
   const [importBlocks, setImportBlocks]     = useState(null);
   const [pendingEmail, setPendingEmail]     = useState(null);    // email preview state
+  const [pendingAppActions, setPendingAppActions] = useState(null);
   const [memoryCount, setMemoryCount]       = useState(0);
   const [showUpgrade, setShowUpgrade]       = useState(false);
 
@@ -420,6 +421,52 @@ export default function TalkToLumi() {
     setHistory(prev => [...prev.slice(-18), userMsg]);
 
     try {
+      // 0. Feature-flagged full app agent: propose app-wide edits/removals before legacy chat routing.
+      if (/\b(edit|change|update|move|reschedule|delete|remove|archive|forget|correct|was)\b/i.test(message)) {
+        try {
+          const actionRes = await api.post('/lumi/actions/propose', { text: message, source: 'talk' });
+          if (actionRes.data?.needsDisambiguation) {
+            const aiMsg = {
+              role: 'model',
+              content: actionRes.data.message || 'I found more than one possible match. Which one should I use?',
+              timestamp: new Date().toISOString(),
+              candidates: actionRes.data.candidates || [],
+            };
+            setHistory(prev => [...prev, aiMsg]);
+            processingRef.current = false;
+            setLumiState('idle');
+            await speak(aiMsg.content);
+            return;
+          }
+          if (actionRes.data?.proposalId) {
+            setPendingAppActions(actionRes.data);
+            const aiMsg = {
+              role: 'model',
+              content: actionRes.data.message || 'Review this change before I apply it.',
+              timestamp: new Date().toISOString(),
+            };
+            setHistory(prev => [...prev, aiMsg]);
+            processingRef.current = false;
+            setLumiState('idle');
+            await speak(aiMsg.content);
+            return;
+          }
+        } catch (agentErr) {
+          if (agentErr.response?.status && agentErr.response.status !== 404) {
+            const msg = agentErr.response?.data?.message || agentErr.response?.data?.error;
+            if (msg) {
+              const aiMsg = { role: 'model', content: msg, timestamp: new Date().toISOString() };
+              setHistory(prev => [...prev, aiMsg]);
+              processingRef.current = false;
+              setLumiState('idle');
+              await speak(msg);
+              return;
+            }
+          }
+          // 404 means the feature flag is off; continue through legacy Lumi.
+        }
+      }
+
       // 1. Route through backend Lumi (saves budget/schedule/journal as needed)
       let backendResponse = null;
       try {
@@ -443,6 +490,7 @@ export default function TalkToLumi() {
         } else {
           setPendingEmail(null);
         }
+        setPendingAppActions(null);
 
         // Recurring plan: trigger the interview flow
         if (backendResponse.needsRecurringPlan && backendResponse.recurringPlanText) {
@@ -620,6 +668,51 @@ export default function TalkToLumi() {
     }
   }
 
+  async function confirmAppActions(yes) {
+    if (!pendingAppActions) return;
+    const proposal = pendingAppActions;
+    setPendingAppActions(null);
+
+    if (!yes) {
+      await api.post('/lumi/actions/cancel', { proposalId: proposal.proposalId, reason: 'user_cancelled' }).catch(() => {});
+      const aiMsg = { role: 'model', content: "No problem — I won't change anything.", timestamp: new Date().toISOString() };
+      setHistory(prev => [...prev, aiMsg]);
+      await speak(aiMsg.content);
+      return;
+    }
+
+    try {
+      processingRef.current = true;
+      setLumiState('processing');
+      const res = await api.post('/lumi/actions/confirm', {
+        proposalId: proposal.proposalId,
+        confirmedActionIds: (proposal.actions || []).map(a => a.id),
+      });
+      processingRef.current = false;
+      setLumiState('idle');
+      const ok = res.data?.results?.filter(r => r.success).length || 0;
+      const total = res.data?.results?.length || 0;
+      const msg = res.data?.allOk
+        ? `Done — I applied ${ok} change${ok === 1 ? '' : 's'}.`
+        : `I applied ${ok} of ${total} changes.`;
+      const aiMsg = {
+        role: 'model',
+        content: msg,
+        timestamp: new Date().toISOString(),
+        saved: ok > 0,
+        savedItems: (res.data?.results || []).filter(r => r.success).map(r => ({ label: r.type, destination: 'Lumi app agent' })),
+      };
+      setHistory(prev => [...prev, aiMsg]);
+      await fetchContext();
+      await speak(msg);
+    } catch (err) {
+      processingRef.current = false;
+      setLumiState('idle');
+      const msg = err.response?.data?.error || "I couldn't apply that change. Your data is safe.";
+      await speak(msg);
+    }
+  }
+
   function clearChat() {
     if (!window.confirm(`Clear this conversation with ${aiName}?`)) return;
     setHistory([]);
@@ -630,6 +723,7 @@ export default function TalkToLumi() {
     setImportBlocks(null);
     setImportText('');
     setPendingEmail(null);
+    setPendingAppActions(null);
     setLumiMessage('');
     sessionStorage.removeItem('lumi_conv');
     // Clear server-side Redis memory too
@@ -853,6 +947,40 @@ export default function TalkToLumi() {
         )}
 
         {/* Journal page preview card — shows fields Lumi filled before saving */}
+        {pendingAppActions && lumiState === 'idle' && (
+          <div style={{ margin:'4px 0 4px 42px', padding:'14px 16px', borderRadius:14, background:'rgba(0,212,170,0.07)', border:'1px solid rgba(0,212,170,0.22)' }}>
+            <div style={{ fontSize:11, color: C.teal, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:10 }}>
+              Lumi app change - review before applying
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:12 }}>
+              {(pendingAppActions.actions || []).map((action, idx) => {
+                const preview = action.preview || pendingAppActions.previews?.[idx] || {};
+                return (
+                  <div key={action.id || idx} style={{ padding:'9px 11px', borderRadius:10, background:'rgba(255,255,255,0.04)', border:`1px solid ${C.brd}` }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', gap:10, fontSize:12, color: C.text, marginBottom:5 }}>
+                      <span style={{ fontWeight:700 }}>{action.operation} · {action.domain}</span>
+                      <span style={{ color: action.confirmationLevel === 'explicit' ? '#fca5a5' : C.teal, fontSize:11 }}>{action.confirmationLevel}</span>
+                    </div>
+                    <div style={{ fontSize:12, color: C.muted, lineHeight:1.6 }}>{preview.message || 'This change needs your confirmation.'}</div>
+                    {preview.before && <div style={{ marginTop:7, fontSize:11, color: C.muted }}><span style={{ color:'#fca5a5' }}>Before:</span> {JSON.stringify(preview.before).slice(0, 180)}</div>}
+                    {preview.after && <div style={{ marginTop:4, fontSize:11, color: C.muted }}><span style={{ color: C.teal }}>After:</span> {JSON.stringify(preview.after).slice(0, 180)}</div>}
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ display:'flex', gap:8 }}>
+              <button onClick={() => confirmAppActions(true)}
+                style={{ padding:'9px 20px', borderRadius:20, border:`1px solid ${C.teal}`, background:'rgba(0,212,170,0.1)', color: C.teal, fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
+                Apply change
+              </button>
+              <button onClick={() => confirmAppActions(false)}
+                style={{ padding:'9px 20px', borderRadius:20, border:`1px solid ${C.brd}`, background:'rgba(255,255,255,0.04)', color: C.muted, fontSize:13, cursor:'pointer', fontFamily:'inherit' }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
         {pendingJournalPage && lumiState === 'idle' && (
           <div style={{ margin:'4px 0 4px 42px', padding:'14px 16px', borderRadius:14, background:'rgba(165,180,252,0.07)', border:'1px solid rgba(165,180,252,0.2)' }}>
             <div style={{ fontSize:11, color:'rgba(165,180,252,0.9)', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:10 }}>

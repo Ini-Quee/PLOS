@@ -6,10 +6,16 @@
 const { pool } = require('../db/connection');
 
 const FREE_LIMITS = {
-  lumi_messages_per_day: 10,
+  // Temporarily high for Lumi app-agent testing. Can be lowered again for launch.
+  lumi_messages_per_day: Number(process.env.LUMI_FREE_MESSAGES_PER_DAY || 10000),
+  lumi_pro_messages_per_day: Number(process.env.LUMI_PRO_MESSAGES_PER_DAY || 10000),
   habits_max: 3,
   journal_types: ['personal'],
 };
+
+function lumiMessageLimitsDisabled() {
+  return process.env.LUMI_DISABLE_MESSAGE_LIMIT === 'true';
+}
 
 // Attaches tier to req.user — call this before any tier check
 async function attachTier(req, res, next) {
@@ -47,4 +53,4 @@ function requirePro(req, res, next) {
   });
 }
 
-module.exports = { attachTier, requirePro, isPro, FREE_LIMITS };
+module.exports = { attachTier, requirePro, isPro, FREE_LIMITS, lumiMessageLimitsDisabled };

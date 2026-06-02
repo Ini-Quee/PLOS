@@ -3,6 +3,7 @@ const router = express.Router();
 const { authenticate } = require('../middleware/authenticate');
 const { pool } = require('../db/connection');
 const { attachTier, isPro, FREE_LIMITS } = require('../middleware/checkTier');
+const logger = require('../lib/logger');
 
 router.use(authenticate);
 
@@ -100,6 +101,40 @@ router.post('/', attachTier, async (req, res) => {
   } catch (err) {
     console.error('POST /habits error:', err);
     res.status(500).json({ error: 'Failed to create habit' });
+  }
+});
+
+router.put('/:id', async (req, res) => {
+  const { title, emoji, category, target_days, identity_label } = req.body;
+  try {
+    const existing = await pool.query(
+      `SELECT * FROM habits WHERE id=$1 AND user_id=$2 AND is_active=true`,
+      [req.params.id, req.user.id]
+    );
+    if (!existing.rows.length) return res.status(404).json({ error: 'Habit not found' });
+    const next = { ...existing.rows[0], ...req.body };
+    if (title !== undefined && !String(title).trim()) {
+      return res.status(400).json({ error: 'Title is required' });
+    }
+    const { rows } = await pool.query(
+      `UPDATE habits
+          SET title=$1, emoji=$2, category=$3, target_days=$4, identity_label=$5, updated_at=NOW()
+        WHERE id=$6 AND user_id=$7 AND is_active=true
+        RETURNING *`,
+      [
+        (next.title || '').trim(),
+        emoji !== undefined ? emoji : (next.emoji || '✅'),
+        category !== undefined ? category : (next.category || 'personal'),
+        target_days !== undefined ? target_days : (next.target_days || [0, 1, 2, 3, 4, 5, 6]),
+        identity_label !== undefined ? identity_label : (next.identity_label || ''),
+        req.params.id,
+        req.user.id,
+      ]
+    );
+    res.json({ habit: rows[0] });
+  } catch (err) {
+    console.error('PUT /habits/:id error:', err);
+    res.status(500).json({ error: 'Failed to update habit' });
   }
 });
 

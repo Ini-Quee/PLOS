@@ -4,13 +4,24 @@
  * Warns and disables features for optional vars.
  * Returns a featureFlags object consumed by route handlers.
  */
+const logger = require('./logger');
+
 function validateEnv() {
-  const required = ['DATABASE_URL', 'JWT_SECRET'];
+  const required = ['DATABASE_URL', 'JWT_SECRET', 'JWT_ACCESS_EXPIRY', 'TOKEN_ENC_KEY'];
   const missing = required.filter(k => !process.env[k]);
 
   if (missing.length > 0) {
-    console.error('[Startup] FATAL — missing required env vars:', missing.join(', '));
-    console.error('[Startup] Copy backend/.env.example to backend/.env and fill in values.');
+    logger.error({ missing }, 'FATAL — missing required env vars');
+    process.exit(1);
+  }
+
+  if (process.env.JWT_SECRET.length < 32) {
+    logger.error({}, 'FATAL — JWT_SECRET must be at least 32 characters');
+    process.exit(1);
+  }
+
+  if (process.env.NODE_ENV === 'production' && !process.env.FRONTEND_URL) {
+    logger.error({}, 'FATAL — FRONTEND_URL must be set in production');
     process.exit(1);
   }
 
@@ -22,6 +33,7 @@ function validateEnv() {
     oauthEnabled:  !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
     voiceEnabled:  !!process.env.OPENAI_API_KEY,
     stripeEnabled: !!process.env.STRIPE_SECRET_KEY,
+    lumiAppAgentEnabled: process.env.LUMI_APP_AGENT_ENABLED === 'true',
   };
 
   const disabled = Object.entries(featureFlags)
@@ -29,12 +41,10 @@ function validateEnv() {
     .map(([k]) => k.replace('Enabled', ''));
 
   if (disabled.length > 0) {
-    console.warn('[Startup] Features disabled (missing env vars):', disabled.join(', '));
+    logger.warn({ disabled }, 'features disabled (missing env vars)');
   }
 
-  console.log('[Startup] Env validated. Features enabled:',
-    Object.entries(featureFlags).filter(([, v]) => v).map(([k]) => k.replace('Enabled', '')).join(', ') || 'none'
-  );
+  logger.info({ enabled: Object.entries(featureFlags).filter(([, v]) => v).map(([k]) => k.replace('Enabled', '')) }, 'env validated');
 
   return featureFlags;
 }

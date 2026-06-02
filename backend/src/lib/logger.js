@@ -8,7 +8,7 @@ try { pino = require('pino'); } catch { pino = null; }
 
 const ALLOWED = new Set([
   'requestId','userId','route','intent','action','resource',
-  'where','err','status','ms','ip','event','count',
+  'where','err','status','ms','ip','event','count','model','lane',
 ]);
 
 function redact(obj = {}) {

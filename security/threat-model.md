@@ -37,10 +37,10 @@ Scope: React frontend, Express API, PostgreSQL database, authentication flows, A
 | Repudiation | User denies sensitive action | Weak investigation trail | Authentication and mutation audit logging with user, IP, user agent, status, and details | Implemented |
 | Repudiation | Missing admin action history | Investigation gaps | Define admin-only actions before adding admin features; log all admin changes | Planned |
 | Information Disclosure | Secrets committed to Git | API key or database compromise | `.env` ignored, `.env.example` provided, Key Vault planned | Partially implemented |
-| Information Disclosure | Verbose errors expose internals | Reconnaissance aid | Generic client errors and server-side error logging with request ID | Implemented |
+| Information Disclosure | Verbose errors expose internals | Reconnaissance aid | Generic client errors; request ID correlation recommended for production troubleshooting | Partially implemented |
 | Information Disclosure | Cloud database exposed publicly | Data breach | Private networking, firewall rules, least-privilege DB access, Defender for Cloud | Planned |
-| Denial of Service | API abuse or AI endpoint abuse | Cost increase and availability loss | Route rate limits, subscription/tier limits for Lumi messages, Redis rate-limit backend | Partially implemented |
-| Denial of Service | Large uploads exhaust memory | API instability | Multer file-size limits for memory uploads | Implemented |
+| Denial of Service | API abuse or AI endpoint abuse | Cost increase and availability loss | Route rate limits on selected sensitive endpoints; expand limits to AI endpoints | Partially implemented |
+| Denial of Service | Large uploads exhaust memory | API instability | Add explicit file-size limits to memory uploads | Planned |
 | Elevation of Privilege | User changes JWT claims | Privilege escalation | JWT server-side verification; no trusted client-side role claims | Implemented |
 | Elevation of Privilege | Over-permissive cloud identity | Cloud resource compromise | Managed Identity with least privilege and Key Vault access policies | Planned |
 
@@ -52,7 +52,7 @@ Primary risks include password guessing, credential stuffing, MFA bypass attempt
 
 ### API Abuse
 
-Sensitive routes can be abused for brute force, data scraping, or AI cost exhaustion. Authentication routes and selected write-heavy routes are rate limited. Lumi messages now have an IP-based limiter in addition to product-tier message limits. Week 2 should add consistent rate limits to all expensive or write-heavy routes.
+Sensitive routes can be abused for brute force, data scraping, or AI cost exhaustion. Authentication routes and selected write-heavy routes are rate limited. Week 2 should add consistent rate limits to all expensive or write-heavy routes, including AI endpoints.
 
 ### Session Hijacking
 

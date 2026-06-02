@@ -44,6 +44,7 @@ export const NAV_ITEMS = {
     { icon: '💰', label: 'Budget',       path: '/budget'       },
   ],
   more: [
+    { icon: '📧', label: 'Email',        path: '/email'        },
     { icon: '⚙️', label: 'Settings',    path: '/settings'     },
   ],
 };
@@ -397,7 +398,7 @@ export function Sidebar() {
           marginBottom: 12,
         }}
       >
-        PLOS<span style={{ color: palette.text, opacity: 0.3 }}>.</span>
+        IniQ<span style={{ color: palette.text, opacity: 0.3 }}>.</span>
       </div>
 
       {/* Today — Dashboard, Planner, Lumi */}
@@ -446,8 +447,9 @@ function BottomNav({ palette }) {
   return (
     <div style={{
       position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200,
-      height: 60,
-      background: 'rgba(6,6,14,0.92)',
+      minHeight: 60,
+      paddingBottom: 'env(safe-area-inset-bottom)',
+      background: 'rgba(6,6,14,0.96)',
       backdropFilter: 'blur(20px)',
       WebkitBackdropFilter: 'blur(20px)',
       borderTop: `1px solid ${palette.border}`,
@@ -469,15 +471,15 @@ function BottomNav({ palette }) {
             >
               <div style={{
                 width: 44, height: 44, borderRadius: 14,
-                background: isAct ? 'rgba(200,149,92,0.35)' : 'rgba(200,149,92,0.18)',
-                border: `1.5px solid rgba(200,149,92,0.45)`,
+                background: isAct ? 'rgba(122,139,82,0.35)' : 'rgba(122,139,82,0.18)',
+                border: `1.5px solid rgba(122,139,82,0.45)`,
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
                 justifyContent: 'center', gap: 1,
                 marginBottom: 2,
               }}>
                 <span style={{ fontSize: 20, lineHeight: 1 }}>{item.icon}</span>
               </div>
-              <span style={{ fontSize: 9, fontWeight: 600, color: C.amber }}>{item.label}</span>
+              <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--color-primary)' }}>{item.label}</span>
             </button>
           );
         }
@@ -538,7 +540,7 @@ function MobileDrawer({ open, onClose, palette }) {
       }}>
         <style>{`@keyframes slideInLeft { from { transform:translateX(-100%) } to { transform:translateX(0) } }`}</style>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
-          <div style={{ fontSize:20, fontWeight:800, color:palette.accent }}>PLOS.</div>
+          <div style={{ fontSize:20, fontWeight:800, color:palette.accent }}>IniQ.</div>
           <button onClick={onClose} style={{ background:'none', border:'none', color:C.muted, fontSize:20, cursor:'pointer' }}>✕</button>
         </div>
         {NAV_ITEMS.today.map(item => (
@@ -630,7 +632,8 @@ export default function SidebarLayout({ children, customStyles = {} }) {
 
         <div style={{
           flex: 1, overflow: 'auto', position: 'relative', zIndex: 1,
-          paddingBottom: isMobile ? 72 : 0,
+          paddingBottom: isMobile ? 'calc(72px + env(safe-area-inset-bottom))' : 0,
+          overscrollBehavior: isMobile ? 'none' : 'auto',
         }}>
           <AlarmBar />
           {children}

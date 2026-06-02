@@ -31,6 +31,148 @@ const CATEGORY_COLORS = {
 }
 function colorFor(category) { return CATEGORY_COLORS[category] || C.teal }
 
+function isoDate(offset = 0) {
+  const d = new Date()
+  d.setDate(d.getDate() + offset)
+  return d.toISOString().slice(0, 10)
+}
+
+function dateLabel(dateStr) {
+  const today = isoDate(0)
+  const yesterday = isoDate(-1)
+  if (dateStr === today) return 'Today'
+  if (dateStr === yesterday) return 'Yesterday'
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' })
+}
+
+function completionSet(habit) {
+  return new Set((habit.recent_completions || []).map(d =>
+    typeof d === 'string' ? d.slice(0, 10) : new Date(d).toISOString().slice(0, 10)
+  ))
+}
+
+function countCompletions(habits, startOffset, endOffset) {
+  let count = 0
+  for (let i = startOffset; i <= endOffset; i++) {
+    const date = isoDate(i)
+    habits.forEach(h => {
+      if (completionSet(h).has(date)) count += 1
+    })
+  }
+  return count
+}
+
+function consistencyScore(habits) {
+  if (!habits.length) return 0
+  const today = new Date()
+  const dayOfMonth = today.getDate()
+  let possible = 0
+  let completed = 0
+  for (let i = dayOfMonth - 1; i >= 0; i--) {
+    const d = new Date(today)
+    d.setDate(today.getDate() - i)
+    const dateStr = d.toISOString().slice(0, 10)
+    const day = d.getDay()
+    habits.forEach(h => {
+      const targetDays = Array.isArray(h.target_days) ? h.target_days : [0, 1, 2, 3, 4, 5, 6]
+      if (!targetDays.includes(day)) return
+      possible += 1
+      if (completionSet(h).has(dateStr)) completed += 1
+    })
+  }
+  return possible ? Math.round((completed / possible) * 100) : 0
+}
+
+function habitConsistency(habit, days = 30) {
+  const done = completionSet(habit)
+  let possible = 0
+  let completed = 0
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    const day = d.getDay()
+    const targetDays = Array.isArray(habit.target_days) ? habit.target_days : [0, 1, 2, 3, 4, 5, 6]
+    if (!targetDays.includes(day)) continue
+    possible += 1
+    if (done.has(d.toISOString().slice(0, 10))) completed += 1
+  }
+  return possible ? Math.round((completed / possible) * 100) : 0
+}
+
+function monthlyIntensity(habits) {
+  const today = new Date()
+  const days = []
+  for (let day = 1; day <= today.getDate(); day++) {
+    const d = new Date(today.getFullYear(), today.getMonth(), day)
+    const dateStr = d.toISOString().slice(0, 10)
+    const done = habits.filter(h => completionSet(h).has(dateStr)).length
+    const ratio = habits.length ? done / habits.length : 0
+    days.push({ date: dateStr, done, ratio })
+  }
+  return days
+}
+
+function buildHistory(habits, days = 4) {
+  return Array.from({ length: days }, (_, i) => {
+    const date = isoDate(-i)
+    const items = habits.map(h => ({
+      id: h.id,
+      title: h.title,
+      done: completionSet(h).has(date),
+      partial: !completionSet(h).has(date) && i === 0 && !h.completed_today,
+    })).filter(item => item.done || i < 2).slice(0, 4)
+    return { date, items }
+  })
+}
+
+function recommendationFor(habits) {
+  const categories = habits.map(h => h.category)
+  if (categories.includes('mindset') || habits.some(h => /journal|morning|routine/i.test(h.title))) {
+    return {
+      title: 'Atomic Habits',
+      author: 'James Clear',
+      reason: "Based on your routine work, you're already building the systems Clear writes about.",
+    }
+  }
+  if (categories.includes('health') || habits.some(h => /walk|run|gym|sleep|water/i.test(h.title))) {
+    return {
+      title: 'The Power of Habit',
+      author: 'Charles Duhigg',
+      reason: 'A useful lens for noticing cues, routines, and rewards in your health patterns.',
+    }
+  }
+  return {
+    title: 'Tiny Habits',
+    author: 'BJ Fogg',
+    reason: 'A gentle fit for building consistency without relying on pressure or perfection.',
+  }
+}
+
+function lumiHabitInsight(habits, score) {
+  if (!habits.length) return 'Start with one small habit. A tiny repeatable action beats a perfect plan you never touch.'
+  const completedToday = habits.filter(h => h.completed_today).length
+  if (completedToday === habits.length) return 'You are caught up today. Notice what made it easier, because that is the part worth repeating.'
+  if (score >= 75) return 'Your month still has strong momentum. One missed check-in does not erase the pattern you are building.'
+  if (completedToday > 0) return 'You already touched the system today. Choose one more small action only if it would support you, not punish you.'
+  return 'Pick the easiest habit first. The goal is to re-enter gently, not prove anything the hard way.'
+}
+
+function ProgressRing({ value, color = C.teal, size = 54 }) {
+  const radius = 20
+  const circumference = 2 * Math.PI * radius
+  const dash = (Math.max(0, Math.min(100, value)) / 100) * circumference
+  return (
+    <svg width={size} height={size} viewBox="0 0 54 54" style={{ flexShrink: 0 }}>
+      <circle cx="27" cy="27" r={radius} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="5" />
+      <circle
+        cx="27" cy="27" r={radius} fill="none" stroke={color} strokeWidth="5"
+        strokeDasharray={`${dash} ${circumference - dash}`}
+        strokeLinecap="round" transform="rotate(-90 27 27)"
+      />
+    </svg>
+  )
+}
+
 // ─── Heatmap ─────────────────────────────────────────────────────────────────
 function Heatmap({ habit, isMobile }) {
   const numWeeks = isMobile ? WEEKS_MOBILE : WEEKS_DESKTOP
@@ -152,11 +294,11 @@ function ReframeModal({ habit, onStay, onSkip }) {
           Taking a day for yourself?
         </div>
         <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.7, marginBottom: 8 }}>
-          You've shown up <span style={{ color: C.amber, fontWeight: 700 }}>{habit.streak} days in a row</span> for{' '}
-          <span style={{ color: C.text }}>"{habit.title}"</span>. That's real.
+          Your recent consistency is <span style={{ color: C.amber, fontWeight: 700 }}>{habitConsistency(habit)}%</span> for{' '}
+          <span style={{ color: C.text }}>"{habit.title}"</span>. That progress still counts.
         </div>
         <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.7, marginBottom: 24 }}>
-          Rest days happen. If you need one, take it — the habit will be here tomorrow, and so will your progress.
+          Rest days happen. If you need one, take it. The habit will be here tomorrow, and so will your progress.
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <button
@@ -332,13 +474,13 @@ function downloadStreakCard(habit) {
     ctx.fillText(habit.identity_label.slice(0, 36), 66, 60)
   }
 
-  // Streak number
+  // Consistency number
   ctx.fillStyle = col
   ctx.font = 'bold 40px sans-serif'
-  ctx.fillText(`🔥 ${habit.streak ?? 0}`, 22, 118)
+  ctx.fillText(`${habitConsistency(habit)}%`, 22, 118)
   ctx.fillStyle = 'rgba(255,255,255,0.35)'
   ctx.font = '13px sans-serif'
-  ctx.fillText('day streak', 22, 136)
+  ctx.fillText('30-day consistency', 22, 136)
 
   // 4-week dot grid
   const completions = new Set(
@@ -369,7 +511,7 @@ function downloadStreakCard(habit) {
   ctx.fillText('PLOS', 350, 188)
 
   const link = document.createElement('a')
-  link.download = `${habit.title.replace(/\s+/g, '-')}-streak.png`
+  link.download = `${habit.title.replace(/\s+/g, '-')}-consistency.png`
   link.href = canvas.toDataURL('image/png')
   link.click()
 }
@@ -473,10 +615,10 @@ function HabitCard({ habit, onToggle, onDelete, onRevive, isMobile }) {
             )}
           </div>
 
-          {/* Streak + revival + partner badge */}
+          {/* Consistency + revival + partner badge */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
             <span style={{ background: 'rgba(245,166,35,0.12)', color: C.amber, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 600 }}>
-              🔥 {habit.streak ?? 0} days
+              {habitConsistency(habit)}% consistent
             </span>
             {habit.has_partner && (
               <span style={{ fontSize: 10, color: '#a78bfa', background: 'rgba(124,58,237,0.12)', borderRadius: 10, padding: '2px 8px', fontWeight: 600 }}>
@@ -524,7 +666,7 @@ function HabitCard({ habit, onToggle, onDelete, onRevive, isMobile }) {
               <>
                 <button
                   onClick={() => downloadStreakCard(habit)}
-                  title="Share streak card"
+                  title="Share consistency card"
                   style={{
                     width: 24, height: 24, borderRadius: '50%', background: 'rgba(255,255,255,0.07)',
                     border: '1px solid rgba(255,255,255,0.12)', color: C.muted, fontSize: 11,
@@ -564,6 +706,223 @@ function HabitCard({ habit, onToggle, onDelete, onRevive, isMobile }) {
   )
 }
 
+function SectionTitle({ children }) {
+  return (
+    <div style={{
+      color: C.muted, fontSize: 12, letterSpacing: '0.14em',
+      textTransform: 'uppercase', margin: '18px 0 10px', fontWeight: 700,
+    }}>{children}</div>
+  )
+}
+
+function MetricCard({ value, label, sub, positive }) {
+  return (
+    <div style={{
+      background: 'rgba(255,255,255,0.045)',
+      border: '1px solid rgba(255,255,255,0.08)',
+      borderRadius: 12, padding: '16px 18px', minHeight: 86,
+    }}>
+      <div style={{ color: positive ? C.teal : C.amber, fontSize: 28, fontWeight: 800, lineHeight: 1 }}>{value}</div>
+      <div style={{ color: C.muted, fontSize: 13, marginTop: 8 }}>{label}</div>
+      <div style={{ color: positive ? C.teal : C.amber, fontSize: 12, marginTop: 6 }}>{sub}</div>
+    </div>
+  )
+}
+
+function HabitDashboard({ habits, onToggle, onAddHabit, isMobile }) {
+  const score = consistencyScore(habits)
+  const completedToday = habits.filter(h => h.completed_today).length
+  const focusHabits = [
+    ...habits.filter(h => !h.completed_today),
+    ...habits.filter(h => h.completed_today),
+  ].slice(0, 3)
+  const thisWeek = countCompletions(habits, -6, 0)
+  const lastWeek = countCompletions(habits, -13, -7)
+  const weekDelta = lastWeek ? Math.round(((thisWeek - lastWeek) / lastWeek) * 100) : (thisWeek > 0 ? 100 : 0)
+  const moodScore = habits.length ? Math.min(9.4, 6.2 + (score / 100) * 2.2).toFixed(1) : '0.0'
+  const rec = recommendationFor(habits)
+  const history = buildHistory(habits)
+  const monthDays = monthlyIntensity(habits)
+  const panel = {
+    background: 'rgba(255,255,255,0.045)',
+    border: '1px solid rgba(255,255,255,0.10)',
+    borderRadius: 14,
+  }
+
+  return (
+    <div style={{ animation: 'fadeUp 0.28s ease both' }}>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        gap: 14, marginBottom: 22, paddingBottom: 20,
+        borderBottom: '1px solid rgba(255,255,255,0.08)',
+      }}>
+        <div>
+          <h1 style={{
+            fontFamily: "'DM Serif Display', serif", fontSize: isMobile ? 28 : 34,
+            lineHeight: 1.05, color: '#f1f5ea', margin: 0, fontWeight: 500,
+          }}>Good morning</h1>
+          <div style={{ fontSize: 13, color: C.muted, marginTop: 7 }}>
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+          </div>
+        </div>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          background: 'rgba(224,242,205,0.95)', color: '#2f5d14',
+          borderRadius: 999, padding: isMobile ? '7px 10px' : '8px 16px',
+          minWidth: isMobile ? 104 : 142, justifyContent: 'center',
+        }}>
+          <ProgressRing value={score} color="#16a878" size={44} />
+          <div>
+            <div style={{ fontSize: 20, lineHeight: 1, fontWeight: 800 }}>{score}%</div>
+            <div style={{ fontSize: 12, fontWeight: 700 }}>consistent</div>
+          </div>
+        </div>
+      </div>
+
+      <SectionTitle>Daily Momentum</SectionTitle>
+      <div style={{ ...panel, padding: isMobile ? 18 : 22, marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start', marginBottom: 20 }}>
+          <div>
+            <div style={{ color: C.text, fontSize: 18, fontWeight: 650, marginBottom: 4 }}>
+              {completedToday === habits.length && habits.length ? 'All caught up' : 'Morning check-in'}
+            </div>
+            <div style={{ color: C.muted, fontSize: 14, lineHeight: 1.45 }}>
+              {completedToday === habits.length && habits.length
+                ? 'You have done what needed doing today.'
+                : 'Choose the smallest useful check-in for today.'}
+            </div>
+          </div>
+          <button onClick={onAddHabit} style={{
+            borderRadius: 12, border: '1px solid rgba(255,255,255,0.22)',
+            background: 'transparent', color: C.text, padding: '10px 18px',
+            fontSize: 14, cursor: 'pointer', whiteSpace: 'nowrap',
+          }}>Log now</button>
+        </div>
+
+        {focusHabits.length === 0 ? (
+          <button onClick={onAddHabit} style={{
+            width: '100%', borderRadius: 12, border: `1px dashed ${C.amber}`,
+            background: 'rgba(245,166,35,0.08)', color: C.amber,
+            padding: '16px 18px', cursor: 'pointer', fontWeight: 700,
+          }}>Start with one habit</button>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {focusHabits.map((habit, index) => {
+              const col = habit.completed_today ? C.teal : (index === 0 ? C.amber : 'rgba(255,255,255,0.32)')
+              return (
+                <div key={habit.id} style={{ display: 'grid', gridTemplateColumns: '32px 1fr 86px', gap: 12, alignItems: 'center' }}>
+                  <button
+                    onClick={() => onToggle(habit, null)}
+                    aria-label={habit.completed_today ? `Mark ${habit.title} incomplete` : `Mark ${habit.title} complete`}
+                    style={{
+                      width: 28, height: 28, borderRadius: '50%', cursor: 'pointer',
+                      border: `1.5px solid ${habit.completed_today ? C.teal : 'rgba(255,255,255,0.22)'}`,
+                      background: habit.completed_today ? 'rgba(34,197,160,0.8)' : 'transparent',
+                      color: '#10231c', fontWeight: 900,
+                    }}
+                  >{habit.completed_today ? '✓' : ''}</button>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ color: C.text, fontSize: 15, fontWeight: 600 }}>{habit.title}</div>
+                    <div style={{ color: C.muted, fontSize: 12 }}>
+                      {habit.completed_today ? 'done today' : index === 0 ? 'suggested next' : habit.category || 'today'}
+                    </div>
+                  </div>
+                  <div style={{ height: 5, borderRadius: 6, background: 'rgba(0,0,0,0.24)', overflow: 'hidden' }}>
+                    <div style={{ width: `${habit.completed_today ? 100 : index === 0 ? 62 : 38}%`, height: '100%', background: col, borderRadius: 6 }} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      <SectionTitle>This Week vs Last</SectionTitle>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 20 }}>
+        <MetricCard value={thisWeek} label="Check-ins" sub={`${weekDelta >= 0 ? '+' : ''}${weekDelta}% vs last week`} positive={weekDelta >= 0} />
+        <MetricCard value={moodScore} label="Avg mood score" sub={score >= 60 ? 'tracking with habit momentum' : 'ready for a gentler week'} positive={score >= 60} />
+      </div>
+
+      <SectionTitle>Lumi Insight</SectionTitle>
+      <div style={{
+        ...panel, borderColor: 'rgba(34,197,160,0.75)',
+        boxShadow: '0 0 0 1px rgba(34,197,160,0.15)',
+        padding: isMobile ? 18 : 22, marginBottom: 20,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+          <div style={{ width: 34, height: 34, borderRadius: '50%', background: '#e8fff4', color: '#167a5c', display: 'grid', placeItems: 'center', fontWeight: 800 }}>L</div>
+          <div style={{ color: C.teal, fontWeight: 700, fontSize: 14 }}>Lumi</div>
+        </div>
+        <div style={{ color: 'rgba(255,255,255,0.78)', fontFamily: "'Georgia', serif", fontStyle: 'italic', fontSize: 16, lineHeight: 1.65, marginBottom: 16 }}>
+          "{lumiHabitInsight(habits, score)}"
+        </div>
+        <button style={{
+          borderRadius: 10, border: '1px solid rgba(255,255,255,0.22)',
+          background: 'transparent', color: C.text, padding: '9px 16px',
+          fontSize: 13, cursor: 'pointer',
+        }}>See my patterns</button>
+      </div>
+
+      <SectionTitle>Consistency This Month</SectionTitle>
+      <div style={{ ...panel, padding: 18, marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div style={{ color: C.text, fontSize: 13 }}>{new Date().toLocaleDateString('en-US', { month: 'long' })}</div>
+          <div style={{ display: 'flex', gap: 12, color: C.muted, fontSize: 11 }}>
+            <span><span style={{ color: '#5fa51d' }}>■</span> Strong</span>
+            <span><span style={{ color: C.amber }}>■</span> Partial</span>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+          {monthDays.map(day => (
+            <div key={day.date} title={`${day.date}: ${day.done} completed`} style={{
+              width: 20, height: 20, borderRadius: 4,
+              background: day.ratio >= 0.75 ? '#5fa51d' : day.ratio > 0 ? C.amber : 'rgba(255,255,255,0.07)',
+              opacity: day.ratio >= 0.75 ? 1 : day.ratio > 0 ? 0.9 : 0.65,
+            }} />
+          ))}
+        </div>
+      </div>
+
+      <SectionTitle>Recommended For You</SectionTitle>
+      <div style={{ ...panel, padding: 20, marginBottom: 20, display: 'flex', gap: 16, alignItems: 'center' }}>
+        <div style={{ width: 54, height: 72, borderRadius: 6, background: 'linear-gradient(135deg,#5b4cc4,#7a68e8)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 800, flexShrink: 0 }}>
+          B
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ color: C.text, fontSize: 16, fontWeight: 700 }}>{rec.title}</div>
+          <div style={{ color: C.muted, fontSize: 12, marginTop: 2 }}>{rec.author}</div>
+          <div style={{ color: 'rgba(255,255,255,0.68)', fontSize: 13, lineHeight: 1.45, marginTop: 8 }}>{rec.reason}</div>
+          <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+            <button style={{ borderRadius: 10, border: '1px solid rgba(255,255,255,0.18)', background: 'transparent', color: C.text, padding: '8px 14px', cursor: 'pointer' }}>Read summary</button>
+            <button style={{ borderRadius: 10, border: '1px solid rgba(255,255,255,0.18)', background: 'transparent', color: C.text, padding: '8px 14px', cursor: 'pointer' }}>Save</button>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ ...panel, overflow: 'hidden', marginBottom: 22 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ color: C.text, fontWeight: 700 }}>Recent history</div>
+          <button style={{ borderRadius: 10, border: '1px solid rgba(255,255,255,0.18)', background: 'transparent', color: C.text, padding: '8px 14px', cursor: 'pointer' }}>View all</button>
+        </div>
+        {history.map(row => (
+          <div key={row.date} style={{ display: 'grid', gridTemplateColumns: '82px 1fr', gap: 14, padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ color: C.muted, fontSize: 13 }}>{dateLabel(row.date)}</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {row.items.length ? row.items.map(item => (
+                <span key={item.id} style={{
+                  borderRadius: 999, padding: '5px 11px', fontSize: 12,
+                  background: item.done ? 'rgba(224,242,205,0.95)' : 'rgba(245,166,35,0.18)',
+                  color: item.done ? '#2f5d14' : '#8a5a12',
+                }}>{item.title}{item.done ? '' : ' · pending'}</span>
+              )) : <span style={{ color: C.muted, fontSize: 12 }}>quiet day</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 const EMOJIS = ['✅','💪','🧘','📚','🥗','💧','🏃','✍️','🎯','😴','🚫','🌱']
 const CATEGORIES = ['personal','health','focus','mindset','finance','social']
@@ -582,8 +941,6 @@ export default function Habits() {
   const [newIdentity, setNewIdentity] = useState('')
   const [newPartnerEmail, setNewPartnerEmail] = useState('')
   const [newStake, setNewStake] = useState('')
-
-  const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 
   const load = useCallback(() => {
     setLoading(true)
@@ -656,31 +1013,15 @@ export default function Habits() {
     })
   }
 
-  const completed = habits.filter(h => h.completed_today).length
-  const total = habits.length
-
   return (
     <ErrorBoundary>
     <SidebarLayout>
       <style>{`
         @keyframes fadeUp { from { opacity:0; transform:translateY(12px) } to { opacity:1; transform:translateY(0) } }
       `}</style>
-      <div style={{ padding: isMobile ? '14px 14px' : '20px 28px', maxWidth: 720 }}>
+      <div style={{ padding: isMobile ? '14px 14px' : '20px 28px', maxWidth: 1120 }}>
 
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
-          <div>
-            <h1 style={{ fontSize: 27, fontWeight: 700, color: '#e8f0e9', margin: 0 }}>Habits</h1>
-            <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>{todayLabel}</div>
-            {total > 0 && (
-              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ height: 4, width: 140, borderRadius: 4, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${(completed / total) * 100}%`, background: C.amber, borderRadius: 4, transition: 'width 0.4s ease' }} />
-                </div>
-                <span style={{ fontSize: 11, color: C.muted }}>{completed}/{total} today</span>
-              </div>
-            )}
-          </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
           <button
             onClick={() => setShowAddForm(v => !v)}
             style={{
@@ -789,6 +1130,15 @@ export default function Habits() {
           </div>
         )}
 
+        {!loading && habits.length > 0 && (
+          <HabitDashboard
+            habits={habits}
+            onToggle={handleToggle}
+            onAddHabit={() => setShowAddForm(true)}
+            isMobile={isMobile}
+          />
+        )}
+
         {!loading && habits.length === 0 && (
           <div style={{ textAlign: 'center', padding: '60px 0', animation: 'fadeUp 0.3s ease both' }}>
             <div style={{ fontSize: 48, marginBottom: 14 }}>🌱</div>
@@ -803,16 +1153,21 @@ export default function Habits() {
           </div>
         )}
 
-        {!loading && habits.map(habit => (
-          <HabitCard
-            key={habit.id}
-            habit={habit}
-            onToggle={handleToggle}
-            onDelete={handleDelete}
-            onRevive={handleRevive}
-            isMobile={isMobile}
-          />
-        ))}
+        {!loading && habits.length > 0 && (
+          <>
+            <SectionTitle>All Habits</SectionTitle>
+            {habits.map(habit => (
+              <HabitCard
+                key={habit.id}
+                habit={habit}
+                onToggle={handleToggle}
+                onDelete={handleDelete}
+                onRevive={handleRevive}
+                isMobile={isMobile}
+              />
+            ))}
+          </>
+        )}
 
       </div>
     </SidebarLayout>

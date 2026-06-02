@@ -916,6 +916,11 @@ export default function Dashboard() {
           <div style={{ gridColumn: isMobile ? 'span 2' : 'span 4' }}>
             <ErrorBoundary compact label="Affirmations"><AffirmationsWidget /></ErrorBoundary>
           </div>
+
+          {/* Discovery Panel — billing, connections, quick settings */}
+          <div style={{ gridColumn: isMobile ? 'span 2' : 'span 4' }}>
+            <ErrorBoundary compact label="Account"><DiscoveryPanel /></ErrorBoundary>
+          </div>
         </div>
       </SidebarLayout>
       {showOnboarding && (
@@ -1197,6 +1202,132 @@ function SavingsCard() {
           })}
         </div>
       )}
+    </div>
+  )
+}
+
+// ─── Discovery Panel ─────────────────────────────────────────────────────────
+function DiscoveryPanel() {
+  const navigate   = useNavigate()
+  const { user }   = useAuth()
+  const isPro      = user?.subscription_tier === 'pro'
+
+  const [googleStatus, setGoogleStatus] = useState(null)
+  const [notifPermission, setNotifPermission] = useState(
+    typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
+  )
+
+  useEffect(() => {
+    api.get('/oauth/google/status').then(r => setGoogleStatus(r.data)).catch(() => setGoogleStatus({ connected: false }))
+  }, [])
+
+  const SAGE = 'var(--color-primary)'
+  const cardStyle = {
+    background: 'rgba(20,12,6,0.55)',
+    border: '1px solid rgba(122,139,82,0.15)',
+    borderRadius: 14,
+    padding: '16px 18px',
+    flex: 1,
+    minWidth: 0,
+  }
+
+  return (
+    <div style={{
+      ...GLASS,
+      borderRadius: 16,
+      padding: '20px 22px',
+      animation: 'fadeUp 0.5s 0.8s ease both',
+      borderTop: '1px solid rgba(122,139,82,0.2)',
+    }}>
+      <div style={{ fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span>⚡</span> Account &amp; Connections
+      </div>
+
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        {/* Card 1: Plan */}
+        <div style={cardStyle}>
+          <div style={{ fontSize: 11, color: C.muted, marginBottom: 8 }}>Plan</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: isPro ? '#00d4aa' : C.text }}>
+                {isPro ? '✨ Pro' : 'Free'}
+              </div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
+                {isPro ? 'All features unlocked' : '10 Lumi msgs/day · 3 habits'}
+              </div>
+            </div>
+            {isPro ? (
+              <button
+                onClick={async () => { try { const r = await api.post('/billing/portal'); window.location.href = r.data.url; } catch {} }}
+                style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(0,212,170,0.3)', background: 'transparent', color: '#00d4aa', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+              >Manage →</button>
+            ) : (
+              <button
+                onClick={() => navigate('/upgrade')}
+                style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'rgba(122,139,82,0.85)', color: '#080503', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+              >Upgrade →</button>
+            )}
+          </div>
+        </div>
+
+        {/* Card 2: Gmail */}
+        <div style={cardStyle}>
+          <div style={{ fontSize: 11, color: C.muted, marginBottom: 8 }}>Gmail</div>
+          {googleStatus === null ? (
+            <div style={{ fontSize: 12, color: C.muted }}>Checking…</div>
+          ) : googleStatus.connected ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 16 }}>✅</span>
+              <div>
+                <div style={{ fontSize: 13, color: '#00d4aa', fontWeight: 600 }}>Connected</div>
+                <div style={{ fontSize: 11, color: C.muted }}>Ready to send emails</div>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <div style={{ fontSize: 12, color: C.muted }}>Not connected</div>
+              <a
+                href={`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/oauth/google`}
+                style={{ padding: '6px 14px', borderRadius: 8, background: '#fff', color: '#333', fontSize: 12, fontWeight: 600, textDecoration: 'none', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+              >Connect →</a>
+            </div>
+          )}
+        </div>
+
+        {/* Card 3: Notifications */}
+        <div style={cardStyle}>
+          <div style={{ fontSize: 11, color: C.muted, marginBottom: 8 }}>Notifications</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <div style={{ fontSize: 12, color: notifPermission === 'granted' ? '#00d4aa' : C.muted }}>
+              {notifPermission === 'granted' ? '✅ Enabled' : notifPermission === 'denied' ? '🚫 Blocked in browser' : '⭕ Not set up'}
+            </div>
+            {notifPermission === 'default' && (
+              <button
+                onClick={async () => { const r = await Notification.requestPermission(); setNotifPermission(r); }}
+                style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(122,139,82,0.4)', background: 'rgba(122,139,82,0.1)', color: SAGE, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+              >Enable →</button>
+            )}
+          </div>
+        </div>
+
+        {/* Card 4: Quick settings chips */}
+        <div style={{ ...cardStyle, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ fontSize: 11, color: C.muted, marginBottom: 0 }}>Quick settings</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {[
+              { label: 'Theme', section: 'appearance' },
+              { label: 'Lumi voice', section: 'voice' },
+              { label: 'Notif time', section: 'notifications' },
+            ].map(({ label, section }) => (
+              <button
+                key={section}
+                onClick={() => navigate(`/settings?section=${section}`)}
+                style={{ padding: '5px 12px', borderRadius: 20, border: '1px solid rgba(122,139,82,0.25)', background: 'rgba(122,139,82,0.08)', color: C.text, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}
+              >{label}</button>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

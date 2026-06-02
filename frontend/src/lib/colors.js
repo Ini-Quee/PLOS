@@ -3,16 +3,16 @@ export const Colors = {
   background: '#080503',
   surface: '#140C06',
   card: '#16100A',
-  border: 'rgba(200, 149, 92, 0.09)',
+  border: 'rgba(122, 139, 82, 0.12)',
 
   // Brand / accent
-  amber: '#C8955C',
-  amberBright: '#D4A06A',
+  sage: '#7A8B52',
+  sageBright: '#8FA060',
   purple: '#9B7FD4',
   teal: '#5BA88A',
   tealSoft: '#7ABFB8',
   blue: '#7AAEE8',
-  sienna: '#D4A06A',
+  gold: '#A8935A',
   coral: '#E05252',
   green: '#4CAF7D',
 
@@ -23,29 +23,29 @@ export const Colors = {
 
   // Semantic
   success: '#4CAF7D',
-  warning: '#C8955C',
+  warning: '#A8935A',
   error: '#E05252',
   info: '#7AAEE8',
 };
 
 export const ModuleColors = {
-  personal:  '#C8955C',   // amber
+  personal:  '#7A8B52',   // sage olive
   spiritual: '#9B7FD4',   // muted purple
   budget:    '#5BA88A',   // muted teal/sage
   wellness:  '#7ABFB8',   // soft teal
   goals:     '#7AAEE8',   // muted blue
-  business:  '#D4A06A',   // sienna/gold
+  business:  '#A8935A',   // warm brown-gold
   // legacy keys
-  journal:   '#C8955C',
+  journal:   '#7A8B52',
   habits:    '#4CAF7D',
   sleep:     '#9B7FD4',
-  bible:     '#C8955C',
+  bible:     '#7A8B52',
   hydration: '#7AAEE8',
   focus:     '#E05252',
   reading:   '#9B7FD4',
   exercise:  '#4CAF7D',
-  prayer:    '#C8955C',
-  lumi:      '#C8955C',
+  prayer:    '#7A8B52',
+  lumi:      '#7A8B52',
   dashboard: '#7AAEE8',
   settings:  '#9B8A7A',
 };
@@ -58,12 +58,12 @@ export const getColorWithOpacity = (color, opacity) => {
 };
 
 export const gradients = {
-  primary: ['#C8955C', '#D4A06A'],
+  primary: ['#7A8B52', '#8FA060'],
   success: ['#4CAF7D', '#5BA88A'],
-  premium: ['#C8955C', '#D4A06A'],
+  premium: ['#A8935A', '#BFA870'],
   calm:    ['#9B7FD4', '#7AAEE8'],
   ocean:   ['#5BA88A', '#7ABFB8'],
-  fire:    ['#E05252', '#C8955C'],
+  fire:    ['#E05252', '#A8935A'],
 };
 
 export const getGradient = (gradientName, direction = '135deg') => {
@@ -73,7 +73,7 @@ export const getGradient = (gradientName, direction = '135deg') => {
 };
 
 export const getModuleGlow = (moduleName, intensity = 0.3) => {
-  const color = ModuleColors[moduleName] || Colors.amber;
+  const color = ModuleColors[moduleName] || Colors.sage;
   return getColorWithOpacity(color, intensity);
 };
 

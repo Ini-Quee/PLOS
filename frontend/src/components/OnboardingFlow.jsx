@@ -118,10 +118,10 @@ export default function OnboardingFlow({ userName, onDone }) {
             Personal Life OS
           </div>
           <div style={{ fontSize: 30, fontWeight: 800, color: '#e8e8f0', lineHeight: 1.2, marginBottom: 14 }}>
-            Welcome to PLOS,<br />{firstName} 👋
+            Welcome to IniQ,<br />{firstName} 👋
           </div>
           <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', lineHeight: 1.7, marginBottom: 36 }}>
-            PLOS is your personal life operating system.<br />
+            IniQ is your personal life operating system.<br />
             Lumi — your AI companion — turns your daily<br />
             routines, habits, and goals into one living plan.
           </div>

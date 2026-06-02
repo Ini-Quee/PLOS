@@ -94,12 +94,12 @@ export default function Login() {
             width: '64px',
             height: '64px',
             borderRadius: '50%',
-            backgroundColor: 'rgba(245, 166, 35, 0.12)',
+            backgroundColor: 'rgba(122, 139, 82, 0.12)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             margin: '0 auto 16px',
-            boxShadow: '0 0 24px rgba(245, 166, 35, 0.25)',
+            boxShadow: '0 0 24px rgba(122, 139, 82, 0.25)',
           }}>
             <span style={{ fontSize: '32px' }}>✨</span>
           </div>
@@ -110,7 +110,7 @@ export default function Login() {
             fontFamily: "'DM Serif Display', serif",
             color: '#F5F0E8',
           }}>
-            PLOS
+            IniQ
           </h1>
           <p style={{
             fontSize: '14px',
@@ -166,8 +166,8 @@ export default function Login() {
                 transition: 'border-color 0.2s, box-shadow 0.2s',
               }}
               onFocus={(e) => {
-                e.target.style.borderColor = '#F5A623';
-                e.target.style.boxShadow = '0 0 0 2px rgba(245, 166, 35, 0.2)';
+                e.target.style.borderColor = '#7A8B52';
+                e.target.style.boxShadow = '0 0 0 2px rgba(122, 139, 82, 0.2)';
               }}
               onBlur={(e) => {
                 e.target.style.borderColor = '#2E2E2E';
@@ -205,8 +205,8 @@ export default function Login() {
                 transition: 'border-color 0.2s, box-shadow 0.2s',
               }}
               onFocus={(e) => {
-                e.target.style.borderColor = '#F5A623';
-                e.target.style.boxShadow = '0 0 0 2px rgba(245, 166, 35, 0.2)';
+                e.target.style.borderColor = '#7A8B52';
+                e.target.style.boxShadow = '0 0 0 2px rgba(122, 139, 82, 0.2)';
               }}
               onBlur={(e) => {
                 e.target.style.borderColor = '#2E2E2E';
@@ -249,8 +249,8 @@ export default function Login() {
                   transition: 'border-color 0.2s, box-shadow 0.2s',
                 }}
                 onFocus={(e) => {
-                  e.target.style.borderColor = '#F5A623';
-                  e.target.style.boxShadow = '0 0 0 2px rgba(245, 166, 35, 0.2)';
+                  e.target.style.borderColor = '#7A8B52';
+                  e.target.style.boxShadow = '0 0 0 2px rgba(122, 139, 82, 0.2)';
                 }}
                 onBlur={(e) => {
                   e.target.style.borderColor = '#2E2E2E';
@@ -268,7 +268,7 @@ export default function Login() {
               padding: '14px',
               borderRadius: '12px',
               border: 'none',
-              backgroundColor: '#F5A623',
+              backgroundColor: '#7A8B52',
               color: '#0D0D0D',
               fontSize: '14px',
               fontWeight: 600,
@@ -280,12 +280,12 @@ export default function Login() {
             }}
             onMouseEnter={(e) => {
               if (!loading) {
-                e.target.style.backgroundColor = '#E09415';
+                e.target.style.backgroundColor = '#8FA060';
                 e.target.style.transform = 'translateY(-1px)';
               }
             }}
             onMouseLeave={(e) => {
-              e.target.style.backgroundColor = '#F5A623';
+              e.target.style.backgroundColor = '#7A8B52';
               e.target.style.transform = 'translateY(0)';
             }}
           >
@@ -310,7 +310,7 @@ export default function Login() {
             style={{
               width: '100%', padding: '13px', borderRadius: 12,
               border: 'none',
-              background: demoLoading ? 'rgba(200,149,92,0.4)' : 'rgba(200,149,92,0.85)',
+              background: demoLoading ? 'rgba(122,139,82,0.4)' : 'rgba(122,139,82,0.85)',
               color: '#0D0D0D',
               fontSize: 14, fontWeight: 700, cursor: demoLoading ? 'wait' : 'pointer',
               fontFamily: "'Inter', sans-serif",
@@ -335,7 +335,7 @@ export default function Login() {
           <Link
             to="/register"
             style={{
-              color: '#F5A623',
+              color: '#7A8B52',
               textDecoration: 'none',
               fontWeight: 500,
             }}

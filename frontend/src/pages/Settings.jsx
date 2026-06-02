@@ -69,9 +69,6 @@ export default function Settings() {
   const [notifPermission, setNotifPermission] = useState(typeof Notification !== 'undefined' ? Notification.permission : 'unsupported');
   const [checkInTime, setCheckInTime] = useState('07:00');
 
-  // Integrations — Google OAuth
-  const [googleStatus, setGoogleStatus] = useState(null); // null | { connected, scopes, connectedAt }
-
   // Cinematic Wallpaper
   const [showWallpaperPicker, setShowWallpaperPicker] = useState(false);
   const [currentWallpaperScene, setCurrentWallpaperScene] = useState('auto');
@@ -115,9 +112,6 @@ export default function Settings() {
       if (s.journalPenColor !== undefined) setJournalPenColor(s.journalPenColor);
       if (s.journalPaperStyle !== undefined) setJournalPaperStyle(s.journalPaperStyle);
     }).catch(() => {});
-
-    // Check Google OAuth status
-    api.get('/oauth/google/status').then(res => setGoogleStatus(res.data)).catch(() => {});
 
     // Load wallpaper scene
     const savedScene = localStorage.getItem('plos_wallpaper_scene') || 'auto';
@@ -272,7 +266,7 @@ export default function Settings() {
             }}
             onMouseEnter={(e) => {
               e.target.style.color = '#F5F0E8';
-              e.target.style.borderColor = '#F5A623';
+              e.target.style.borderColor = '#7A8B52';
             }}
             onMouseLeave={(e) => {
               e.target.style.color = '#A89880';
@@ -285,7 +279,7 @@ export default function Settings() {
             onClick={handleLogout}
             style={{
               padding: '8px 16px',
-              backgroundColor: '#C8955C',
+              backgroundColor: '#7A8B52',
               border: 'none',
               borderRadius: '12px',
               color: '#0D0D0D',
@@ -296,10 +290,10 @@ export default function Settings() {
               transition: 'all 0.2s',
             }}
             onMouseEnter={(e) => {
-              e.target.style.backgroundColor = '#E09415';
+              e.target.style.backgroundColor = '#8FA060';
             }}
             onMouseLeave={(e) => {
-              e.target.style.backgroundColor = '#F5A623';
+              e.target.style.backgroundColor = '#7A8B52';
             }}
           >
             Sign Out
@@ -336,7 +330,7 @@ export default function Settings() {
                   type="checkbox"
                   checked={voiceEnabled}
                   onChange={(e) => setVoiceEnabled(e.target.checked)}
-                  style={{ width: '20px', height: '20px', accentColor: '#F5A623' }}
+                  style={{ width: '20px', height: '20px', accentColor: '#7A8B52' }}
                 />
                 <span
                   style={{
@@ -412,7 +406,7 @@ export default function Settings() {
                     }}
                   >
                     <span>Speed</span>
-                    <span style={{ color: '#C8955C' }}>{voiceRate.toFixed(2)}x</span>
+                    <span style={{ color: '#7A8B52' }}>{voiceRate.toFixed(2)}x</span>
                   </label>
                   <input
                     type="range"
@@ -421,7 +415,7 @@ export default function Settings() {
                     step="0.05"
                     value={voiceRate}
                     onChange={(e) => setVoiceRate(parseFloat(e.target.value))}
-                    style={{ width: '100%', accentColor: '#F5A623' }}
+                    style={{ width: '100%', accentColor: '#7A8B52' }}
                   />
                   <div
                     style={{
@@ -450,7 +444,7 @@ export default function Settings() {
                     }}
                   >
                     <span>Pitch</span>
-                    <span style={{ color: '#C8955C' }}>{voicePitch.toFixed(2)}</span>
+                    <span style={{ color: '#7A8B52' }}>{voicePitch.toFixed(2)}</span>
                   </label>
                   <input
                     type="range"
@@ -459,7 +453,7 @@ export default function Settings() {
                     step="0.05"
                     value={voicePitch}
                     onChange={(e) => setVoicePitch(parseFloat(e.target.value))}
-                    style={{ width: '100%', accentColor: '#F5A623' }}
+                    style={{ width: '100%', accentColor: '#7A8B52' }}
                   />
                   <div
                     style={{
@@ -481,9 +475,9 @@ export default function Settings() {
                   style={{
                     padding: '10px 20px',
                     backgroundColor: 'transparent',
-                    border: '1px solid #F5A623',
+                    border: '1px solid #7A8B52',
                     borderRadius: '12px',
-                    color: '#C8955C',
+                    color: '#7A8B52',
                     fontSize: '14px',
                     fontWeight: 500,
                     cursor: 'pointer',
@@ -491,7 +485,7 @@ export default function Settings() {
                     transition: 'all 0.2s',
                   }}
                   onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = 'rgba(245, 166, 35, 0.12)';
+                    e.target.style.backgroundColor = 'rgba(122, 139, 82, 0.12)';
                   }}
                   onMouseLeave={(e) => {
                     e.target.style.backgroundColor = 'transparent';
@@ -567,7 +561,7 @@ export default function Settings() {
                   onClick={() => setShowWallpaperPicker(true)}
                   style={{
                     padding: '10px 20px',
-                    backgroundColor: '#C8955C',
+                    backgroundColor: '#7A8B52',
                     border: 'none',
                     borderRadius: 12,
                     color: '#0D0D0D',
@@ -578,8 +572,8 @@ export default function Settings() {
                     transition: 'all 0.2s',
                     flexShrink: 0
                   }}
-                  onMouseEnter={(e) => { e.target.style.backgroundColor = '#E09415'; }}
-                  onMouseLeave={(e) => { e.target.style.backgroundColor = '#F5A623'; }}
+                  onMouseEnter={(e) => { e.target.style.backgroundColor = '#8FA060'; }}
+                  onMouseLeave={(e) => { e.target.style.backgroundColor = '#7A8B52'; }}
                 >
                   Change World
                 </button>
@@ -592,7 +586,7 @@ export default function Settings() {
                 Custom Background Photo
               </label>
               {customPhotoActive ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 12, background: 'rgba(200,149,92,0.08)', border: '1px solid rgba(200,149,92,0.25)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 12, background: 'rgba(122,139,82,0.08)', border: '1px solid rgba(122,139,82,0.25)' }}>
                   <span style={{ fontSize: 13, color: '#EAE0D5', flex: 1 }}>Custom photo active</span>
                   <button onClick={removeCustomPhoto} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(224,82,82,0.4)', background: 'transparent', color: '#E05252', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
                     Remove
@@ -606,9 +600,9 @@ export default function Settings() {
                     onChange={e => setCustomPhotoInput(e.target.value)}
                     placeholder="Paste any photo URL…"
                     onKeyDown={e => { if (e.key === 'Enter') applyCustomPhoto(); }}
-                    style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(200,149,92,0.2)', background: 'rgba(20,12,6,0.6)', color: '#EAE0D5', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
+                    style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(122,139,82,0.2)', background: 'rgba(20,12,6,0.6)', color: '#EAE0D5', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
                   />
-                  <button onClick={applyCustomPhoto} style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: '#C8955C', color: '#080503', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <button onClick={applyCustomPhoto} style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: '#7A8B52', color: '#080503', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                     Set
                   </button>
                 </div>
@@ -640,7 +634,7 @@ export default function Settings() {
                   style={{
                     flex: 1,
                     padding: '12px',
-                    backgroundColor: theme === 'dark' ? '#C8955C' : '#1A100A',
+                    backgroundColor: theme === 'dark' ? '#7A8B52' : '#1A100A',
                     border: 'none',
                     borderRadius: '12px',
                     color: theme === 'dark' ? '#080503' : '#EAE0D5',
@@ -688,7 +682,7 @@ export default function Settings() {
                   type="checkbox"
                   checked={livingBackground}
                   onChange={(e) => setLivingBackground(e.target.checked)}
-                  style={{ width: '20px', height: '20px', accentColor: '#F5A623' }}
+                  style={{ width: '20px', height: '20px', accentColor: '#7A8B52' }}
                 />
                 <span
                   style={{
@@ -764,7 +758,7 @@ export default function Settings() {
                     }}
                   >
                     <span>Motion Intensity</span>
-                    <span style={{ color: '#C8955C', textTransform: 'capitalize' }}>
+                    <span style={{ color: '#7A8B52', textTransform: 'capitalize' }}>
                       {motionIntensity}
                     </span>
                   </label>
@@ -776,7 +770,7 @@ export default function Settings() {
                         style={{
                           flex: 1,
                           padding: '10px',
-                          backgroundColor: motionIntensity === level ? '#F5A623' : '#242424',
+                          backgroundColor: motionIntensity === level ? '#7A8B52' : '#242424',
                           border: 'none',
                           borderRadius: '12px',
                           color: motionIntensity === level ? '#0D0D0D' : '#F5F0E8',
@@ -872,7 +866,7 @@ export default function Settings() {
                     style={{
                       flex: '1 1 calc(50% - 4px)',
                       padding: '12px',
-                      backgroundColor: journalFont === font.value ? '#F5A623' : '#242424',
+                      backgroundColor: journalFont === font.value ? '#7A8B52' : '#242424',
                       border: 'none',
                       borderRadius: '12px',
                       color: journalFont === font.value ? '#0D0D0D' : '#F5F0E8',
@@ -922,7 +916,7 @@ export default function Settings() {
                       backgroundColor:
                         journalPenColor === color.value ? 'rgba(245, 166, 35, 0.2)' : '#242424',
                       border:
-                        journalPenColor === color.value ? '1px solid #F5A623' : '1px solid #2E2E2E',
+                        journalPenColor === color.value ? '1px solid #7A8B52' : '1px solid #2E2E2E',
                       borderRadius: '12px',
                       color: '#F5F0E8',
                       fontSize: '13px',
@@ -971,7 +965,7 @@ export default function Settings() {
                     style={{
                       flex: 1,
                       padding: '12px',
-                      backgroundColor: journalPaperStyle === style.value ? '#F5A623' : '#242424',
+                      backgroundColor: journalPaperStyle === style.value ? '#7A8B52' : '#242424',
                       border: 'none',
                       borderRadius: '12px',
                       color: journalPaperStyle === style.value ? '#0D0D0D' : '#F5F0E8',
@@ -1015,7 +1009,7 @@ export default function Settings() {
                       flex: 1,
                       padding: '12px',
                       backgroundColor: 'rgba(12,12,24,0.40)',
-                      border: '1px solid #F5A623',
+                      border: '1px solid #7A8B52',
                       borderRadius: '12px',
                       color: '#F5F0E8',
                       fontSize: '14px',
@@ -1027,7 +1021,7 @@ export default function Settings() {
                     onClick={saveDisplayName}
                     style={{
                       padding: '10px 20px',
-                      backgroundColor: '#C8955C',
+                      backgroundColor: '#7A8B52',
                       border: 'none',
                       borderRadius: '12px',
                       color: '#0D0D0D',
@@ -1111,9 +1105,9 @@ export default function Settings() {
               style={{
                 padding: '12px 24px',
                 backgroundColor: 'transparent',
-                border: '1px solid #F5A623',
+                border: '1px solid #7A8B52',
                 borderRadius: '12px',
-                color: '#C8955C',
+                color: '#7A8B52',
                 fontSize: '14px',
                 fontWeight: 500,
                 cursor: 'pointer',
@@ -1121,7 +1115,7 @@ export default function Settings() {
                 transition: 'all 0.2s',
               }}
               onMouseEnter={(e) => {
-                e.target.style.backgroundColor = 'rgba(245, 166, 35, 0.12)';
+                e.target.style.backgroundColor = 'rgba(122, 139, 82, 0.12)';
               }}
               onMouseLeave={(e) => {
                 e.target.style.backgroundColor = 'transparent';
@@ -1129,40 +1123,6 @@ export default function Settings() {
             >
               Change Password
             </button>
-          </SettingsSection>
-
-          {/* Billing */}
-          <SettingsSection title="Billing" icon="💳">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0 20px' }}>
-              <div>
-                <div style={{ fontSize: 14, color: '#F5F0E8', fontWeight: 600, marginBottom: 4 }}>
-                  {user?.subscription_tier === 'pro' ? '✨ Pro' : 'Free plan'}
-                </div>
-                <div style={{ fontSize: 12, color: '#A89880' }}>
-                  {user?.subscription_tier === 'pro'
-                    ? 'All features unlocked'
-                    : '10 Lumi messages/day · 3 habits · Personal journal only'}
-                </div>
-              </div>
-              {user?.subscription_tier === 'pro' ? (
-                <button
-                  onClick={async () => {
-                    try { const r = await api.post('/billing/portal'); window.location.href = r.data.url; }
-                    catch { toast.error('Could not open billing portal.'); }
-                  }}
-                  style={{ padding: '8px 18px', borderRadius: 10, border: '1px solid rgba(0,212,170,0.3)', background: 'transparent', color: '#00d4aa', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}
-                >
-                  Manage →
-                </button>
-              ) : (
-                <button
-                  onClick={() => navigate('/upgrade')}
-                  style={{ padding: '8px 18px', borderRadius: 10, border: 'none', background: 'rgba(200,149,92,0.85)', color: '#0a0a14', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
-                >
-                  Upgrade to Pro →
-                </button>
-              )}
-            </div>
           </SettingsSection>
 
           {/* Section 6: Security */}
@@ -1207,16 +1167,16 @@ export default function Settings() {
                 style={{
                   padding: '8px 16px',
                   backgroundColor: 'transparent',
-                  border: '1px solid #F5A623',
+                  border: '1px solid #7A8B52',
                   borderRadius: '12px',
-                  color: '#C8955C',
+                  color: '#7A8B52',
                   fontSize: '14px',
                   cursor: 'pointer',
                   fontFamily: "'Inter', sans-serif",
                   transition: 'all 0.2s',
                 }}
                 onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = 'rgba(245, 166, 35, 0.12)';
+                  e.target.style.backgroundColor = 'rgba(122, 139, 82, 0.12)';
                 }}
                 onMouseLeave={(e) => {
                   e.target.style.backgroundColor = 'transparent';
@@ -1314,87 +1274,6 @@ export default function Settings() {
           </SettingsSection>
 
           {/* Section 7: Email */}
-          <SettingsSection title="Email" icon="📧">
-            <p
-              style={{
-                margin: '0 0 16px 0',
-                color: '#A89880',
-                fontSize: '14px',
-                fontFamily: "'Inter', sans-serif",
-              }}
-            >
-              Connect your Gmail to send emails directly from PLOS. Uses your own account —
-              no third-party services.
-            </p>
-
-            <div
-              style={{
-                padding: '24px',
-                backgroundColor: 'rgba(12,12,24,0.40)',
-                borderRadius: '12px',
-                textAlign: 'center',
-              }}
-            >
-              <div
-                style={{
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '50%',
-                  backgroundColor: 'rgba(245, 166, 35, 0.12)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 16px',
-                }}
-              >
-                <span style={{ fontSize: '24px' }}>🔒</span>
-              </div>
-              <p
-                style={{
-                  margin: '0 0 8px 0',
-                  color: '#F5F0E8',
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  fontFamily: "'Inter', sans-serif",
-                }}
-              >
-                Gmail not connected
-              </p>
-              <p
-                style={{
-                  margin: '0 0 16px 0',
-                  color: '#6B5F52',
-                  fontSize: '13px',
-                  fontFamily: "'Inter', sans-serif",
-                }}
-              >
-                Connect to enable email automation
-              </p>
-              <button
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: 'transparent',
-                  border: '1px solid #F5A623',
-                  borderRadius: '12px',
-                  color: '#C8955C',
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  fontFamily: "'Inter', sans-serif",
-                  transition: 'all 0.2s',
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = 'rgba(245, 166, 35, 0.12)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = 'transparent';
-                }}
-              >
-                Connect Gmail
-              </button>
-            </div>
-          </SettingsSection>
-
           {/* Section 8: Notifications */}
           <SettingsSection title="Notifications" icon="🔔">
             {/* Push notifications toggle */}
@@ -1411,7 +1290,7 @@ export default function Settings() {
                   type="checkbox"
                   checked={notificationsEnabled}
                   onChange={(e) => setNotificationsEnabled(e.target.checked)}
-                  style={{ width: '20px', height: '20px', accentColor: '#F5A623' }}
+                  style={{ width: '20px', height: '20px', accentColor: '#7A8B52' }}
                 />
                 <span
                   style={{
@@ -1476,91 +1355,6 @@ export default function Settings() {
             </div>
           </SettingsSection>
 
-          {/* Section 9: Integrations */}
-          <SettingsSection title="Integrations" icon="🔗">
-            {/* Browser notifications */}
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#F5F0E8', marginBottom: 8 }}>Browser Notifications</div>
-              {notifPermission === 'granted' ? (
-                <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:10, background:'rgba(0,212,170,0.08)', border:'1px solid rgba(0,212,170,0.2)' }}>
-                  <span style={{ fontSize:16 }}>✅</span>
-                  <div>
-                    <div style={{ fontSize:13, color:'#00d4aa' }}>Notifications enabled</div>
-                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)' }}>PLOS will alert you when schedule items are due</div>
-                  </div>
-                </div>
-              ) : notifPermission === 'denied' ? (
-                <div style={{ padding:'10px 14px', borderRadius:10, background:'rgba(248,113,113,0.08)', border:'1px solid rgba(248,113,113,0.2)', fontSize:13, color:'#f87171' }}>
-                  Notifications blocked. Open your browser settings and allow notifications for this site, then reload.
-                </div>
-              ) : notifPermission === 'unsupported' ? (
-                <div style={{ fontSize:12, color:'rgba(255,255,255,0.4)' }}>Browser notifications not supported in this browser.</div>
-              ) : (
-                <button onClick={async () => { const r = await Notification.requestPermission(); setNotifPermission(r); }}
-                  style={{ padding:'10px 20px', borderRadius:10, border:'1px solid rgba(200,149,92,0.4)', background:'rgba(200,149,92,0.1)', color:'#C8955C', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
-                  Enable notifications
-                </button>
-              )}
-            </div>
-
-            {/* Google account */}
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#F5F0E8', marginBottom: 4 }}>Google Account</div>
-              <div style={{ fontSize:12, color:'rgba(255,255,255,0.45)', marginBottom:14, lineHeight:1.6 }}>
-                Connect your Google account to let Lumi send emails on your behalf and import content from Google Drive.
-              </div>
-
-              {googleStatus === null ? (
-                <div style={{ fontSize:12, color:'rgba(255,255,255,0.3)' }}>Checking…</div>
-              ) : googleStatus.connected ? (
-                <div style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderRadius:12, background:'rgba(0,212,170,0.06)', border:'1px solid rgba(0,212,170,0.2)', flexWrap:'wrap' }}>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:13, color:'#00d4aa', fontWeight:600 }}>✓ Google connected</div>
-                    {googleStatus.connectedAt && (
-                      <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:2 }}>
-                        Connected {new Date(googleStatus.connectedAt).toLocaleDateString('en-NG', { day:'numeric', month:'short', year:'numeric' })}
-                      </div>
-                    )}
-                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:2 }}>
-                      Scopes: {(googleStatus.scopes || []).map(s => s.split('/').pop()).join(', ')}
-                    </div>
-                  </div>
-                  <button onClick={async () => {
-                    if (!window.confirm('Disconnect your Google account from PLOS?')) return;
-                    const { default: api } = await import('../lib/api');
-                    await api.delete('/oauth/google').catch(() => {});
-                    setGoogleStatus({ connected: false });
-                  }}
-                    style={{ padding:'7px 16px', borderRadius:8, border:'1px solid rgba(248,113,113,0.3)', background:'transparent', color:'#f87171', fontSize:12, cursor:'pointer', fontFamily:'inherit' }}>
-                    Disconnect
-                  </button>
-                </div>
-              ) : (
-                <div>
-                  <a href={`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/oauth/google`}
-                    style={{ display:'inline-block', padding:'10px 20px', borderRadius:10, background:'#fff', color:'#333', fontSize:13, fontWeight:600, textDecoration:'none', fontFamily:'inherit' }}>
-                    <span style={{ marginRight:8 }}>🔗</span> Connect Google Account
-                  </a>
-                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginTop:8 }}>
-                    Grants Gmail send + Google Drive read access. You can revoke at any time.
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Claude affiliate */}
-            <div style={{ marginTop:24, paddingTop:20, borderTop:'1px solid rgba(255,255,255,0.07)' }}>
-              <div style={{ fontSize:14, fontWeight:600, color:'#F5F0E8', marginBottom:4 }}>Claude AI — Premium Planning</div>
-              <div style={{ fontSize:12, color:'rgba(255,255,255,0.45)', marginBottom:14, lineHeight:1.6 }}>
-                For the most powerful life planning experience — use Claude AI to do a deep planning session, then import the plan into PLOS with one click.
-              </div>
-              <a href="https://claude.ai" target="_blank" rel="noopener noreferrer"
-                style={{ display:'inline-block', padding:'9px 18px', borderRadius:10, background:'rgba(139,92,246,0.2)', border:'1px solid rgba(139,92,246,0.4)', color:'#a5b4fc', fontSize:13, fontWeight:600, textDecoration:'none', fontFamily:'inherit' }}>
-                ✨ Open Claude AI →
-              </a>
-            </div>
-          </SettingsSection>
-
           {/* Danger Zone */}
           <SettingsSection title="Danger Zone" icon="⚠️">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0' }}>
@@ -1615,7 +1409,7 @@ function SettingsSection({ title, icon, children }) {
         transition: 'box-shadow 0.2s',
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = '0 0 24px rgba(245, 166, 35, 0.08)';
+        e.currentTarget.style.boxShadow = '0 0 24px rgba(122, 139, 82, 0.08)';
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.boxShadow = 'none';

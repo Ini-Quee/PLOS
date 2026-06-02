@@ -24,6 +24,7 @@ import Budget from './pages/Budget';
 import Habits from './pages/Habits';
 import Upgrade from './pages/Upgrade';
 import PrivacyPolicy from './pages/PrivacyPolicy';
+import EmailCompose from './pages/EmailCompose';
 import Atmosphere from './components/Atmosphere';
 import DemoBanner from './components/DemoBanner';
 import { ToastProvider } from './hooks/useToast';
@@ -301,6 +302,16 @@ function AppRoutes() {
         <Route path="/settings/privacy" element={<Navigate to="/settings" replace />} />
         <Route path="/privacy" element={<AnimatedRoute><PrivacyPolicy /></AnimatedRoute>} />
         <Route path="/upgrade" element={<ProtectedRoute><AnimatedRoute><Upgrade /></AnimatedRoute></ProtectedRoute>} />
+        <Route
+          path="/email"
+          element={
+            <ProtectedRoute>
+              <AnimatedRoute>
+                <EmailCompose />
+              </AnimatedRoute>
+            </ProtectedRoute>
+          }
+        />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </AnimatePresence>

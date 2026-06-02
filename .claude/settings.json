@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path'); if grep -nE \"(sk-[A-Za-z0-9]{8,}|ya29\\.|AIza[0-9A-Za-z_-]{20,}|apiKey:\\s*['\\\"][^'\\\"]+['\\\"])\" \"$f\" 2>/dev/null; then echo 'SECURITY: possible hardcoded secret in '$f; fi; if grep -nE 'console\\.log\\([^)]*(message|body|content|fields)' \"$f\" 2>/dev/null; then echo 'SECURITY: possible content-bearing log in '$f; fi"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path'); case \"$f\" in *authenticate.js|*tokenCipher.js|*validateEnv.js|*/migrations/*) echo 'CAUTION: security-sensitive file — confirm intent before editing '$f;; esac"
+          }
+        ]
+      }
+    ]
+  }
+}

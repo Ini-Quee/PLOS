@@ -47,6 +47,7 @@ router.get('/', async (req, res) => {
     if (from)          { conditions.push(`entry_date >= $${i++}`);              params.push(from); }
     if (to)            { conditions.push(`entry_date <= $${i++}`);              params.push(to); }
     if (q)             { conditions.push(`fields::text ILIKE $${i++}`);         params.push(`%${q}%`); }
+    if (req.query.include_archived !== 'true') conditions.push('archived_at IS NULL');
 
     params.push(Math.min(parseInt(limit), 200));
 
@@ -73,7 +74,7 @@ router.get('/today', async (req, res) => {
     const result = await pool.query(
       `SELECT journal_type, template_name, fields, source, updated_at
        FROM journal_page_entries
-       WHERE user_id = $1 AND entry_date = CURRENT_DATE
+       WHERE user_id = $1 AND entry_date = CURRENT_DATE AND archived_at IS NULL
        ORDER BY updated_at DESC`,
       [req.user.id]
     );
@@ -194,7 +195,8 @@ router.delete('/:id',
   async (req, res) => {
     try {
       const result = await pool.query(
-        `DELETE FROM journal_page_entries WHERE id = $1 AND user_id = $2 RETURNING id`,
+        `UPDATE journal_page_entries SET archived_at = NOW(), updated_at = NOW()
+         WHERE id = $1 AND user_id = $2 AND archived_at IS NULL RETURNING id`,
         [req.params.id, req.user.id]
       );
       if (result.rows.length === 0) return res.status(404).json({ error: 'Entry not found' });
@@ -213,7 +215,7 @@ router.get('/types', async (req, res) => {
     const result = await pool.query(
       `SELECT id, type_key, label, emoji, color, templates, routing_keywords, display_order
        FROM user_journal_types
-       WHERE user_id = $1 AND is_active = true
+       WHERE user_id = $1 AND is_active = true AND archived_at IS NULL
        ORDER BY display_order, created_at`,
       [req.user.id]
     );
@@ -306,7 +308,8 @@ router.delete('/types/:id',
   async (req, res) => {
     try {
       await pool.query(
-        `UPDATE user_journal_types SET is_active = false WHERE id = $1 AND user_id = $2`,
+        `UPDATE user_journal_types SET is_active = false, archived_at = NOW(), updated_at = NOW()
+         WHERE id = $1 AND user_id = $2`,
         [req.params.id, req.user.id]
       );
       res.json({ archived: req.params.id });

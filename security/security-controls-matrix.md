@@ -16,15 +16,15 @@
 | Secure cookie flag | Network token theft | Use secure cookies in production | Implemented |
 | Helmet security headers | Browser attack surface | Set common HTTP security headers and CSP | Implemented |
 | CORS allowlist | Cross-origin API abuse | Allow only configured frontend origins | Implemented |
-| Disable `x-powered-by` | Reconnaissance | Hide Express framework header | Implemented |
-| Request ID correlation | Incident triage | Attach request IDs to responses and server errors | Implemented |
+| Disable `x-powered-by` | Reconnaissance | Hide Express framework header | Planned |
+| Request ID correlation | Incident triage | Attach request IDs to responses and server errors | Planned |
 | Input validation | Injection and invalid data | Validate request bodies with Zod or express-validator | Partially implemented |
 | Parameterized SQL | SQL injection | Use parameter placeholders in database queries | Implemented |
 | API rate limiting | DoS and abuse | Redis-backed limits with memory fallback | Partially implemented |
-| File upload limits | Memory exhaustion | Limit in-memory uploads to 10 MB | Implemented |
+| File upload limits | Memory exhaustion | Limit in-memory uploads to a documented maximum size | Planned |
 | Audit logging | Repudiation | Log sensitive actions and mutations | Implemented |
 | Secret exclusion from Git | Secret leakage | Ignore `.env` and provide `.env.example` | Implemented |
-| Environment validation | Unsafe startup | Fail fast when required env vars are missing or weak | Implemented |
+| Environment validation | Unsafe startup | Fail fast when required env vars are missing; expand strength checks for production | Partially implemented |
 | Azure Key Vault | Production secret exposure | Store secrets outside app settings and source code | Planned |
 | Managed Identity | Static cloud credentials | Use identity-based access to Key Vault and Azure resources | Planned |
 | Log Analytics | Weak detection | Centralize logs and write alerts | Planned |

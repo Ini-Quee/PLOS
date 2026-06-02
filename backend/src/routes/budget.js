@@ -5,6 +5,7 @@ const { authenticate } = require('../middleware/authenticate');
 const { validateInput } = require('../middleware/validateInput');
 const { rateLimiter } = require('../middleware/rateLimiter');
 const { auditLog } = require('../middleware/auditLog');
+const logger = require('../lib/logger');
 
 const router = express.Router();
 router.use(authenticate);
@@ -39,14 +40,14 @@ router.get('/summary', async (req, res) => {
       pool.query(
         `SELECT COALESCE(SUM(amount),0) AS total
          FROM budget_entries
-         WHERE user_id=$1 AND type='expense' AND entry_date=CURRENT_DATE`,
+         WHERE user_id=$1 AND type='expense' AND entry_date=CURRENT_DATE AND archived_at IS NULL`,
         [uid]
       ),
       // This month expenses by category
       pool.query(
         `SELECT category, SUM(amount) AS total
          FROM budget_entries
-         WHERE user_id=$1 AND type='expense'
+         WHERE user_id=$1 AND type='expense' AND archived_at IS NULL
            AND DATE_TRUNC('month', entry_date)=DATE_TRUNC('month', CURRENT_DATE)
          GROUP BY category
          ORDER BY total DESC`,
@@ -56,7 +57,7 @@ router.get('/summary', async (req, res) => {
       pool.query(
         `SELECT COALESCE(SUM(amount),0) AS total
          FROM budget_entries
-         WHERE user_id=$1 AND type='income'
+         WHERE user_id=$1 AND type='income' AND archived_at IS NULL
            AND DATE_TRUNC('month', entry_date)=DATE_TRUNC('month', CURRENT_DATE)`,
         [uid]
       ),
@@ -72,7 +73,7 @@ router.get('/summary', async (req, res) => {
       pool.query(
         `SELECT COALESCE(SUM(amount),0)/30 AS avg_daily
          FROM budget_entries
-         WHERE user_id=$1 AND type='expense'
+         WHERE user_id=$1 AND type='expense' AND archived_at IS NULL
            AND entry_date >= CURRENT_DATE - INTERVAL '30 days'`,
         [uid]
       ),
@@ -103,7 +104,7 @@ router.get('/summary', async (req, res) => {
       })),
     });
   } catch (err) {
-    console.error('Budget summary error:', err);
+    logger.error({ err: err.message, userId: req.user.id }, 'Budget summary error');
     res.status(500).json({ error: 'Failed to load budget summary' });
   }
 });
@@ -125,6 +126,7 @@ router.get('/entries', async (req, res) => {
       `SELECT id, type, amount, currency, category, note, entry_date, source, created_at
        FROM budget_entries
        WHERE user_id=$1
+         AND archived_at IS NULL
          AND entry_date >= CURRENT_DATE - ($2 || ' days')::INTERVAL
          ${typeClause}
        ORDER BY entry_date DESC, created_at DESC
@@ -133,7 +135,7 @@ router.get('/entries', async (req, res) => {
     );
     res.json({ entries: result.rows });
   } catch (err) {
-    console.error('Budget entries error:', err);
+    logger.error({ err: err.message, userId: req.user.id }, 'Budget entries error');
     res.status(500).json({ error: 'Failed to load entries' });
   }
 });
@@ -172,7 +174,7 @@ router.post(
         // Load today's existing journal page fields (if any)
         const existing = await pool.query(
           `SELECT id, fields FROM journal_page_entries
-           WHERE user_id=$1 AND journal_type='budget' AND template_name='Daily Expenses' AND entry_date=$2
+           WHERE user_id=$1 AND journal_type='budget' AND template_name='Daily Expenses' AND entry_date=$2 AND archived_at IS NULL
            LIMIT 1`,
           [uid, eDate]
         ).catch(() => ({ rows: [] }));
@@ -193,7 +195,7 @@ router.post(
              source     = 'budget_app',
              updated_at = NOW()`,
           [uid, eDate, JSON.stringify({ rows: mergedRows })]
-        ).catch(err => console.warn('[Budget sync→journal]', err.message));
+        ).catch(err => logger.warn({ err: err.message }, 'Budget sync to journal failed'));
       }
 
       res.status(201).json({ entry });
@@ -205,11 +207,45 @@ router.post(
 );
 
 // ─── DELETE /budget/entries/:id ────────────────────────────────────────────────
+router.put('/entries/:id', validateInput(entrySchema.partial()), auditLog('budget_entry_update', 'budget_entries'), async (req, res) => {
+  const uid = req.user.id;
+  try {
+    const existing = await pool.query(
+      `SELECT * FROM budget_entries WHERE id=$1 AND user_id=$2 AND archived_at IS NULL`,
+      [req.params.id, uid]
+    );
+    if (existing.rows.length === 0) return res.status(404).json({ error: 'Entry not found' });
+    const next = { ...existing.rows[0], ...req.body };
+    const result = await pool.query(
+      `UPDATE budget_entries
+          SET type=$1, amount=$2, currency=$3, category=$4, note=$5, entry_date=$6, source=$7
+        WHERE id=$8 AND user_id=$9 AND archived_at IS NULL
+        RETURNING id, type, amount, currency, category, note, entry_date, source, created_at`,
+      [
+        next.type,
+        Number(next.amount),
+        next.currency || '₦',
+        next.category || 'other',
+        next.note || null,
+        next.entry_date,
+        next.source || 'manual',
+        req.params.id,
+        uid,
+      ]
+    );
+    res.json({ entry: result.rows[0] });
+  } catch (err) {
+    console.error('Budget update error:', err);
+    res.status(500).json({ error: 'Failed to update entry' });
+  }
+});
+
 router.delete('/entries/:id', auditLog('budget_entry_delete', 'budget_entries'), async (req, res) => {
   const uid = req.user.id;
   try {
     const result = await pool.query(
-      `DELETE FROM budget_entries WHERE id=$1 AND user_id=$2 RETURNING id`,
+      `UPDATE budget_entries SET archived_at=NOW()
+       WHERE id=$1 AND user_id=$2 AND archived_at IS NULL RETURNING id`,
       [req.params.id, uid]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Entry not found' });

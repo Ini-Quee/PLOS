@@ -38,7 +38,12 @@
       "Bash(grep -r \"console\\\\\\\\.log\" /c/Users/HP/PLOS/PLOS/backend/src --include=\"*.js\")",
       "Bash(grep -E \"\\\\$\\\\{|template\")",
       "Bash(node_modules/.bin/vite build *)",
-      "Bash(kill %1)"
+      "Bash(kill %1)",
+      "Bash(grep -E \"\\\\.\\(js|jsx\\)$\")",
+      "Bash(grep -n \"return.*\\(\" \"C:\\\\\\\\Users\\\\\\\\HP\\\\\\\\PLOS\\\\\\\\PLOS\\\\\\\\frontend\\\\\\\\src\\\\\\\\pages\\\\\\\\Budget.jsx\")",
+      "Bash(wc *)",
+      "Bash(find \"C:\\\\\\\\Users\\\\\\\\HP\\\\\\\\PLOS\\\\\\\\PLOS\\\\\\\\frontend\\\\\\\\src\\\\\\\\pages\" -name \"*.css\")",
+      "Bash(grep -n \"const CSS\" \"C:\\\\\\\\Users\\\\\\\\HP\\\\\\\\PLOS\\\\\\\\PLOS\\\\\\\\frontend\\\\\\\\src\\\\\\\\pages\\\\\\\\Budget.jsx\")"
     ]
   }
 }

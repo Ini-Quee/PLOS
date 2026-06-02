@@ -1,11 +1,11 @@
 {
-  "name": "PLOS — Personal Life OS",
-  "short_name": "PLOS",
+  "name": "IniQ — Life OS",
+  "short_name": "IniQ",
   "description": "Your AI-powered personal life operating system. Plan your day, track habits, journal, and manage money — all with Lumi, your AI companion.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#080503",
-  "theme_color": "#C8955C",
+  "theme_color": "#7A8B52",
   "orientation": "portrait-primary",
   "icons": [
     { "src": "/icons/icon.svg",  "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" },

@@ -4,6 +4,7 @@
  * Each action is atomic — if one fails the others still run.
  */
 const { pool } = require('../db/connection');
+const logger = require('../lib/logger');
 
 /**
  * Execute a list of confirmed actions
@@ -147,21 +148,21 @@ async function executeOne(userId, action) {
       let hid = habit_id;
       if (!hid && habit_name) {
         let found = await pool.query(
-          `SELECT id FROM habits WHERE user_id = $1 AND name ILIKE $2 LIMIT 1`,
-          [userId, `%${habit_name}%`]
+          `SELECT id FROM habits WHERE user_id = $1 AND title ILIKE $2 ESCAPE '\\' LIMIT 1`,
+          [userId, `%${habit_name.replace(/[%_\\]/g, '\\$&')}%`]
         );
         if (found.rows.length === 0) {
           found = await pool.query(
-            `INSERT INTO habits (user_id, name, created_at) VALUES ($1,$2,NOW()) RETURNING id`,
+            `INSERT INTO habits (user_id, title) VALUES ($1,$2) RETURNING id`,
             [userId, habit_name]
           );
         }
         hid = found.rows[0].id;
       }
       const r = await pool.query(
-        `INSERT INTO habit_completions (habit_id, user_id, completed, date, created_at)
-         VALUES ($1,$2,true,CURRENT_DATE,NOW())
-         ON CONFLICT (habit_id, date) DO UPDATE SET completed = true
+        `INSERT INTO habit_completions (habit_id, user_id, completion_date)
+         VALUES ($1,$2,CURRENT_DATE)
+         ON CONFLICT (habit_id, completion_date) DO NOTHING
          RETURNING *`,
         [hid, userId]
       );
@@ -220,10 +221,10 @@ async function getUserFullContext(userId) {
 
     // Habit completions today
     const habits = await pool.query(
-      `SELECT h.name, hc.completed
+      `SELECT h.title AS name, (hc.id IS NOT NULL) AS completed
        FROM habits h
-       LEFT JOIN habit_completions hc ON h.id = hc.habit_id AND hc.date = CURRENT_DATE
-       WHERE h.user_id = $1`,
+       LEFT JOIN habit_completions hc ON h.id = hc.habit_id AND hc.completion_date = CURRENT_DATE
+       WHERE h.user_id = $1 AND h.is_active = true`,
       [userId]
     );
     ctx.habits = habits.rows;

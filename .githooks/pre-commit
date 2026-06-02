@@ -1,0 +1,12 @@
+#!/bin/sh
+# Block secrets from entering history.
+if git diff --cached --name-only -z | xargs -0 grep -nE "(sk-[A-Za-z0-9]{8,}|ya29\.|AIza[0-9A-Za-z_-]{20,})" 2>/dev/null; then
+  echo "COMMIT BLOCKED: possible secret in staged files."
+  exit 1
+fi
+# Block real keys in non-example env files.
+if git diff --cached --name-only | grep -E '\.env$' >/dev/null 2>&1; then
+  echo "COMMIT BLOCKED: do not commit .env"
+  exit 1
+fi
+exit 0

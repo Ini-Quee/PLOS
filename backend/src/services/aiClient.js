@@ -51,7 +51,7 @@ async function chatGemini(messages, { temperature = 0.3, maxTokens = 2000 } = {}
 // ─── Groq fallback ─────────────────────────────────────────────────────────────
 async function chatGroq(messages, { model = 'llama-3.3-70b-versatile', temperature = 0.3, maxTokens = 2000 } = {}) {
   const { Groq } = require('groq-sdk');
-  const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || 'dummy-key' });
+  const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
   const completion = await groq.chat.completions.create({
     messages,
@@ -87,9 +87,15 @@ function getLegacyClient() {
       },
     };
   }
-  // Groq native
+  // Groq native — fail closed, never a dummy key.
+  if (!process.env.GROQ_API_KEY) {
+    const err = new Error('AI not configured: set GROQ_API_KEY or GEMINI_API_KEY');
+    err.code = 'AI_NOT_CONFIGURED';
+    err.statusCode = 503;
+    throw err;
+  }
   const { Groq } = require('groq-sdk');
-  return new Groq({ apiKey: process.env.GROQ_API_KEY || 'dummy-key' });
+  return new Groq({ apiKey: process.env.GROQ_API_KEY });
 }
 
 module.exports = { chat, getLegacyClient };

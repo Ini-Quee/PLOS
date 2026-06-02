@@ -24,13 +24,47 @@
  */
 
 const { pool } = require('../db/connection');
+const logger = require('../lib/logger');
 const { getLegacyClient } = require('./aiClient');
+const { tryLocal } = require('./lumiLocalRouter');
+const { analyzeEmotionalContext, createCrisisResponse } = require('./lumiEmotion');
+const { getUserLifeContext, formatLegacyContext } = require('./lumiContextEngine');
+const { markMemoriesSurfaced, surfaceRelevantMemories } = require('./lumiMemorySurface');
+const { applyLumiVoice } = require('./lumiVoiceRules');
+const { getTemplateSchema, normalizeTags, normalizeTemplateType } = require('./journalSchema');
+const { TIER, requiresConfirmEscalation } = require('./lumiSensitivity');
 
 function getGroqClient() {
   return getLegacyClient();
 }
 
-const pending = new Map();
+// Pending confirmations — Redis-backed (survives restarts / multi-instance).
+const PENDING_TTL = 30 * 60; // 30 minutes
+async function getPending(userId) {
+  try {
+    const { getRedisClient } = require('../middleware/rateLimiter');
+    const client = await getRedisClient();
+    if (!client) return null;
+    const raw = await client.get(`lumi_pending:${userId}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+async function setPending(userId, data) {
+  try {
+    const { getRedisClient } = require('../middleware/rateLimiter');
+    const client = await getRedisClient();
+    if (!client) return;
+    await client.setEx(`lumi_pending:${userId}`, PENDING_TTL, JSON.stringify(data));
+  } catch {}
+}
+async function deletePending(userId) {
+  try {
+    const { getRedisClient } = require('../middleware/rateLimiter');
+    const client = await getRedisClient();
+    if (!client) return;
+    await client.del(`lumi_pending:${userId}`);
+  } catch {}
+}
 
 // ─── Category normalisation ─────────────────────────────────────────────────────
 const CATEGORY_MAP = {
@@ -66,6 +100,107 @@ function getActionData(action) {
   return rest;
 }
 
+// ─── Entity resolution: contact lookup with disambiguation ────────────────────
+async function resolveContact(userId, nameOrEmail) {
+  if (!nameOrEmail) return { resolved: null, candidates: [] };
+  const clean = nameOrEmail.replace(/[^a-zA-Z0-9@.\s'-]/g, '').trim();
+  if (!clean) return { resolved: null, candidates: [] };
+
+  const { rows } = await pool.query(
+    `SELECT id, name, email FROM contacts
+     WHERE user_id = $1 AND (
+       email ILIKE $2 OR name ILIKE $3 ESCAPE '\\'
+     )
+     ORDER BY name LIMIT 5`,
+    [userId, clean, `%${clean.replace(/[%_\\]/g, '\\$&')}%`]
+  );
+
+  logger.info({ userId, action: 'entity_resolve', resource: 'contact', count: rows.length }, 'resolved');
+
+  if (rows.length === 1) return { resolved: rows[0], candidates: rows };
+  if (rows.length > 1) {
+    // Check for exact match first
+    const exact = rows.find(r =>
+      r.email?.toLowerCase() === clean.toLowerCase() ||
+      r.name?.toLowerCase() === clean.toLowerCase()
+    );
+    if (exact) return { resolved: exact, candidates: rows };
+    return { resolved: null, candidates: rows };
+  }
+  return { resolved: null, candidates: [] };
+}
+
+const JOURNAL_LABELS = {
+  personal: 'Everyday Life',
+  spiritual: 'Bible & Faith',
+  goals: 'Goals & Vision',
+  business: 'My Business',
+  wellness: 'Wellness',
+  budget: 'Budget Diary',
+  gratitude: 'Gratitude Log',
+};
+
+function summarizeFields(fields = {}) {
+  return Object.entries(fields)
+    .map(([key, value]) => {
+      const rendered = Array.isArray(value) || (value && typeof value === 'object')
+        ? JSON.stringify(value)
+        : String(value ?? '');
+      return `${key}: ${rendered.slice(0, 180)}`;
+    })
+    .join('\n');
+}
+
+function normalizeJournalPagePayload(page = {}) {
+  const requestedType = page.journal_type || page.journalType || 'personal';
+  const requestedTemplate = page.template_name || page.templateName || 'Classic Diary';
+  const templateType = normalizeTemplateType(requestedTemplate);
+  const schema = getTemplateSchema(templateType);
+  const tags = normalizeTags([requestedType], templateType);
+  const primaryTag = schema.tags?.includes(requestedType)
+    ? requestedType
+    : (schema.tags?.[0] || tags[0] || 'personal');
+
+  return {
+    journal_type: primaryTag,
+    template_name: templateType,
+    fields: page.fields || {},
+    entry_date: page.entry_date || new Date().toISOString().slice(0, 10),
+    source: page.source || 'lumi',
+    tags,
+  };
+}
+
+async function saveJournalPageToDailyEntries(userId, page) {
+  const normalized = normalizeJournalPagePayload(page);
+  const entryText = normalized.fields.entry_text
+    || normalized.fields.entry
+    || normalized.fields.story
+    || normalized.fields.prayer_request
+    || normalized.fields.financial_insights
+    || summarizeFields(normalized.fields);
+
+  const { rows } = await pool.query(
+    `INSERT INTO daily_entries
+       (user_id, entry_date, entry_type, template_type, title, entry_text, tags,
+        fields, attachments, stickers, source)
+     VALUES ($1,$2::date,'template_entry',$3,$4,$5,$6,$7::jsonb,'[]'::jsonb,'[]'::jsonb,$8)
+     RETURNING id, entry_date, template_type, tags`,
+    [
+      userId,
+      normalized.entry_date,
+      normalized.template_name,
+      `${normalized.template_name} - ${JOURNAL_LABELS[normalized.journal_type] || normalized.journal_type}`,
+      entryText || '',
+      normalized.tags,
+      JSON.stringify(normalized.fields),
+      normalized.source,
+    ]
+  );
+
+  return rows[0];
+}
+
 // ─── Recurring plan intent detection ───────────────────────────────────────────
 // Returns true if the text sounds like "I want to do X N times a week".
 function isRecurringPlanRequest(text) {
@@ -95,8 +230,8 @@ async function saveExtractedMemories(userId, facts) {
       if (!fact?.content?.trim()) continue;
       const content = fact.content.trim();
       const { rows: existing } = await pool.query(
-        `SELECT id FROM lumi_memories WHERE user_id = $1 AND content ILIKE $2 LIMIT 1`,
-        [userId, `%${content.slice(0, 60)}%`]
+        `SELECT id FROM lumi_memories WHERE user_id = $1 AND content ILIKE $2 ESCAPE '\\' LIMIT 1`,
+        [userId, `%${content.slice(0, 60).replace(/[%_\\]/g, '\\$&')}%`]
       );
       if (existing.length > 0) {
         await pool.query(
@@ -105,14 +240,14 @@ async function saveExtractedMemories(userId, facts) {
         );
       } else {
         await pool.query(
-          `INSERT INTO lumi_memories (user_id, memory_type, content, importance, source)
-           VALUES ($1, $2, $3, $4, 'chat')`,
-          [userId, fact.type || 'fact', content, Math.min(10, Math.max(1, fact.importance || 5))]
+          `INSERT INTO lumi_memories (user_id, memory_type, memory_category, content, importance, source)
+           VALUES ($1, $2, $3, $4, $5, 'chat')`,
+          [userId, fact.type || 'fact', fact.category || fact.type || 'fact', content, Math.min(10, Math.max(1, fact.importance || 5))]
         );
       }
     }
   } catch (err) {
-    console.error('[Lumi memory] save error:', err.message);
+    logger.error({ userId, err: err.message }, 'memory save error');
   }
 }
 
@@ -149,8 +284,8 @@ Return [] if nothing genuinely memorable. Types: goal | fear | pattern | fact | 
       const content = fact.content.trim();
       // Deduplication — skip if very similar memory already exists
       const { rows: existing } = await pool.query(
-        `SELECT id FROM lumi_memories WHERE user_id = $1 AND content ILIKE $2 LIMIT 1`,
-        [userId, `%${content.slice(0, 60)}%`]
+        `SELECT id FROM lumi_memories WHERE user_id = $1 AND content ILIKE $2 ESCAPE '\\' LIMIT 1`,
+        [userId, `%${content.slice(0, 60).replace(/[%_\\]/g, '\\$&')}%`]
       );
       if (existing.length > 0) {
         await pool.query(
@@ -159,15 +294,15 @@ Return [] if nothing genuinely memorable. Types: goal | fear | pattern | fact | 
         );
       } else {
         await pool.query(
-          `INSERT INTO lumi_memories (user_id, memory_type, content, importance, source)
-           VALUES ($1, $2, $3, $4, 'chat')`,
-          [userId, fact.type || 'fact', content, Math.min(10, Math.max(1, fact.importance || 5))]
+          `INSERT INTO lumi_memories (user_id, memory_type, memory_category, content, importance, source)
+           VALUES ($1, $2, $3, $4, $5, 'chat')`,
+          [userId, fact.type || 'fact', fact.category || fact.type || 'fact', content, Math.min(10, Math.max(1, fact.importance || 5))]
         );
       }
     }
   } catch (err) {
     // Non-blocking — never let memory extraction crash the main flow
-    console.error('[Lumi memory] extraction error:', err.message);
+    logger.error({ userId, err: err.message }, 'memory extraction error');
   }
 }
 
@@ -207,8 +342,27 @@ async function clearConvHistory(userId) {
 // ─── Main entry point ───────────────────────────────────────────────────────────
 async function routeLumiInput(userId, text, context = {}, source = 'dashboard') {
   try {
-    const pendingData = pending.get(userId);
-    if (pendingData) return await handleConfirmation(userId, text, pendingData);
+    const pendingData = await getPending(userId);
+    if (pendingData) {
+      if (pendingData._type === 'publishable_confirm') {
+        return await handlePublishableConfirm(userId, text, pendingData);
+      }
+      return await handleConfirmation(userId, text, pendingData);
+    }
+
+    const convHistory = await getConvHistory(userId);
+    const emotionalContext = analyzeEmotionalContext(text, convHistory);
+
+    if (emotionalContext.crisis) {
+      return {
+        success: true,
+        lumiResponse: createCrisisResponse(),
+        saved: false,
+        savedItems: [],
+        route: 'support',
+        needsConfirmation: false,
+      };
+    }
 
     // Detect recurring plan intent before passing to Groq (saves tokens + is faster)
     if (isRecurringPlanRequest(text)) {
@@ -224,20 +378,54 @@ async function routeLumiInput(userId, text, context = {}, source = 'dashboard') 
       };
     }
 
-    // Load Redis conversation history so Lumi remembers what was said earlier
-    const convHistory = await getConvHistory(userId);
+    // LOCAL LANE — simple lookups & commands, zero AI tokens.
+    const localResult = await tryLocal(userId, text, {
+      emotionalIntensity: emotionalContext.intensity || 1,
+    });
+    if (localResult) {
+      localResult.lumiResponse = applyLumiVoice(localResult.lumiResponse, emotionalContext);
+      await writeToJournalEntry(userId, text, { actions: [], lumiResponse: localResult.lumiResponse }, localResult.savedItems || []);
+      await appendConvHistory(userId, text, localResult.lumiResponse);
+      logger.info({ userId, action: 'local_handled', intent: localResult.intent, route: 'local' }, 'handled without AI');
+      return localResult;
+    }
+
+    const lifeContext = context.lifeContext || await getUserLifeContext(userId, '30days', {
+      userInput: text,
+      currentTopic: source,
+    }).catch(() => null);
+
+    if (lifeContext) {
+      context = {
+        ...formatLegacyContext(lifeContext),
+        ...context,
+        lifeContext,
+      };
+    }
+
+    const surfacedMemories = await surfaceRelevantMemories(userId, text, {
+      currentTopic: source,
+      emotionalContext,
+    }, 8).catch(() => context.persistentMemories || []);
+    context.persistentMemories = surfacedMemories;
+    context.emotionalContext = emotionalContext;
 
     const extraction = await extractAndClassify(userId, text, context, convHistory, source);
     if (!extraction) throw new Error('Extraction returned null');
 
     const result = await executeExtraction(userId, text, extraction);
+    result.lumiResponse = applyLumiVoice(result.lumiResponse || extraction.lumiResponse, emotionalContext);
+    extraction.lumiResponse = result.lumiResponse;
 
     // Always update the daily journal entry — cross-post everything
     await writeToJournalEntry(userId, text, extraction, result.savedItems);
 
     // Save this exchange to Redis for future context
-    if (extraction.lumiResponse) {
-      await appendConvHistory(userId, text, extraction.lumiResponse);
+    if (result.lumiResponse) {
+      await appendConvHistory(userId, text, result.lumiResponse);
+      if (surfacedMemories.length > 0) {
+        markMemoriesSurfaced(userId, surfacedMemories).catch(() => {});
+      }
       // Save any memories Lumi identified — no extra API call needed
       if (Array.isArray(extraction.memories_to_save) && extraction.memories_to_save.length > 0) {
         saveExtractedMemories(userId, extraction.memories_to_save).catch(() => {});
@@ -246,7 +434,7 @@ async function routeLumiInput(userId, text, context = {}, source = 'dashboard') 
 
     return result;
   } catch (err) {
-    console.error('Lumi router error:', err);
+    logger.error({ userId, err: err.message }, 'lumi router error');
     return {
       success: true,
       lumiResponse: "I'm here. Something went wrong — could you say that again?",
@@ -270,6 +458,11 @@ async function extractAndClassify(userId, text, context, convHistory = [], sourc
 
   // Format persistent memories for injection
   const memories = context.persistentMemories || [];
+  const emotionalContext = context.emotionalContext || {};
+  const emotionalBlock = `Primary emotion: ${emotionalContext.primaryEmotion || 'neutral'}
+Intensity: ${emotionalContext.intensity || 1}/5
+Response style: ${emotionalContext.responseStyle || 'acknowledge'}
+Boundary: never diagnose, never prescribe, never shame; ask permission before exploring patterns.`;
   const memoriesBlock = memories.length > 0
     ? memories.map(m => `- [${m.memory_type}]: ${m.content}`).join('\n')
     : 'Nothing stored yet — this may be one of their first sessions.';
@@ -313,6 +506,9 @@ Today's journal pages written: ${context.journalPagesToday || 'None yet'}
 
 WHAT YOU KNOW ABOUT THIS USER FROM PAST SESSIONS (persistent memory):
 ${memoriesBlock}
+
+CURRENT EMOTIONAL CONTEXT:
+${emotionalBlock}
 
 RECENT CONVERSATION (what was said earlier in this session):
 ${convBlock}
@@ -453,8 +649,12 @@ CONTENT SCHEDULING:
 
 EMAIL (if Gmail connected):
   "Send an email to / email [name] / message [name] at [email]..."
+  "Here are my notes on this client: [pasted context with email in it]..."
     → send_email action (preview-first, user confirms before sending)
        fields: { "to": "email@address.com", "subject": "...", "body": "...", "schedule_for": null or "ISO datetime" }
+       SMART EXTRACTION: If user pastes raw notes/context (e.g. "Met with Jane at Acme — jane@acme.com, wants proposal by Friday"),
+       extract the email address from the text, infer recipient name, write a professional email body that addresses the CTA,
+       and pre-fill all fields. Always show the extracted email address in your response so the user can confirm it's correct.
 
 CUSTOM JOURNALS (user-defined, route by their keywords):
   Check custom journals list above. If the user's message contains any routing keyword, use that journal type.
@@ -529,19 +729,27 @@ Example: "memories_to_save": [{ "type": "goal", "content": "Wants to run a marat
       content: m.content.slice(0, 300), // truncate long messages for token efficiency
     }));
 
+    const ec = context.emotionalContext || {};
+    const needsSmart =
+      ec.crisis === true ||
+      (ec.intensity || 1) >= 3 ||
+      text.length > 280 ||
+      /\b(help me plan|overwhelmed|anxious|depressed|stressed|lonely|grief|panic)\b/i.test(text);
+    const chosenModel = needsSmart ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant';
+
     const completion = await getGroqClient().chat.completions.create({
       messages: [
         { role: 'system', content: systemPrompt },
         ...historyMessages,
         { role: 'user', content: text },
       ],
-      model: 'llama-3.3-70b-versatile',
+      model: chosenModel,
       temperature: 0.3,
-      max_tokens: 2000,
+      max_tokens: needsSmart ? 2000 : 900,
     });
 
     const raw = completion.choices[0]?.message?.content || '';
-    console.log('[Lumi extraction]:', raw.slice(0, 700));
+    logger.info({ userId, action: 'extraction', route: source, model: chosenModel }, 'extraction complete');
 
     const cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
     const match = cleaned.match(/\{[\s\S]*\}/);
@@ -551,7 +759,7 @@ Example: "memories_to_save": [{ "type": "goal", "content": "Wants to run a marat
     if (!Array.isArray(parsed.actions)) parsed.actions = [];
     return parsed;
   } catch (err) {
-    console.error('Extraction error:', err.message);
+    logger.error({ userId, err: err.message }, 'extraction failed');
     return {
       understanding: text, emotion: 'neutral', actions: [],
       lumiResponse: "Tell me a bit more — I want to log this exactly right for you.",
@@ -567,6 +775,30 @@ async function executeExtraction(userId, originalText, extraction) {
     pendingJournalPage: null, needsJournalPreview: false,
     pendingEmail: null, needsEmailPreview: false,
   };
+
+  // ── Sensitivity gate: never auto-write publishable-tier from a single AI turn ──
+  const publishableActions = extraction.actions.filter(a =>
+    requiresConfirmEscalation(TIER.private, a.type)
+  );
+  if (publishableActions.length > 0) {
+    const pendingKey = `lumi_publishable:${userId}`;
+    await setPending(userId, {
+      _type: 'publishable_confirm',
+      actions: publishableActions,
+      allActions: extraction.actions,
+      originalText,
+    });
+    const names = publishableActions.map(a => {
+      const d = getActionData(a);
+      return d.title || d.subject || a.type;
+    }).join(', ');
+    return {
+      pendingPublishable: { actions: publishableActions, names },
+      needsPublishableConfirm: true,
+      savedItems: [],
+      lumiResponse: `Before I post that (${names}), want me to go ahead?`,
+    };
+  }
 
   for (const action of extraction.actions) {
     const d = getActionData(action);
@@ -588,7 +820,7 @@ async function executeExtraction(userId, originalText, extraction) {
              RETURNING id, amount, currency, category, note, type`,
             [userId, amount, d.currency||'₦', normaliseCategory(d.category), d.note||'', d.entry_type==='income'?'income':'expense']
           );
-          console.log(`[Lumi→budget_entries] ₦${amount} ${d.category}`);
+          logger.info({ userId, action: 'budget_entry', resource: 'budget_entries' }, 'saved');
           savedItems.push({
             type: 'budget_entry',
             label: `${d.currency||'₦'}${amount.toLocaleString('en-NG')} — ${normaliseCategory(d.category)}${d.note?` (${d.note})`:''}`,
@@ -608,7 +840,7 @@ async function executeExtraction(userId, originalText, extraction) {
              VALUES ($1,$2,'Workout note saved.','health',$3,'lumi',false,NOW())`,
             [userId, content, JSON.stringify({ type:'workout_note', ...d })]
           );
-          console.log(`[Lumi→health_log] ${content}`);
+          logger.info({ userId, action: 'workout_note', resource: 'lumi_conversations' }, 'saved');
           savedItems.push({
             type: 'workout_note',
             label: content,
@@ -633,8 +865,8 @@ async function executeExtraction(userId, originalText, extraction) {
                (user_id, title, description, start_time, duration_minutes, category, repeat_pattern, is_active, target_date)
              VALUES ($1,$2,$3,$4::time,$5,$6,'none',true,$7)`,
             [userId, d.title, d.note||d.desc||'', timeStr, d.duration_minutes||30, d.category||'wellness', targetDate]
-          ).catch(err => console.error('[Lumi] schedule insert:', err.message));
-          console.log(`[Lumi→schedules] "${d.title}" at ${timeStr}${targetDate?' (tomorrow)':''}`);
+          ).catch(err => logger.error({ userId, action: 'schedule_item', err: err.message }, 'insert failed'));
+          logger.info({ userId, action: 'schedule_item', resource: 'schedules' }, 'saved');
           savedItems.push({
             type: 'schedule_item',
             label: `"${d.title}" added to Planner${targetDate?' for tomorrow':''}`,
@@ -649,27 +881,35 @@ async function executeExtraction(userId, originalText, extraction) {
           if (!habitName) break;
           let habitId;
           const find = await pool.query(
-            `SELECT id FROM habits WHERE user_id=$1 AND name ILIKE $2 LIMIT 1`,
-            [userId, `%${habitName}%`]
-          ).catch(()=>({rows:[]}));
+            `SELECT id FROM habits WHERE user_id=$1 AND title ILIKE $2 ESCAPE '\\' LIMIT 1`,
+            [userId, `%${habitName.replace(/[%_\\]/g, '\\$&')}%`]
+          ).catch((e)=>{ logger.error({ userId, action: 'habit_log', err: e.message }, 'habit find failed'); return {rows:[]}; });
           if (find.rows.length===0) {
             const ins = await pool.query(
-              `INSERT INTO habits (user_id, name, created_at) VALUES ($1,$2,NOW()) RETURNING id`,
+              `INSERT INTO habits (user_id, title) VALUES ($1,$2) RETURNING id`,
               [userId, habitName]
-            ).catch(()=>null);
+            ).catch((e)=>{ logger.error({ userId, action: 'habit_log', err: e.message }, 'habit insert failed'); return null; });
             habitId = ins?.rows[0]?.id;
           } else {
             habitId = find.rows[0].id;
           }
           if (habitId) {
             const completed = d.completed!==false;
-            await pool.query(
-              `INSERT INTO habit_completions (habit_id, user_id, completed, date, created_at)
-               VALUES ($1,$2,$3,CURRENT_DATE,NOW())
-               ON CONFLICT (habit_id,date) DO UPDATE SET completed=$3`,
-              [habitId, userId, completed]
-            ).catch(()=>{});
-            console.log(`[Lumi→habits] ${habitName} = ${completed}`);
+            if (completed) {
+              await pool.query(
+                `INSERT INTO habit_completions (habit_id, user_id, completion_date)
+                 VALUES ($1,$2,CURRENT_DATE)
+                 ON CONFLICT (habit_id, completion_date) DO NOTHING`,
+                [habitId, userId]
+              ).catch((e)=>{ logger.error({ userId, action: 'habit_log', err: e.message }, 'habit completion failed'); });
+            } else {
+              await pool.query(
+                `DELETE FROM habit_completions
+                 WHERE habit_id=$1 AND user_id=$2 AND completion_date=CURRENT_DATE`,
+                [habitId, userId]
+              ).catch((e)=>{ logger.error({ userId, action: 'habit_log', err: e.message }, 'habit uncomplete failed'); });
+            }
+            logger.info({ userId, action: 'habit_log', resource: 'habits' }, 'saved');
             savedItems.push({
               type: 'habit_log',
               label: `${habitName} — ${completed?'done ✓':'missed'}`,
@@ -683,7 +923,7 @@ async function executeExtraction(userId, originalText, extraction) {
         case 'life_note': {
           // life_note goes to the daily journal narrative only (handled in writeToJournalEntry)
           // No separate DB table — the narrative is built in writeToJournalEntry
-          console.log(`[Lumi→life_note] "${(d.content||'').slice(0,80)}"`);
+          logger.info({ userId, action: 'life_note', resource: 'lumi_daily_entries' }, 'saved');
           savedItems.push({
             type: 'life_note',
             label: (d.content||'').slice(0,80),
@@ -705,7 +945,7 @@ async function executeExtraction(userId, originalText, extraction) {
             [userId, content, `Journal draft saved to ${journalType}.`, journalType,
              JSON.stringify({ pending_journal:true, journal_type:journalType, content, summary:d.summary||'' })]
           );
-          console.log(`[Lumi→journal_draft] ${journalType}`);
+          logger.info({ userId, action: 'journal_draft', resource: 'lumi_conversations' }, 'saved');
           savedItems.push({
             type: 'journal_draft',
             label: `Note saved to ${journalType} journal`,
@@ -717,32 +957,33 @@ async function executeExtraction(userId, originalText, extraction) {
 
         // ── Journal page entry — preview first, user confirms before saving ────
         case 'journal_page_entry': {
-          const journalType  = d.journal_type || d.journalType || 'personal';
-          const templateName = d.template_name || d.templateName || 'Blank Page';
-          const fields       = d.fields || {};
+          const normalized = normalizeJournalPagePayload(d);
+          const journalType  = normalized.journal_type;
+          const templateName = normalized.template_name;
+          const fields       = normalized.fields;
 
           if (Object.keys(fields).length === 0) {
-            console.warn('[Lumi] journal_page_entry has empty fields — skipping');
+            logger.warn({ userId, action: 'journal_page_entry' }, 'empty fields');
             break;
           }
 
           // Do NOT save yet — return as pending for preview card in the UI
-          const JOURNAL_LABELS = {
-            personal: 'Everyday Life', spiritual: 'Bible & Faith', goals: 'Goals & Vision',
-            business: 'My Business', wellness: 'Wellness', budget: 'Budget Diary',
-          };
           const journalLabel = JOURNAL_LABELS[journalType] || journalType;
-          results.pendingJournalPage = {
+          const pendingPage = {
             journal_type: journalType,
             template_name: templateName,
             fields,
-            entry_date: new Date().toISOString().slice(0, 10),
-            source: 'lumi',
+            entry_date: normalized.entry_date,
+            source: normalized.source,
+            tags: normalized.tags,
             confirmPrompt: `I filled in your ${templateName} page in the ${journalLabel} journal. Want me to save it?`,
           };
+          results.pendingJournalPages = results.pendingJournalPages || [];
+          results.pendingJournalPages.push(pendingPage);
+          results.pendingJournalPage = pendingPage;
           results.needsJournalPreview = true;
 
-          console.log(`[Lumi] journal_page_entry pending preview: ${journalType}/${templateName}`);
+          logger.info({ userId, action: 'journal_page_entry', resource: 'journal_page_entries' }, 'pending preview');
           break;
         }
 
@@ -751,19 +992,19 @@ async function executeExtraction(userId, originalText, extraction) {
           const journalLabel = d.journal_label || d.journalLabel;
           const newTemplate  = d.new_template || d.newTemplate;
           if (!journalLabel || !newTemplate?.name) {
-            console.warn('[Lumi] update_journal_type missing label or template name');
+            logger.warn({ userId, action: 'update_journal_type' }, 'missing label or template name');
             break;
           }
 
           // Find the custom journal by label (case-insensitive)
           const found = await pool.query(
             `SELECT id, templates FROM user_journal_types
-             WHERE user_id=$1 AND label ILIKE $2 AND is_active=true LIMIT 1`,
-            [userId, `%${journalLabel}%`]
+             WHERE user_id=$1 AND label ILIKE $2 ESCAPE '\\' AND is_active=true LIMIT 1`,
+            [userId, `%${journalLabel.replace(/[%_\\]/g, '\\$&')}%`]
           ).catch(() => ({ rows: [] }));
 
           if (found.rows.length === 0) {
-            console.warn(`[Lumi] update_journal_type: no journal found matching "${journalLabel}"`);
+            logger.warn({ userId, action: 'update_journal_type' }, 'no journal found');
             break;
           }
 
@@ -776,7 +1017,7 @@ async function executeExtraction(userId, originalText, extraction) {
             [JSON.stringify(merged), existing.id]
           );
 
-          console.log(`[Lumi→user_journal_types] added "${newTemplate.name}" to "${journalLabel}"`);
+          logger.info({ userId, action: 'update_journal_type', resource: 'user_journal_types' }, 'saved');
           savedItems.push({
             type: 'update_journal_type',
             label: `Added "${newTemplate.name}" section to ${journalLabel} journal`,
@@ -792,7 +1033,7 @@ async function executeExtraction(userId, originalText, extraction) {
           const content      = d.content || '';
           const scheduledFor = d.scheduled_for || d.scheduledFor;
           if (!content || !scheduledFor) {
-            console.warn('[Lumi] content_post missing content or scheduled_for');
+            logger.warn({ userId, action: 'content_post' }, 'missing content or scheduled_for');
             break;
           }
           await pool.query(
@@ -800,9 +1041,9 @@ async function executeExtraction(userId, originalText, extraction) {
                (user_id, platform, content, title, category, scheduled_for, source)
              VALUES ($1,$2,$3,$4,$5,$6,'lumi')`,
             [userId, platform, content, d.title || null, d.category || null, scheduledFor]
-          ).catch(err => console.error('[Lumi] content_post insert error:', err.message));
+          ).catch(err => logger.error({ userId, action: 'content_post', err: err.message }, 'insert failed'));
 
-          console.log(`[Lumi→scheduled_posts] ${platform} post for ${scheduledFor}`);
+          logger.info({ userId, action: 'content_post', resource: 'scheduled_posts' }, 'saved');
           savedItems.push({
             type: 'content_post',
             label: `${platform.charAt(0).toUpperCase() + platform.slice(1)} post — ${d.title || 'Scheduled content'}`,
@@ -814,17 +1055,33 @@ async function executeExtraction(userId, originalText, extraction) {
 
         // ── Email — preview first, user confirms before sending ────────────────
         case 'send_email': {
-          const to      = d.to || d.recipient;
+          let to      = d.to || d.recipient;
           const subject = d.subject;
           const body    = d.body || d.content || '';
           if (!to || !body) {
-            console.warn('[Lumi] send_email missing to or body');
+            logger.warn({ userId, action: 'send_email' }, 'missing to or body');
             break;
           }
+
+          // Entity resolution: if `to` looks like a name, resolve to email
+          if (to && !to.includes('@')) {
+            const { resolved, candidates } = await resolveContact(userId, to);
+            if (candidates.length > 1 && !resolved) {
+              // Multiple matches — ask user to disambiguate
+              const names = candidates.map(c => `${c.name} (${c.email})`).join(', ');
+              extraction.lumiResponse = `I found a few contacts matching "${to}": ${names}. Which one did you mean?`;
+              logger.info({ userId, action: 'entity_resolve', resource: 'contact', count: candidates.length }, 'disambiguation');
+              break;
+            }
+            if (resolved) {
+              to = resolved.email;
+            }
+          }
+
           // Same preview-first pattern as journal_page_entry
-          results.pendingEmail = { to, subject: subject || 'Message from PLOS', body, schedule_for: d.schedule_for || null };
+          results.pendingEmail = { to, subject: subject || 'Message from IniQ', body, schedule_for: d.schedule_for || null };
           results.needsEmailPreview = true;
-          console.log(`[Lumi] email preview pending: to=${to}`);
+          logger.info({ userId, action: 'send_email', resource: 'email' }, 'preview pending');
           break;
         }
 
@@ -833,7 +1090,7 @@ async function executeExtraction(userId, originalText, extraction) {
           const title = d.title;
           const eventDate = d.date || d.event_date;
           if (!title || !eventDate) {
-            console.warn('[Lumi] calendar_event missing title or date — skipping');
+            logger.warn({ userId, action: 'calendar_event' }, 'missing title or date');
             break;
           }
 
@@ -845,7 +1102,7 @@ async function executeExtraction(userId, originalText, extraction) {
              VALUES ($1,$2,$3,'09:00:00',60,'personal','none',true,$4)
              ON CONFLICT DO NOTHING`,
             [userId, title, d.note || '', eventDate]
-          ).catch(err => console.error('[Lumi] calendar_event insert error:', err.message));
+          ).catch(err => logger.error({ userId, action: 'calendar_event', err: err.message }, 'insert failed'));
 
           // If a reminder is requested, create a second entry N days before
           if (d.reminder_days_before && parseInt(d.reminder_days_before) > 0) {
@@ -863,7 +1120,7 @@ async function executeExtraction(userId, originalText, extraction) {
             ).catch(() => {});
           }
 
-          console.log(`[Lumi→schedules/calendar] "${title}" on ${eventDate}`);
+          logger.info({ userId, action: 'calendar_event', resource: 'schedules' }, 'saved');
           savedItems.push({
             type: 'calendar_event',
             label: `"${title}" on ${eventDate}${d.reminder_days_before ? ` (reminder ${d.reminder_days_before} days before)` : ''}`,
@@ -874,14 +1131,14 @@ async function executeExtraction(userId, originalText, extraction) {
         }
       }
     } catch (err) {
-      console.error(`[Lumi] Action "${action.type}" failed:`, err.message);
+      logger.error({ userId, action: action.type, err: err.message }, 'action failed');
     }
   }
 
   if (extraction.needsConfirmation && extraction.pendingJournalContent) {
     const jAction = extraction.actions?.find(a=>a.type==='journal_draft');
     const jd = jAction ? getActionData(jAction) : {};
-    pending.set(userId, {
+    await setPending(userId, {
       content: extraction.pendingJournalContent,
       suggestedJournal: jd.journal_type || 'personal',
       confirmPrompt: extraction.confirmPrompt,
@@ -891,7 +1148,26 @@ async function executeExtraction(userId, originalText, extraction) {
   let finalResponse = extraction.lumiResponse || '';
   // If we have a pending journal page preview, prompt the user to confirm
   if (results.needsJournalPreview && results.pendingJournalPage) {
-    finalResponse = results.pendingJournalPage.confirmPrompt || finalResponse;
+    if (results.pendingJournalPages?.length > 1) {
+      const names = results.pendingJournalPages
+        .map((p) => `${p.template_name} in ${JOURNAL_LABELS[p.journal_type] || p.journal_type}`)
+        .join('; ');
+      finalResponse = `I filled in ${results.pendingJournalPages.length} journal pages: ${names}. Want me to save them?`;
+      results.pendingJournalPage = {
+        journal_type: 'multiple',
+        template_name: 'Multiple Journal Pages',
+        fields: Object.fromEntries(results.pendingJournalPages.map((p, i) => [
+          `${i + 1}. ${p.template_name}`,
+          summarizeFields(p.fields),
+        ])),
+        entries: results.pendingJournalPages,
+        entry_date: new Date().toISOString().slice(0, 10),
+        source: 'lumi',
+        confirmPrompt: finalResponse,
+      };
+    } else {
+      finalResponse = results.pendingJournalPage.confirmPrompt || finalResponse;
+    }
   } else {
     const vagueMarkers = ['saved to journal','i\'ll save','i have saved','noted your','added to journal'];
     const isVague = vagueMarkers.some(v=>finalResponse.toLowerCase().includes(v)) && savedItems.length>0;
@@ -932,9 +1208,20 @@ async function executeExtraction(userId, originalText, extraction) {
 
 // ─── Confirm and save a journal page entry ────────────────────────────────────
 async function confirmJournalPageWrite(userId, pendingData) {
+  if (Array.isArray(pendingData.entries) && pendingData.entries.length > 0) {
+    const entries = [];
+    for (const entry of pendingData.entries) {
+      const result = await confirmJournalPageWrite(userId, entry);
+      if (!result.success) return result;
+      entries.push(result.entry);
+    }
+    return { success: true, entry: entries[entries.length - 1], entries };
+  }
+
   const { journal_type, template_name, fields, entry_date, source } = pendingData;
+  const normalized = normalizeJournalPagePayload({ journal_type, template_name, fields, entry_date, source });
   try {
-    const result = await pool.query(
+    const legacyResult = await pool.query(
       `INSERT INTO journal_page_entries
          (user_id, journal_type, template_name, entry_date, fields, source)
        VALUES ($1,$2,$3,$4::date,$5::jsonb,$6)
@@ -944,12 +1231,23 @@ async function confirmJournalPageWrite(userId, pendingData) {
          source     = $6,
          updated_at = NOW()
        RETURNING id, journal_type, template_name, entry_date, source`,
-      [userId, journal_type, template_name, entry_date || new Date().toISOString().slice(0,10), JSON.stringify(fields), source || 'lumi']
+      [
+        userId,
+        normalized.journal_type,
+        normalized.template_name,
+        normalized.entry_date,
+        JSON.stringify(normalized.fields),
+        normalized.source,
+      ]
     );
-    console.log(`[Lumi] journal page saved: ${journal_type}/${template_name}`);
-    return { success: true, entry: result.rows[0] };
+    const dailyEntry = await saveJournalPageToDailyEntries(userId, normalized).catch((err) => {
+      logger.error({ userId, err: err.message }, 'daily_entries mirror save error');
+      return null;
+    });
+    logger.info({ userId, action: 'journal_page_entry', resource: 'journal_page_entries' }, 'saved');
+    return { success: true, entry: { ...legacyResult.rows[0], daily_entry_id: dailyEntry?.id || null } };
   } catch (err) {
-    console.error('[Lumi] confirmJournalPageWrite error:', err.message);
+    logger.error({ userId, err: err.message }, 'confirmJournalPageWrite error');
     return { success: false, error: err.message };
   }
 }
@@ -1042,34 +1340,100 @@ async function writeToJournalEntry(userId, originalText, extraction, savedItems)
       `INSERT INTO lumi_daily_entries (user_id, entry_date, narrative, sections, mood)
        VALUES ($1, CURRENT_DATE, $2, $3::jsonb, $4)
        ON CONFLICT (user_id, entry_date) DO UPDATE SET
-         narrative   = lumi_daily_entries.narrative || E'\\n' || $2,
-         sections    = jsonb_merge_agg(lumi_daily_entries.sections, $3::jsonb),
-         mood        = COALESCE($4, lumi_daily_entries.mood),
-         updated_at  = NOW()`,
+         narrative  = lumi_daily_entries.narrative || E'\\n' || $2,
+         sections   = jsonb_strip_nulls(jsonb_build_object(
+           'expenses',   COALESCE(lumi_daily_entries.sections->'expenses',   '[]'::jsonb) || COALESCE($3::jsonb->'expenses',   '[]'::jsonb),
+           'workouts',   COALESCE(lumi_daily_entries.sections->'workouts',   '[]'::jsonb) || COALESCE($3::jsonb->'workouts',   '[]'::jsonb),
+           'habits',     COALESCE(lumi_daily_entries.sections->'habits',     '[]'::jsonb) || COALESCE($3::jsonb->'habits',     '[]'::jsonb),
+           'life_notes', COALESCE(lumi_daily_entries.sections->'life_notes', '[]'::jsonb) || COALESCE($3::jsonb->'life_notes', '[]'::jsonb),
+           'follow_ups', COALESCE(lumi_daily_entries.sections->'follow_ups', '[]'::jsonb) || COALESCE($3::jsonb->'follow_ups', '[]'::jsonb)
+         )),
+         mood       = COALESCE($4, lumi_daily_entries.mood),
+         updated_at = NOW()`,
       [userId, newNarrativeLine, JSON.stringify(newSections), extraction.emotion || null]
-    ).catch(async (err) => {
-      // jsonb_merge_agg may not exist — fallback to simpler upsert
-      if (err.message.includes('jsonb_merge_agg') || err.message.includes('does not exist')) {
-        await pool.query(
-          `INSERT INTO lumi_daily_entries (user_id, entry_date, narrative, sections, mood)
-           VALUES ($1, CURRENT_DATE, $2, $3::jsonb, $4)
-           ON CONFLICT (user_id, entry_date) DO UPDATE SET
-             narrative  = lumi_daily_entries.narrative || E'\\n' || $2,
-             sections   = $3::jsonb,
-             mood       = COALESCE($4, lumi_daily_entries.mood),
-             updated_at = NOW()`,
-          [userId, newNarrativeLine, JSON.stringify(newSections), extraction.emotion || null]
-        );
-      } else {
-        throw err;
-      }
-    });
+    ).catch((err) => { logger.error({ userId, err: err.message }, 'daily_entries upsert failed'); });
 
-    console.log(`[Lumi→daily_journal] entry updated for user ${userId}`);
+    logger.info({ userId, action: 'daily_journal', resource: 'lumi_daily_entries' }, 'updated');
   } catch (err) {
-    console.error('[Lumi] writeToJournalEntry error:', err.message);
+    logger.error({ userId, err: err.message }, 'writeToJournalEntry error');
     // Non-fatal — don't break the main response
   }
+}
+
+// ─── Confirmation handler for publishable-tier escalation ─────────────────────
+async function handlePublishableConfirm(userId, userResponse, pendingData) {
+  const lower = userResponse.toLowerCase().trim();
+  const yes = ['yes','yeah','sure','ok','okay','go ahead','do it','yep','please','confirm','post it','send it'].some(w=>lower.includes(w));
+  const no  = ['no',"don't",'skip','nope','cancel','dont','never mind','stop'].some(w=>lower.includes(w));
+
+  if (no) {
+    return {
+      success: true,
+      lumiResponse: "Got it — I won't post or send that. What else is on your mind?",
+      saved: false, savedItems: [], route: 'chat', needsConfirmation: false,
+    };
+  }
+
+  if (yes) {
+    // Execute only the publishable actions that were held back
+    const savedItems = [];
+    for (const action of pendingData.actions) {
+      const d = getActionData(action);
+      try {
+        switch (action.type) {
+          case 'content_post': {
+            const platform = d.platform || 'instagram';
+            const content = d.content || '';
+            const scheduledFor = d.scheduled_for || d.scheduledFor;
+            if (!content || !scheduledFor) break;
+            await pool.query(
+              `INSERT INTO scheduled_posts
+                 (user_id, platform, content, title, category, scheduled_for, source)
+               VALUES ($1,$2,$3,$4,$5,$6,'lumi')`,
+              [userId, platform, content, d.title || null, d.category || null, scheduledFor]
+            );
+            logger.info({ userId, action: 'content_post', resource: 'scheduled_posts' }, 'confirmed');
+            savedItems.push({
+              type: 'content_post',
+              label: `${platform.charAt(0).toUpperCase() + platform.slice(1)} post — ${d.title || 'Scheduled content'}`,
+              destination: `Content Calendar (${scheduledFor?.slice(0, 10)})`,
+              data: d,
+            });
+            break;
+          }
+          case 'send_email': {
+            const to = d.to || d.recipient;
+            const subject = d.subject;
+            const body = d.body || d.content || '';
+            if (!to || !body) break;
+            results.pendingEmail = { to, subject: subject || 'Message', body, schedule_for: d.schedule_for || null };
+            results.needsEmailPreview = true;
+            break;
+          }
+        }
+      } catch (err) {
+        logger.error({ userId, action: action.type, err: err.message }, 'publishable action failed');
+      }
+    }
+    return {
+      success: true,
+      lumiResponse: savedItems.length > 0
+        ? `Done — ${savedItems.map(s => s.label).join('; ')}.`
+        : "All set. What's next?",
+      saved: savedItems.length > 0,
+      savedItems,
+      route: savedItems[0]?.type === 'content_post' ? 'content' : 'chat',
+      needsConfirmation: false,
+    };
+  }
+
+  // Ambiguous — re-ask
+  return {
+    success: true,
+    lumiResponse: `Should I go ahead with that? Say "yes" to confirm or "no" to cancel.`,
+    saved: false, savedItems: [], route: 'chat', needsConfirmation: true,
+    pendingState: pendingData,
+  };
 }
 
 // ─── Confirmation handler ───────────────────────────────────────────────────────
@@ -1078,7 +1442,7 @@ async function handleConfirmation(userId, userResponse, pendingData) {
   const yes = ['yes','yeah','sure','ok','okay','save','go ahead','do it','yep','please','correct'].some(w=>lower.includes(w));
   const no  = ['no',"don't",'skip','nope','cancel','dont','never mind'].some(w=>lower.includes(w));
 
-  pending.delete(userId);
+  await deletePending(userId);
 
   if (yes) {
     const journalType = pendingData.suggestedJournal || 'personal';
@@ -1101,7 +1465,7 @@ async function handleConfirmation(userId, userResponse, pendingData) {
       [userId, narrative]
     ).catch(()=>{});
 
-    console.log(`[Lumi] confirmed journal save → ${journalType}`);
+    logger.info({ userId, action: 'journal_draft', resource: 'lumi_conversations' }, 'confirmed');
     return {
       success: true,
       lumiResponse: `Saved to your ${journalType} journal ✓. It's there whenever you want to reflect on it.`,
@@ -1119,7 +1483,7 @@ async function handleConfirmation(userId, userResponse, pendingData) {
     };
   }
 
-  pending.set(userId, pendingData);
+  await setPending(userId, pendingData);
   return {
     success: true,
     lumiResponse: pendingData.confirmPrompt || "Should I save that to your journal?",
@@ -1129,7 +1493,7 @@ async function handleConfirmation(userId, userResponse, pendingData) {
 
 // ─── External: /lumi/confirm endpoint ──────────────────────────────────────────
 async function confirmAndSave(userId, journalType, content, summary='') {
-  pending.delete(userId);
+  await deletePending(userId);
   try {
     await pool.query(
       `INSERT INTO lumi_conversations
@@ -1146,6 +1510,13 @@ async function confirmAndSave(userId, journalType, content, summary='') {
 
 // ─── Shared context builder ─────────────────────────────────────────────────────
 async function buildUserContext(userId) {
+  try {
+    const lifeContext = await getUserLifeContext(userId, '30days');
+    return formatLegacyContext(lifeContext);
+  } catch (err) {
+    logger.error({ userId, err: err.message }, 'context engine fallback');
+  }
+
   const ctx = {
     scheduleSummary:'No tasks today',
     habitSummary:'No habits tracked',
@@ -1166,16 +1537,17 @@ async function buildUserContext(userId) {
          ORDER BY start_time LIMIT 5`, [userId]
       ).catch(()=>({rows:[]})),
       pool.query(
-        `SELECT COUNT(*) FILTER (WHERE completed=true) AS done, COUNT(*) AS total
-         FROM habit_completions WHERE user_id=$1 AND date=CURRENT_DATE`, [userId]
+        `SELECT
+           (SELECT COUNT(*) FROM habit_completions WHERE user_id=$1 AND completion_date=CURRENT_DATE) AS done,
+           (SELECT COUNT(*) FROM habits WHERE user_id=$1 AND is_active=true) AS total`, [userId]
       ).catch(()=>({rows:[]})),
       pool.query(
         `SELECT amount, currency, category, note, type FROM budget_entries
-         WHERE user_id=$1 AND entry_date=CURRENT_DATE ORDER BY created_at DESC LIMIT 10`, [userId]
+         WHERE user_id=$1 AND entry_date=CURRENT_DATE AND archived_at IS NULL ORDER BY created_at DESC LIMIT 10`, [userId]
       ).catch(()=>({rows:[]})),
       pool.query(
         `SELECT category, SUM(amount) AS total FROM budget_entries
-         WHERE user_id=$1 AND type='expense' AND entry_date >= DATE_TRUNC('month',CURRENT_DATE)
+         WHERE user_id=$1 AND type='expense' AND archived_at IS NULL AND entry_date >= DATE_TRUNC('month',CURRENT_DATE)
          GROUP BY category ORDER BY total DESC LIMIT 6`, [userId]
       ).catch(()=>({rows:[]})),
       pool.query(
@@ -1204,7 +1576,7 @@ async function buildUserContext(userId) {
     // Today's journal page entries (so Lumi knows what template pages are already open)
     const journalPagesRes = await pool.query(
       `SELECT journal_type, template_name, fields FROM journal_page_entries
-       WHERE user_id=$1 AND entry_date=CURRENT_DATE ORDER BY updated_at DESC`,
+       WHERE user_id=$1 AND entry_date=CURRENT_DATE AND archived_at IS NULL ORDER BY updated_at DESC`,
       [userId]
     ).catch(()=>({rows:[]}));
     if (journalPagesRes.rows.length>0) {
@@ -1216,7 +1588,7 @@ async function buildUserContext(userId) {
     // User's custom journal types (so Lumi can route to them)
     const customRes = await pool.query(
       `SELECT type_key, label, routing_keywords FROM user_journal_types
-       WHERE user_id=$1 AND is_active=true ORDER BY display_order`,
+       WHERE user_id=$1 AND is_active=true AND archived_at IS NULL ORDER BY display_order`,
       [userId]
     ).catch(()=>({rows:[]}));
     ctx.customJournalTypes = customRes.rows.map(r => ({
@@ -1229,7 +1601,7 @@ async function buildUserContext(userId) {
     ctx.persistentMemories = await getUserMemories(userId);
 
   } catch (err) {
-    console.error('[Lumi] buildUserContext error:', err.message);
+    logger.error({ userId, err: err.message }, 'buildUserContext error');
   }
   return ctx;
 }
@@ -1266,17 +1638,17 @@ async function saveToSchedule(userId, data) {
 
 async function updateHabit(userId, data) {
   let habitId;
-  const find = await pool.query(`SELECT id FROM habits WHERE user_id=$1 AND name ILIKE $2 LIMIT 1`,[userId,`%${data.habitName}%`]).catch(()=>({rows:[]}));
+  const find = await pool.query(`SELECT id FROM habits WHERE user_id=$1 AND title ILIKE $2 ESCAPE '\\' LIMIT 1`,[userId,`%${data.habitName.replace(/[%_\\]/g, '\\$&')}%`]).catch(()=>({rows:[]}));
   if (find.rows.length===0) {
-    const ins = await pool.query(`INSERT INTO habits (user_id, name, created_at) VALUES ($1,$2,NOW()) RETURNING id`,[userId,data.habitName]).catch(()=>null);
+    const ins = await pool.query(`INSERT INTO habits (user_id, title) VALUES ($1,$2) RETURNING id`,[userId,data.habitName]).catch(()=>null);
     habitId = ins?.rows[0]?.id;
   } else { habitId = find.rows[0].id; }
   if (habitId) {
     await pool.query(
-      `INSERT INTO habit_completions (habit_id, user_id, completed, date, created_at)
-       VALUES ($1,$2,true,CURRENT_DATE,NOW()) ON CONFLICT (habit_id,date) DO UPDATE SET completed=true`,
+      `INSERT INTO habit_completions (habit_id, user_id, completion_date)
+       VALUES ($1,$2,CURRENT_DATE) ON CONFLICT (habit_id, completion_date) DO NOTHING`,
       [habitId, userId]
-    ).catch(()=>{});
+    ).catch((e)=>{ logger.error({ userId, action: 'updateHabit', err: e.message }, 'completion failed'); });
   }
   return { habit_name:data.habitName, completed:true };
 }

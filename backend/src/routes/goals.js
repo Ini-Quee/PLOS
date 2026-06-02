@@ -4,12 +4,15 @@
  * Year Goal → Quarterly Milestone → Monthly Theme → Weekly Priority → Daily Intention
  */
 const express = require('express');
-const router = express.Router();
-const { authenticate } = require('../middleware/authenticate');
-const { auditLog } = require('../middleware/auditLog');
-const { validateInput } = require('../middleware/validateInput');
-const { body, param } = require('express-validator');
+const { z } = require('zod');
 const { pool } = require('../db/connection');
+const { authenticate } = require('../middleware/authenticate');
+const { validateInput } = require('../middleware/validateInput');
+const logger = require('../lib/logger');
+const { auditLog } = require('../middleware/auditLog');
+const { body, param } = require('express-validator');
+
+const router = express.Router();
 
 /**
  * GET /api/goals
@@ -26,7 +29,7 @@ router.get(
 
     const result = await pool.query(
       `SELECT * FROM year_goals
-      WHERE user_id = $1 AND year = $2
+      WHERE user_id = $1 AND year = $2 AND archived_at IS NULL
       ORDER BY
       quarter ASC NULLS LAST,
       month ASC NULLS LAST,
@@ -104,6 +107,51 @@ router.post(
 );
 
 /**
+ * PUT /api/goals/:id
+ * Update a goal
+ */
+router.put(
+  '/:id',
+  authenticate,
+  auditLog('update_goal'),
+  validateInput([param('id').isUUID(), body('title').optional().notEmpty()]),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const existing = await pool.query(
+        `SELECT * FROM year_goals WHERE id=$1 AND user_id=$2 AND archived_at IS NULL`,
+        [id, req.user.id]
+      );
+      if (existing.rows.length === 0) return res.status(404).json({ error: 'Goal not found' });
+      const next = { ...existing.rows[0], ...req.body };
+      const result = await pool.query(
+        `UPDATE year_goals SET
+           title=$1, description=$2, year=$3, quarter=$4, month=$5, week=$6,
+           is_complete=$7, completed_at=$8, updated_at=NOW()
+         WHERE id=$9 AND user_id=$10 AND archived_at IS NULL
+         RETURNING *`,
+        [
+          next.title,
+          next.description || null,
+          next.year || new Date().getFullYear(),
+          next.quarter || null,
+          next.month || null,
+          next.week || null,
+          !!next.is_complete,
+          next.completed_at || null,
+          id,
+          req.user.id,
+        ]
+      );
+      res.json({ goal: result.rows[0] });
+    } catch (err) {
+      console.error('Error updating goal:', err);
+      res.status(500).json({ error: 'Failed to update goal' });
+    }
+  }
+);
+
+/**
  * PUT /api/goals/:id/complete
  * Mark goal complete
  */
@@ -119,7 +167,7 @@ router.post(
     const result = await pool.query(
       `UPDATE year_goals SET
       is_complete = true, completed_at = NOW(), updated_at = NOW()
-      WHERE id = $1 AND user_id = $2
+      WHERE id = $1 AND user_id = $2 AND archived_at IS NULL
       RETURNING *`,
       [id, req.user.id]
     );
@@ -151,7 +199,8 @@ router.delete(
       const { id } = req.params;
 
     const result = await pool.query(
-      'DELETE FROM year_goals WHERE id = $1 AND user_id = $2 RETURNING id',
+      `UPDATE year_goals SET archived_at=NOW(), updated_at=NOW()
+       WHERE id = $1 AND user_id = $2 AND archived_at IS NULL RETURNING id`,
       [id, req.user.id]
     );
 
