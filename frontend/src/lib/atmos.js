@@ -317,6 +317,29 @@ export function getTimeOfDay() {
   return 'night';
 }
 
+// ─── Plain scene (no photo, calm gradient) ───────────────────────────────────
+const PLAIN_SCENE = {
+  id: 'plain',
+  label: 'Plain',
+  photo: null,
+  fallback: 'linear-gradient(180deg, #080503 0%, #0F0804 50%, #080503 100%)',
+  overlay: 'rgba(8, 5, 3, 0.4)',
+  particles: null,
+  palette: {
+    accent: '#C8955C',
+    accentRgb: '200,149,92',
+    surface: 'rgba(20, 12, 6, 0.52)',
+    border: 'rgba(200,149,92,0.09)',
+    glow: 'rgba(200,149,92,0.18)',
+    text: '#EAE0D5',
+    muted: '#9B8A7A',
+  },
+  time: ['all'],
+  season: ['all'],
+  section: ['all'],
+  region: ['all'],
+};
+
 // ─── Scene Picker ─────────────────────────────────────────────────────────────
 export function pickScene({ section = 'all' } = {}) {
   // User-uploaded / pasted custom photo takes highest priority
@@ -331,6 +354,7 @@ export function pickScene({ section = 'all' } = {}) {
   } catch {}
 
   const override = localStorage.getItem('plos_atmos_scene');
+  if (override === 'plain') return PLAIN_SCENE;
   if (override && SCENES[override]) return SCENES[override];
 
   const time   = getTimeOfDay();

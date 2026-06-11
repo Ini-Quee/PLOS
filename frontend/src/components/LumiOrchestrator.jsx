@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAtmos } from './Atmosphere';
 import { useLumi } from '../hooks/useLumi';
+import LumiFace from './lumi/LumiFace';
 
 /**
  * LumiOrchestrator
@@ -65,7 +66,7 @@ function PlanReviewPanel({ plan, onConfirm, onDismiss, isExecuting, palette }) {
       }}>
         {/* Header */}
         <div style={{ padding: '18px 20px 14px', borderBottom: `1px solid ${palette.border}`, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-          <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'rgba(165,180,252,0.15)', border: '1px solid rgba(165,180,252,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>✨</div>
+          <div style={{ flexShrink: 0 }}><LumiFace mood="resting" size={38} /></div>
           <div>
             <div style={{ fontSize: 15, fontWeight: 600, color: '#a5b4fc', marginBottom: 4 }}>Lumi's Plan</div>
             <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>{plan.lumiMessage}</div>
@@ -174,7 +175,7 @@ function CompletionFollowUpPanel({ followUp, onRespond, onDismiss, palette }) {
     }}>
       <style>{`@keyframes fadeUp { from { opacity:0; transform:translateY(12px) } to { opacity:1; transform:translateY(0) } }`}</style>
       <div style={{ padding: '14px 16px 12px', borderBottom: `1px solid ${palette.border}`, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-        <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(165,180,252,0.15)', border: '1px solid rgba(165,180,252,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}>✨</div>
+        <div style={{ flexShrink: 0 }}><LumiFace mood="resting" size={32} /></div>
         <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.68)', lineHeight: 1.5, flex: 1 }}>{followUp.followUp}</div>
         <button onClick={onDismiss} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.28)', fontSize: 16, flexShrink: 0, lineHeight: 1, paddingTop: 2 }}>✕</button>
       </div>
@@ -233,7 +234,7 @@ function LumiInputBar({ onSend, onPlan, isThinking, palette }) {
           transition: 'all 0.2s',
         }}
         title="Ask Lumi"
-      >✨</button>
+      ><LumiFace mood="resting" size={44} showOrb={false} /></button>
 
       {open && (
         <div style={{

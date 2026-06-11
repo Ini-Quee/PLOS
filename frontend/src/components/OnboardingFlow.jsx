@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { C } from './layout/SidebarLayout';
+import LumiFace from './lumi/LumiFace';
 
 const STEP_KEY = 'plos_onboarding_step';
 const INTENT_KEY = 'plos_intent';
@@ -107,13 +108,9 @@ export default function OnboardingFlow({ userName, onDone }) {
       {/* ── Step 0: Splash ─────────────────────────────────────────────────── */}
       {step === 0 && (
         <div style={card}>
-          <div style={{
-            width: 52, height: 52, borderRadius: '50%',
-            background: 'radial-gradient(circle at 35% 35%, #ffbe4d, #C8955C, rgba(200,149,92,0.4))',
-            margin: '0 auto 28px',
-            animation: 'breathe 3s ease-in-out infinite, orbFadeIn 0.6s ease both',
-            boxShadow: '0 0 24px rgba(200,149,92,0.35)',
-          }} />
+          <div style={{ margin: '0 auto 28px', display: 'flex', justifyContent: 'center', animation: 'orbFadeIn 0.6s ease both' }}>
+            <LumiFace mood="resting" size={64} />
+          </div>
           <div style={{ fontSize: 11, letterSpacing: '0.15em', color: C.amber, textTransform: 'uppercase', marginBottom: 14, opacity: 0.8 }}>
             Personal Life OS
           </div>
@@ -176,13 +173,9 @@ export default function OnboardingFlow({ userName, onDone }) {
       {/* ── Step 2: Lumi intro ────────────────────────────────────────────── */}
       {step === 2 && (
         <div style={card}>
-          <div style={{
-            width: 64, height: 64, borderRadius: '50%',
-            background: 'radial-gradient(circle at 35% 35%, #ffbe4d, #C8955C, rgba(200,149,92,0.3))',
-            margin: '0 auto 24px',
-            animation: 'breathe 3s ease-in-out infinite, orbFadeIn 0.5s ease both',
-            boxShadow: '0 0 32px rgba(200,149,92,0.4)',
-          }} />
+          <div style={{ margin: '0 auto 24px', display: 'flex', justifyContent: 'center', animation: 'orbFadeIn 0.5s ease both' }}>
+            <LumiFace mood="happy" size={72} />
+          </div>
           <div style={{ fontSize: 26, fontWeight: 800, color: '#e8e8f0', marginBottom: 14 }}>
             Hi {firstName}, I'm Lumi ✨
           </div>

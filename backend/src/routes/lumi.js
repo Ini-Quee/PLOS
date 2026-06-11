@@ -109,6 +109,7 @@ router.post('/message', rateLimiter(30, 900, 'lumi_message'), authenticate, atta
       recurringPlanText: result.recurringPlanText || null,
       needsEmailPreview: result.needsEmailPreview || false,
       pendingEmail: result.pendingEmail || null,
+      trackerCreated: result.trackerCreated || null,
       context: {
         scheduleSummary: context.scheduleSummary,
         habitSummary: context.habitSummary,
@@ -361,7 +362,11 @@ router.get('/history', authenticate, async (req, res) => {
     res.json({
       conversations: result.rows.map(row => ({
         ...row,
-        saved_data: row.saved_data ? JSON.parse(row.saved_data) : null,
+        // saved_data is a JSONB column — pg already returns it parsed.
+        // Guard against legacy string rows just in case.
+        saved_data: typeof row.saved_data === 'string'
+          ? JSON.parse(row.saved_data)
+          : (row.saved_data || null),
       })),
       limit,
       offset,

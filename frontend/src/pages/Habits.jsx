@@ -1140,16 +1140,40 @@ export default function Habits() {
         )}
 
         {!loading && habits.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '60px 0', animation: 'fadeUp 0.3s ease both' }}>
-            <div style={{ fontSize: 48, marginBottom: 14 }}>🌱</div>
-            <div style={{ color: C.muted, fontSize: 16, marginBottom: 20 }}>Your habits live here</div>
-            <button
-              onClick={() => setShowAddForm(true)}
-              style={{
-                padding: '10px 24px', borderRadius: 20, background: 'transparent',
-                border: `1.5px solid ${C.amber}`, color: C.amber, fontSize: 14, fontWeight: 600, cursor: 'pointer',
-              }}
-            >Start your first habit</button>
+          <div style={{ padding: '40px 8px 60px', animation: 'fadeUp 0.3s ease both', maxWidth: 560, margin: '0 auto' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 48, marginBottom: 14 }}>🌱</div>
+              <div style={{ fontFamily: 'Georgia, serif', fontSize: 22, fontWeight: 500, color: C.text, marginBottom: 8 }}>Small habits, repeated, change everything</div>
+              <div style={{ color: C.muted, fontSize: 14, marginBottom: 26, lineHeight: 1.6 }}>Pick one tiny thing to do each day. Lumi will help you keep the streak alive — even on hard days.</div>
+            </div>
+
+            <div style={{ fontSize: 12, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 12 }}>Popular starts — tap to begin</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 22 }}>
+              {[
+                { emoji: '💧', title: 'Drink water' },
+                { emoji: '🏃', title: 'Move my body' },
+                { emoji: '📖', title: 'Read 10 minutes' },
+                { emoji: '🧘', title: 'Breathe / meditate' },
+              ].map(s => (
+                <div key={s.title}
+                  onClick={() => { setNewEmoji(s.emoji); setNewTitle(s.title); setShowAddForm(true) }}
+                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: '14px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 11 }}
+                >
+                  <span style={{ fontSize: 22 }}>{s.emoji}</span>
+                  <span style={{ fontSize: 14, color: C.text }}>{s.title}</span>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ textAlign: 'center' }}>
+              <button
+                onClick={() => setShowAddForm(true)}
+                style={{
+                  padding: '11px 26px', borderRadius: 22, background: C.amber,
+                  border: 'none', color: '#1a1205', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                }}
+              >+ Create your own</button>
+            </div>
           </div>
         )}
 

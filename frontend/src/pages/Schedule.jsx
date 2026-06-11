@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import SidebarLayout, { C } from '../components/layout/SidebarLayout';
 import { useAtmos } from '../components/Atmosphere';
 import api from '../lib/api';
+import LumiFace from '../components/lumi/LumiFace';
 import { useIsMobile } from '../hooks/useIsMobile';
 import ErrorBoundary from '../components/ErrorBoundary';
 
@@ -479,7 +480,7 @@ function LumiPanel({ open, onClose, messages, onSend, loading, palette }) {
       transition:'transform 0.3s ease',
     }}>
       <div style={{ padding:'20px 20px 14px', borderBottom:`1px solid ${palette.border}`, display:'flex', alignItems:'center', gap:10 }}>
-        <div style={{ width:36, height:36, borderRadius:'50%', background:'rgba(165,180,252,0.15)', border:'1px solid rgba(165,180,252,0.3)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>✨</div>
+        <div style={{ flexShrink:0 }}><LumiFace mood="resting" size={36} tint="blue" /></div>
         <div>
           <div style={{ fontSize:14, fontWeight:600, color:'#a5b4fc' }}>Lumi</div>
           <div style={{ fontSize:11, color:'rgba(255,255,255,0.28)' }}>{loading ? 'Thinking…' : 'Ready to help'}</div>
@@ -696,7 +697,7 @@ export default function Schedule() {
               {total > 0 && <ProgressRing pct={pct} done={done} total={total} locked={tasks.filter(t=>t.locked).length} palette={palette} />}
 
               <div onClick={() => openLumi('')} style={{ background:'linear-gradient(135deg,rgba(76,63,145,0.18),rgba(15,94,94,0.18))', border:'1px solid rgba(165,180,252,0.18)', borderRadius:14, padding:'14px 16px', marginBottom:18, display:'flex', alignItems:'flex-start', gap:12, cursor:'pointer' }}>
-                <div style={{ width:34, height:34, borderRadius:'50%', background:'rgba(165,180,252,0.15)', border:'1px solid rgba(165,180,252,0.3)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:17, flexShrink:0 }}>✨</div>
+                <div style={{ flexShrink:0 }}><LumiFace mood="resting" size={34} tint="blue" /></div>
                 <div>
                   <div style={{ fontSize:13, color:'rgba(255,255,255,0.62)', lineHeight:1.55 }}>
                     <strong style={{ color:'#a5b4fc' }}>Lumi is ready.</strong>{' '}
@@ -711,11 +712,36 @@ export default function Schedule() {
               {loadingTasks ? (
                 <div style={{ textAlign:'center', padding:'48px 0', color:'rgba(255,255,255,0.28)', fontSize:13 }}>Loading your plan…</div>
               ) : total === 0 ? (
-                <div style={{ textAlign:'center', padding:'60px 20px' }}>
-                  <div style={{ fontSize:36, marginBottom:12 }}>📅</div>
-                  <div style={{ fontSize:16, fontWeight:600, color:'#e8f0e9', marginBottom:8 }}>Your day is open</div>
-                  <div style={{ fontSize:13, color:'rgba(255,255,255,0.35)', marginBottom:20 }}>Ask Lumi to build your day, or add a task below.</div>
-                  <button onClick={() => openLumi('Plan my day')} style={{ background:'rgba(165,180,252,0.12)', border:'1px solid rgba(165,180,252,0.28)', borderRadius:24, padding:'10px 24px', cursor:'pointer', fontSize:13, color:'#a5b4fc', fontFamily:'inherit', fontWeight:500 }}>✨ Plan my day with Lumi</button>
+                <div style={{ padding:'12px 4px 40px' }}>
+                  <div style={{ fontFamily:'Georgia, serif', fontSize:22, fontWeight:500, color:'#f4f0e8', marginBottom:4 }}>Let's start your day</div>
+                  <div style={{ fontSize:13, color:'rgba(255,255,255,0.45)', marginBottom:20, lineHeight:1.6 }}>Pick any one — nothing is locked in, and Lumi will help.</div>
+
+                  {/* First-step cards */}
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:11, marginBottom:18 }}>
+                    <div onClick={() => openLumi('Plan my day')} style={{ background:'rgba(10,12,8,0.5)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:14, padding:16, cursor:'pointer' }}>
+                      <div style={{ fontSize:22 }}>✨</div>
+                      <div style={{ fontSize:14, fontWeight:500, color:'#f0ece2', marginTop:10 }}>Plan my whole day</div>
+                      <div style={{ fontSize:12, color:'rgba(255,255,255,0.4)', marginTop:4, lineHeight:1.5 }}>Tell Lumi your day and she'll build the schedule.</div>
+                    </div>
+                    <div onClick={() => navigate('/trackers')} style={{ background:'rgba(10,12,8,0.5)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:14, padding:16, cursor:'pointer' }}>
+                      <div style={{ fontSize:22 }}>🔥</div>
+                      <div style={{ fontSize:14, fontWeight:500, color:'#f0ece2', marginTop:10 }}>Start a tracker</div>
+                      <div style={{ fontSize:12, color:'rgba(255,255,255,0.4)', marginTop:4, lineHeight:1.5 }}>Workouts, water, reading — watch your streak grow.</div>
+                    </div>
+                    <div onClick={() => openLumi('Help me build a daily routine I can repeat')} style={{ background:'rgba(10,12,8,0.5)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:14, padding:16, cursor:'pointer', gridColumn:'span 2' }}>
+                      <div style={{ fontSize:22 }}>🗓️</div>
+                      <div style={{ fontSize:14, fontWeight:500, color:'#f0ece2', marginTop:10 }}>Build a routine with Lumi</div>
+                      <div style={{ fontSize:12, color:'rgba(255,255,255,0.4)', marginTop:4, lineHeight:1.5 }}>Set up a morning, deep-work, or wind-down rhythm you can reuse.</div>
+                    </div>
+                  </div>
+
+                  {/* Example phrases — teach how to talk to Lumi */}
+                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:9 }}>or just tell Lumi</div>
+                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                    {['Plan a productive day', 'Add gym at 7am', 'I have 3 meetings today'].map(phrase => (
+                      <span key={phrase} onClick={() => openLumi(phrase)} style={{ fontSize:12, color:'#c8c0b0', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.09)', padding:'7px 13px', borderRadius:18, cursor:'pointer' }}>"{phrase}"</span>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <Timeline tasks={tasks} onToggleDone={toggleDone} onToggleLock={toggleLock} onSelect={selectTask} onReminderChange={handleReminderChange} />

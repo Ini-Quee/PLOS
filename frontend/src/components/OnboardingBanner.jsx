@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { C } from './layout/SidebarLayout';
+import LumiFace from './lumi/LumiFace';
 
 export default function OnboardingBanner() {
   const navigate = useNavigate();
@@ -17,7 +18,7 @@ export default function OnboardingBanner() {
       margin: '16px 28px 0',
       display: 'flex', alignItems: 'center', gap: 12,
     }}>
-      <span style={{ fontSize: 20 }}>✨</span>
+      <LumiFace mood="resting" size={28} showOrb={false} />
       <div style={{ flex: 1, fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>
         Your life plan is waiting.{' '}
         <span style={{ color: C.amber }}>Let Lumi set up your week in 10 minutes.</span>

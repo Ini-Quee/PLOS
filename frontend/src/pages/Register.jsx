@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
+import LumiFace from '../components/lumi/LumiFace';
 
 export default function Register() {
   const { register } = useAuth();
@@ -158,14 +159,12 @@ export default function Register() {
             width: '64px',
             height: '64px',
             borderRadius: '50%',
-            backgroundColor: 'rgba(122, 139, 82, 0.12)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             margin: '0 auto 16px',
-            boxShadow: '0 0 24px rgba(122, 139, 82, 0.25)',
           }}>
-            <span style={{ fontSize: '32px' }}>✨</span>
+            <LumiFace mood="resting" size={64} />
           </div>
           <h1 style={{
             fontSize: '32px',

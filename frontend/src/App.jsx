@@ -22,6 +22,7 @@ import Settings from './pages/Settings';
 import TalkToLumi from './pages/TalkToLumi';
 import Budget from './pages/Budget';
 import Habits from './pages/Habits';
+import Trackers from './pages/Trackers';
 import Upgrade from './pages/Upgrade';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import EmailCompose from './pages/EmailCompose';
@@ -292,6 +293,16 @@ function AppRoutes() {
             <ProtectedRoute>
               <AnimatedRoute>
                 <Habits />
+              </AnimatedRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/trackers"
+          element={
+            <ProtectedRoute>
+              <AnimatedRoute>
+                <Trackers />
               </AnimatedRoute>
             </ProtectedRoute>
           }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../../lib/api';
 import BudgetVoiceInput from './BudgetVoiceInput';
+import LumiFace from '../lumi/LumiFace';
 
 const CELEBRATIONS = [
   'Every naira tracked is clarity.',
@@ -158,7 +159,7 @@ export default function LumiBudgetPanel({ open, onClose, onEntryLogged }) {
           flexShrink: 0,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 16 }}>✨</span>
+            <LumiFace mood="resting" size={26} tint="green" />
             <span style={{ fontSize: 14, fontWeight: 600, color: '#EAE0D5', fontFamily: "'Inter', sans-serif" }}>
               Lumi
             </span>

@@ -21,14 +21,21 @@ router.get(
   auditLog('view_schedules'),
   async (req, res) => {
     try {
-      const schedules = await pool.query(
+      const { from, to } = req.query;
+      const params = [req.user.id];
+      let dateFilter = '';
+      if (from && to) {
+        params.push(from, to);
+        dateFilter = ` AND (target_date IS NULL OR target_date BETWEEN $2 AND $3)`;
+      }
+      const { rows } = await pool.query(
         `SELECT * FROM schedules
-         WHERE user_id = $1 AND is_active = true
+         WHERE user_id = $1 AND is_active = true${dateFilter}
          ORDER BY start_time ASC`,
-        [req.user.id]
+        params
       );
 
-      res.json({ schedules });
+      res.json({ schedules: rows });
     } catch (err) {
       console.error('Error fetching schedules:', err);
       res.status(500).json({ error: 'Failed to fetch schedules' });

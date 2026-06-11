@@ -7,6 +7,92 @@
 const { pool } = require('../db/connection');
 const logger = require('../lib/logger');
 
+// ─── Tracker detection (Lane 1 — zero AI cost) ───────────────────────────────
+// Pattern-matches tracker requests from natural language.
+// Returns { title, type, target_days?, target_count?, emoji, confidence } or null.
+
+const TRACKER_REQUEST_RE = /\b(track|tracker|streak|every\s*day|each\s*day|days\s+of|day\s+challenge|no[- ]\w+ (?:challenge|days)|quit|stop|don'?t\s+break|chain)\b/i;
+const TRACKER_NDAY_RE = /\b(\d+)\s*(?:day|days)\b/i;
+const KNOWN_CHALLENGES = [
+  { re: /75\s*hard/i, title: '75 Hard', target: 75 },
+  { re: /75\s*day/i,  title: '75 Day Challenge', target: 75 },
+];
+const COUNT_RE = /\b(\d+)\s*(books|workouts?|gym\s*sessions?|runs?|miles?|km|pages?|hours?|minutes?|glasses|litres?|liters?|sessions?|times?)\b/i;
+const COUNT_CONTEXT_RE = /\b(this\s*year|total|in\s*total|overall|goal)\b/i;
+
+const EMOJI_MAP = [
+  { re: /work\s*out|gym|exercise|lift|train|fitness/i, emoji: '💪' },
+  { re: /read|book|pages/i, emoji: '📖' },
+  { re: /water|drink|hydrat/i, emoji: '💧' },
+  { re: /pray|bible|devotion|quiet\s*time|scripture|church/i, emoji: '🙏' },
+  { re: /write|journal|blog|draft/i, emoji: '✍️' },
+  { re: /sleep|bed|rest|insomnia/i, emoji: '😴' },
+  { re: /alcohol|sober|drink|no[- ]?fap|quit\s*smok/i, emoji: '🚫' },
+  { re: /run|jog|sprint|marathon/i, emoji: '🏃' },
+  { re: /meditat|breath|calm|mindful/i, emoji: '🧘' },
+  { re: /code|coding|program|develop|hack/i, emoji: '💻' },
+  { re: /save|money|budget|naira|dollar/i, emoji: '💰' },
+  { re: /cook|meal\s*prep|food|diet|sugar|junk/i, emoji: '🥗' },
+  { re: /walk|step/i, emoji: '🚶' },
+  { re: /yoga|stretch/i, emoji: '🧘' },
+  { re: /gratitude|thankful|grateful/i, emoji: '🙏' },
+];
+
+const TITLE_STRIP_RE = /\b(i\s+want\s+to|help\s+me|can\s+you|please|let'?s|i'?m\s+going\s+to|i\s+need\s+to|gonna|track|tracker|my|a|an|the|streak|for|every\s*day|each\s*day|each|day|days|challenge|of|this\s*year|in\s*total|total|overall|goal|don'?t\s+break\s+(?:the\s+)?chain)\b/gi;
+
+function pickEmoji(text) {
+  for (const { re, emoji } of EMOJI_MAP) {
+    if (re.test(text)) return emoji;
+  }
+  return '✅';
+}
+
+function detectTracker(text) {
+  // Gate 1: does this sound like a tracker request at all?
+  const hasTrackerWord = TRACKER_REQUEST_RE.test(text);
+  const hasNDay = TRACKER_NDAY_RE.test(text);
+  if (!hasTrackerWord && !hasNDay) return null;
+
+  // Check known challenges first (e.g. "75 hard")
+  for (const ch of KNOWN_CHALLENGES) {
+    if (ch.re.test(text)) {
+      return { title: ch.title, type: 'challenge', target_days: ch.target, emoji: '💪', confidence: 3 };
+    }
+  }
+
+  // Check count pattern: "12 books this year"
+  const countMatch = text.match(COUNT_RE);
+  if (countMatch && COUNT_CONTEXT_RE.test(text)) {
+    const n = parseInt(countMatch[1], 10);
+    let title = text.replace(TITLE_STRIP_RE, '').replace(/\s+/g, ' ').trim();
+    if (title.length < 2) title = countMatch[2].replace(/s$/, '');
+    title = title.charAt(0).toUpperCase() + title.slice(1).toLowerCase();
+    return { title, type: 'count', target_count: n, emoji: pickEmoji(text), confidence: 3 };
+  }
+
+  // Check challenge pattern: "N days" / "N-day"
+  const ndayMatch = text.match(/(\d+)\s*(?:day|days)/i);
+  if (ndayMatch) {
+    const n = parseInt(ndayMatch[1], 10);
+    if (n >= 2 && n <= 3650) {
+      let title = text.replace(TITLE_STRIP_RE, '').replace(/\s+/g, ' ').trim();
+      if (title.length < 2) title = `${n}-Day Challenge`;
+      title = title.charAt(0).toUpperCase() + title.slice(1);
+      return { title, type: 'challenge', target_days: n, emoji: pickEmoji(text), confidence: 3 };
+    }
+  }
+
+  // Default: chain (open-ended)
+  if (hasTrackerWord) {
+    let title = text.replace(TITLE_STRIP_RE, '').replace(/\s+/g, ' ').trim();
+    if (title.length < 2) return null; // can't extract a sensible title → bail
+    title = title.charAt(0).toUpperCase() + title.slice(1);
+    return { title, type: 'chain', emoji: pickEmoji(text), confidence: 2 };
+  }
+
+  return null;
+}
+
 function enabled() {
   return process.env.LUMI_LOCAL_ROUTER !== 'false'; // on by default; set false to kill instantly
 }
@@ -49,6 +135,53 @@ async function tryLocal(userId, text, opts = {}) {
 
   // Emotional bypass: anything heated goes to AI, even if it looks like a lookup.
   if (intensity >= 3) return null;
+
+  // ---- TRACKER: "track my workouts", "75 hard", "read 12 books this year" ----
+  try {
+    const trackerSpec = detectTracker(text);
+    if (trackerSpec && trackerSpec.confidence >= 2) {
+      const { title, type, target_days = null, target_count = null, emoji = '✅' } = trackerSpec;
+      const { rows } = await pool.query(
+        `INSERT INTO trackers (user_id, title, type, target_days, target_count, emoji)
+         VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, title, type, target_days, target_count, emoji`,
+        [userId, title, type, target_days, target_count, emoji]
+      );
+      const tracker = rows[0];
+
+      // Mark today as the first day automatically
+      await pool.query(
+        `INSERT INTO tracker_marks (tracker_id, user_id, mark_date)
+         VALUES ($1, $2, CURRENT_DATE) ON CONFLICT (tracker_id, mark_date) DO NOTHING`,
+        [tracker.id, userId]
+      );
+
+      let responseText;
+      if (type === 'challenge') {
+        responseText = `Done — I started a **${title}** (${target_days}-day challenge). Day 1 is ready to tick. ${emoji}`;
+      } else if (type === 'count') {
+        responseText = `Done — I started a **${title}** tracker (goal: ${target_count}). First one logged. ${emoji}`;
+      } else {
+        responseText = `Done — I started a **${title}** tracker. Day 1 is marked. Don't break the chain. ${emoji}`;
+      }
+
+      logger.info({ userId, action: 'tracker_create', intent: 'tracker_create', trackerId: tracker.id, type, title }, 'tracker created via local router');
+
+      return reply(responseText, {
+        intent: 'tracker_create',
+        saved: true,
+        trackerCreated: tracker,
+        savedItems: [{
+          type: 'tracker_create',
+          label: `${emoji} ${title} — ${type === 'challenge' ? `${target_days}-day challenge` : type === 'count' ? `goal: ${target_count}` : 'open chain'}`,
+          destination: 'Trackers',
+          data: tracker,
+        }],
+      });
+    }
+  } catch (trackerErr) {
+    logger.error({ userId, where: 'detectTracker', err: trackerErr.message }, 'tracker creation failed');
+    // Don't fall through — let AI handle it if tracker creation fails
+  }
 
   const wantsTomorrow = /\b(tomorrow|tmrw|tmr)\b/.test(t);
   const wantsToday = /\b(today|tonight)\b/.test(t);

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import LumiFace from './lumi/LumiFace'
 
 export default function OnboardingModal({ userName, onDone }) {
   const [step, setStep] = useState(1)
@@ -21,7 +22,7 @@ export default function OnboardingModal({ userName, onDone }) {
       <div style={{ background:'rgba(9,14,20,0.97)', border:'1px solid rgba(122,139,82,0.2)', borderRadius:24, padding:'48px 40px', maxWidth:480, width:'100%', textAlign:'center' }}>
         {step === 1 && (
           <>
-            <div style={{ width:36, height:36, borderRadius:'50%', background:'radial-gradient(circle at 35% 35%, #ffbe4d, #7A8B52, rgba(122,139,82,0.4))', margin:'0 auto 24px', animation:'breathe 3s ease-in-out infinite', boxShadow:'0 0 20px rgba(122,139,82,0.3)' }} />
+            <div style={{ margin:'0 auto 24px', display:'flex', justifyContent:'center' }}><LumiFace mood="resting" size={48} /></div>
             <div style={{ fontSize:28, fontWeight:800, color:'#e8f0e9' }}>
               Welcome to IniQ, {userName?.split(' ')[0] || 'there'} 👋
             </div>
@@ -46,7 +47,7 @@ export default function OnboardingModal({ userName, onDone }) {
         )}
         {step === 2 && (
           <>
-            <div style={{ fontSize:48, marginBottom:16 }}>✨</div>
+            <div style={{ margin:'0 auto 16px', display:'flex', justifyContent:'center' }}><LumiFace mood="happy" size={56} /></div>
             <div style={{ fontSize:24, fontWeight:700, color:'#e8f0e9' }}>
               Start with a life audit
             </div>

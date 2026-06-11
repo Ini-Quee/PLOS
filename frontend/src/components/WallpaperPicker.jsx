@@ -1,79 +1,98 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getAllScenes, getScenesByCategory, getScenesByTimeAndSeason } from '../lib/wallpaperScenes';
+import { SCENES } from '../lib/atmos';
 import './WallpaperPicker.css';
 
-/**
- * PLOS Wallpaper Scene Picker
- * Beautiful modal for selecting cinematic backgrounds
- */
+const SCENE_LIST = Object.values(SCENES);
+
+const CATEGORIES = [
+  { id: 'suggested', label: 'Perfect for Now', icon: '✨' },
+  { id: 'morning',   label: 'Morning',         icon: '🌅' },
+  { id: 'rain',      label: 'Rain',            icon: '🌧️' },
+  { id: 'night',     label: 'Night',           icon: '🌙' },
+  { id: 'sunset',    label: 'Sunset',          icon: '🌇' },
+  { id: 'seasonal',  label: 'Seasonal',        icon: '🍂' },
+  { id: 'lifestyle', label: 'Lifestyle',       icon: '☕' },
+];
+
+const CATEGORY_FILTER = {
+  morning:   s => s.time?.some(t => ['dawn','morning'].includes(t)),
+  rain:      s => s.id.includes('rain') || s.particles === 'rain',
+  night:     s => s.time?.some(t => ['night','blue_hour'].includes(t)),
+  sunset:    s => s.time?.some(t => ['golden_hour','sunset'].includes(t)),
+  seasonal:  s => ['cherry_blossoms','snowy_forest','autumn_forest'].includes(s.id),
+  lifestyle: s => ['cozy_library','morning_coffee'].includes(s.id),
+};
+
+const SCENE_ICONS = {
+  morning_coffee:        '☕',
+  morning_mountain_mist: '⛰️',
+  rain_window:           '🌧️',
+  tropical_rain_forest:  '🌲',
+  cozy_library:          '📚',
+  harmattan_sunset:      '🌅',
+  beach_sunset:          '🏖️',
+  night_starfield:       '✨',
+  fireplace_cabin:       '🔥',
+  cherry_blossoms:       '🌸',
+  snowy_forest:          '❄️',
+  nigeria_rain_city:     '🌃',
+  autumn_forest:         '🍂',
+};
+
 export default function WallpaperPicker({ isOpen, onClose }) {
   const [selectedCategory, setSelectedCategory] = useState('suggested');
   const [currentSceneId, setCurrentSceneId] = useState('auto');
-  const [intensity, setIntensity] = useState('full');
+  const [intensity, setIntensity] = useState('minimal');
 
   useEffect(() => {
-    const savedScene = localStorage.getItem('plos_wallpaper_scene') || 'auto';
-    const savedIntensity = localStorage.getItem('plos_wallpaper_intensity') || 'full';
+    const savedScene = localStorage.getItem('plos_atmos_scene') || 'auto';
+    const savedIntensity = localStorage.getItem('plos_wallpaper_intensity') || 'minimal';
     setCurrentSceneId(savedScene);
     setIntensity(savedIntensity);
   }, [isOpen]);
 
-  const categories = [
-    { id: 'suggested', label: 'Perfect for Now', icon: '✨' },
-    { id: 'morning', label: 'Morning', icon: '🌅' },
-    { id: 'rain', label: 'Rain', icon: '🌧️' },
-    { id: 'night', label: 'Night', icon: '🌙' },
-    { id: 'sunset', label: 'Sunset', icon: '🌇' },
-    { id: 'seasonal', label: 'Seasonal', icon: '🍂' },
-    { id: 'lifestyle', label: 'Lifestyle', icon: '☕' }
-  ];
-
   const getSuggestedScenes = () => {
     const hour = new Date().getHours();
-    let timeOfDay = 'night';
-    if (hour >= 5 && hour < 10) timeOfDay = 'dawn';
-    else if (hour >= 10 && hour < 15) timeOfDay = 'midday';
-    else if (hour >= 15 && hour < 19) timeOfDay = 'golden_hour';
-
-    const month = new Date().getMonth() + 1;
-    let season = 'all';
-    if (month >= 3 && month <= 5) season = 'spring';
-    else if (month >= 6 && month <= 8) season = 'summer';
-    else if (month >= 9 && month <= 11) season = 'autumn';
-    else if (month === 12 || month <= 2) season = 'winter';
-
-    return getScenesByTimeAndSeason(timeOfDay, season).slice(0, 6);
+    let timeFilter;
+    if (hour >= 5 && hour < 11)       timeFilter = s => s.time?.some(t => ['dawn','morning'].includes(t));
+    else if (hour >= 11 && hour < 15)  timeFilter = s => s.time?.includes('midday') || s.time?.includes('all');
+    else if (hour >= 15 && hour < 20)  timeFilter = s => s.time?.some(t => ['golden_hour','sunset'].includes(t));
+    else                               timeFilter = s => s.time?.some(t => ['night','blue_hour'].includes(t));
+    return SCENE_LIST.filter(timeFilter).slice(0, 6);
   };
 
   const getScenes = () => {
-    if (selectedCategory === 'suggested') {
-      return getSuggestedScenes();
-    }
-    return getScenesByCategory(selectedCategory);
+    if (selectedCategory === 'suggested') return getSuggestedScenes();
+    const filter = CATEGORY_FILTER[selectedCategory];
+    return filter ? SCENE_LIST.filter(filter) : SCENE_LIST;
   };
 
   const handleSceneSelect = (sceneId) => {
-    localStorage.setItem('plos_wallpaper_scene', sceneId);
-    setCurrentSceneId(sceneId);
-
-    // Dispatch event to update wallpaper
-    window.dispatchEvent(new Event('wallpaper-scene-changed'));
-
-    // Show toast
-    const scene = getAllScenes().find(s => s.id === sceneId);
-    if (scene) {
-      showToast(`World changed to ${scene.label} ${scene.emoji}`);
+    if (sceneId === 'auto') {
+      localStorage.removeItem('plos_atmos_scene');
+      localStorage.removeItem('plos_custom_scene');
+    } else if (sceneId === 'plain') {
+      localStorage.setItem('plos_atmos_scene', 'plain');
+      localStorage.removeItem('plos_custom_scene');
+    } else {
+      localStorage.setItem('plos_atmos_scene', sceneId);
     }
+    setCurrentSceneId(sceneId);
+    window.dispatchEvent(new Event('atmos-scene-changed'));
 
-    // Close after brief delay
+    const label = sceneId === 'auto' ? 'Auto (Smart)'
+      : sceneId === 'plain' ? 'Plain background'
+      : SCENES[sceneId]?.label || sceneId;
+    showToast(`World changed to ${label}`);
+
     setTimeout(() => onClose(), 800);
   };
 
   const handleIntensityChange = (newIntensity) => {
     localStorage.setItem('plos_wallpaper_intensity', newIntensity);
     setIntensity(newIntensity);
-    window.dispatchEvent(new Event('wallpaper-scene-changed'));
+    window.dispatchEvent(new Event('atmos-scene-changed'));
   };
 
   const scenes = getScenes();
@@ -82,7 +101,6 @@ export default function WallpaperPicker({ isOpen, onClose }) {
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
           <motion.div
             className="wallpaper-picker-backdrop"
             initial={{ opacity: 0 }}
@@ -91,7 +109,6 @@ export default function WallpaperPicker({ isOpen, onClose }) {
             onClick={onClose}
           />
 
-          {/* Modal */}
           <motion.div
             className="wallpaper-picker-modal"
             initial={{ y: '100%', opacity: 0 }}
@@ -99,17 +116,13 @@ export default function WallpaperPicker({ isOpen, onClose }) {
             exit={{ y: '100%', opacity: 0 }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
           >
-            {/* Header */}
             <div className="picker-header">
               <h2 className="picker-title">Choose Your World</h2>
-              <button className="picker-close" onClick={onClose}>
-                ✕
-              </button>
+              <button className="picker-close" onClick={onClose}>✕</button>
             </div>
 
-            {/* Category tabs */}
             <div className="picker-categories">
-              {categories.map(cat => (
+              {CATEGORIES.map(cat => (
                 <button
                   key={cat.id}
                   className={`category-tab ${selectedCategory === cat.id ? 'active' : ''}`}
@@ -121,20 +134,24 @@ export default function WallpaperPicker({ isOpen, onClose }) {
               ))}
             </div>
 
-            {/* Scene grid */}
             <div className="picker-scenes">
-              {/* Auto option */}
               {selectedCategory === 'suggested' && (
                 <SceneCard
-                  scene={{
-                    id: 'auto',
-                    label: 'Auto (Smart)',
-                    emoji: '🤖',
-                    description: 'Automatically matches time & season',
-                    photo_seed: 1
-                  }}
+                  scene={{ id: 'auto', label: 'Auto (Smart)', description: 'Matches time & season automatically' }}
+                  icon="🤖"
                   isActive={currentSceneId === 'auto'}
                   onSelect={handleSceneSelect}
+                  thumbnailUrl={null}
+                />
+              )}
+
+              {selectedCategory === 'suggested' && (
+                <SceneCard
+                  scene={{ id: 'plain', label: 'Plain', description: 'No wallpaper, calm solid background' }}
+                  icon="⬛"
+                  isActive={currentSceneId === 'plain'}
+                  onSelect={handleSceneSelect}
+                  thumbnailUrl={null}
                 />
               )}
 
@@ -142,13 +159,14 @@ export default function WallpaperPicker({ isOpen, onClose }) {
                 <SceneCard
                   key={scene.id}
                   scene={scene}
+                  icon={SCENE_ICONS[scene.id] || '🌄'}
                   isActive={currentSceneId === scene.id}
                   onSelect={handleSceneSelect}
+                  thumbnailUrl={scene.photo}
                 />
               ))}
             </div>
 
-            {/* Bottom controls */}
             <div className="picker-footer">
               <div className="intensity-control">
                 <label className="intensity-label">Motion Intensity</label>
@@ -174,13 +192,7 @@ export default function WallpaperPicker({ isOpen, onClose }) {
   );
 }
 
-/**
- * Individual scene card
- */
-function SceneCard({ scene, isActive, onSelect }) {
-  const seed = scene.photo_seed || 1;
-  const thumbnailUrl = scene.photo_url || `https://picsum.photos/400/300?random=${seed}`;
-
+function SceneCard({ scene, icon, isActive, onSelect, thumbnailUrl }) {
   return (
     <motion.div
       className={`scene-card ${isActive ? 'active' : ''}`}
@@ -190,7 +202,7 @@ function SceneCard({ scene, isActive, onSelect }) {
     >
       <div
         className="scene-thumbnail"
-        style={{ backgroundImage: `url(${thumbnailUrl})` }}
+        style={thumbnailUrl ? { backgroundImage: `url(${thumbnailUrl})` } : {}}
       >
         {isActive && (
           <div className="active-indicator">
@@ -200,7 +212,7 @@ function SceneCard({ scene, isActive, onSelect }) {
         )}
       </div>
       <div className="scene-info">
-        <span className="scene-emoji">{scene.emoji}</span>
+        <span className="scene-emoji">{icon}</span>
         <span className="scene-label">{scene.label}</span>
       </div>
       <div className="scene-description">{scene.description}</div>
@@ -208,23 +220,14 @@ function SceneCard({ scene, isActive, onSelect }) {
   );
 }
 
-/**
- * Toast notification
- */
 function showToast(message) {
   const toast = document.createElement('div');
   toast.className = 'wallpaper-toast';
   toast.textContent = message;
   document.body.appendChild(toast);
-
-  setTimeout(() => {
-    toast.classList.add('show');
-  }, 10);
-
+  setTimeout(() => toast.classList.add('show'), 10);
   setTimeout(() => {
     toast.classList.remove('show');
-    setTimeout(() => {
-      document.body.removeChild(toast);
-    }, 300);
+    setTimeout(() => document.body.removeChild(toast), 300);
   }, 2500);
 }

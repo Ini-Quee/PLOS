@@ -5,6 +5,7 @@ import { useAtmos } from '../Atmosphere';
 import AlarmBar from '../AlarmBar';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
+import LumiFace from '../lumi/LumiFace';
 
 // ─── Base design tokens (palette values get layered on top via useAtmos) ───────
 export const C = {
@@ -42,6 +43,9 @@ export const NAV_ITEMS = {
     { icon: '📖', label: 'Journal',      path: '/journal'      },
     { icon: '🔥', label: 'Habits',       path: '/habits'       },
     { icon: '💰', label: 'Budget',       path: '/budget'       },
+    { icon: '📆', label: 'Calendar',     path: '/calendar'     },
+    { icon: '📊', label: 'Trackers',     path: '/trackers'     },
+    { icon: '🗓️', label: 'Year Plan',    path: '/year-plan'    },
   ],
   more: [
     { icon: '📧', label: 'Email',        path: '/email'        },
@@ -179,7 +183,9 @@ function NavItem({ icon, label, path, isActive, onClick, lumi = false }) {
         }
       }}
     >
-      <span style={{ fontSize: lumi ? 17 : 15, width: 20, textAlign: 'center' }}>{icon}</span>
+      {lumi
+        ? <span style={{ width: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><LumiFace mood="resting" size={36} showOrb={false} /></span>
+        : <span style={{ fontSize: 15, width: 20, textAlign: 'center' }}>{icon}</span>}
       {label}
     </div>
   );
@@ -477,7 +483,7 @@ function BottomNav({ palette }) {
                 justifyContent: 'center', gap: 1,
                 marginBottom: 2,
               }}>
-                <span style={{ fontSize: 20, lineHeight: 1 }}>{item.icon}</span>
+                <span style={{ fontSize: 20, lineHeight: 1 }}><LumiFace mood="resting" size={28} showOrb={false} /></span>
               </div>
               <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--color-primary)' }}>{item.label}</span>
             </button>

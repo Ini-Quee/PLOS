@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import SidebarLayout, { C } from '../components/layout/SidebarLayout';
 import { useAuth } from '../lib/auth';
 import api from '../lib/api';
+import LumiFace from '../components/lumi/LumiFace';
 
 const FEATURES = [
   { free: '10 messages / day',      pro: 'Unlimited Lumi messages',      icon: '✨' },
@@ -47,7 +48,7 @@ export default function Upgrade() {
 
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 40, animation: 'fadeUp 0.3s ease' }}>
-          <div style={{ fontSize: 40, marginBottom: 16 }}>✨</div>
+          <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'center' }}><LumiFace mood="happy" size={48} /></div>
           <div style={{ fontSize: 28, fontWeight: 800, color: '#e8e8f0', marginBottom: 8 }}>
             {isPro ? 'You\'re on Pro' : 'Upgrade to PLOS Pro'}
           </div>

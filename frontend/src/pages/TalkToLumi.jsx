@@ -2,7 +2,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import UpgradePrompt from '../components/ui/UpgradePrompt';
-import LumiOrb from '../components/lumi/LumiOrb';
+import LumiFace from '../components/lumi/LumiFace';
+
+// Map TalkToLumi's voice state -> LumiFace mood
+const LUMI_MOOD = { idle: 'resting', listening: 'listening', processing: 'thinking', speaking: 'resting' };
 import * as lumiVoice from '../lib/lumi-voice';
 import * as lumiListen from '../lib/lumi-listen';
 import api from '../lib/api';
@@ -529,6 +532,7 @@ export default function TalkToLumi() {
         saved: backendResponse?.saved,
         savedItems: backendResponse?.savedItems || [],
         route: backendResponse?.route,
+        trackerCreated: backendResponse?.trackerCreated || null,
       };
       setHistory(prev => [...prev, aiMsg]);
 
@@ -770,7 +774,7 @@ export default function TalkToLumi() {
         )}
 
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <div style={{ width:38, height:38, borderRadius:'50%', background:`radial-gradient(circle,#ffbe4d,${C.accent})`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>✨</div>
+          <div style={{ flexShrink:0 }}><LumiFace mood={LUMI_MOOD[lumiState] || 'resting'} size={38} /></div>
           <div>
             <div style={{ fontSize:15, fontWeight:600, color: C.text }}>{aiName}</div>
             <div style={{ fontSize:11, color: C.muted }}>
@@ -886,9 +890,15 @@ export default function TalkToLumi() {
 
         {history.map((msg, i) => (
           <div key={i} style={{ display:'flex', flexDirection: msg.role==='user' ? 'row-reverse' : 'row', alignItems:'flex-end', gap:10 }}>
-            <div style={{ width:32, height:32, borderRadius:'50%', flexShrink:0, background: msg.role==='user' ? `linear-gradient(135deg,${C.accent},#9b7fe8)` : 'rgba(165,180,252,0.15)', border:`1px solid ${msg.role==='user' ? C.accent+'55' : 'rgba(165,180,252,0.2)'}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700, color: msg.role==='user' ? '#fff' : '#a5b4fc' }}>
-              {msg.role === 'user' ? (user?.name?.[0]?.toUpperCase() || 'Y') : '✨'}
-            </div>
+            {msg.role === 'user' ? (
+              <div style={{ width:32, height:32, borderRadius:'50%', flexShrink:0, background:`linear-gradient(135deg,${C.accent},#9b7fe8)`, border:`1px solid ${C.accent}55`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700, color:'#fff' }}>
+                {user?.name?.[0]?.toUpperCase() || 'Y'}
+              </div>
+            ) : (
+              <div style={{ flexShrink:0, width:32, display:'flex', alignItems:'center', justifyContent:'center', opacity:0.85 }}>
+                <LumiFace mood="resting" size={40} showOrb={false} />
+              </div>
+            )}
             <div style={{ maxWidth:'72%', padding:'12px 16px', borderRadius: msg.role==='user' ? '16px 4px 16px 16px' : '4px 16px 16px 16px', background: msg.role==='user' ? `linear-gradient(135deg,rgba(200,149,92,0.2),rgba(155,127,234,0.15))` : C.surf, border:`1px solid ${msg.role==='user' ? C.accent+'30' : C.brd}`, fontSize:14, color: C.text, lineHeight:1.6, whiteSpace:'pre-wrap', wordBreak:'break-word', backdropFilter:'blur(12px)' }}>
               {msg.content}
               {msg.savedItems?.length > 0 && (
@@ -900,6 +910,12 @@ export default function TalkToLumi() {
                       {s.destination && <span style={{ fontSize:10, color:'rgba(0,212,170,0.55)', marginLeft:8 }}>→ {s.destination}</span>}
                     </div>
                   ))}
+                  {msg.trackerCreated && (
+                    <button
+                      onClick={() => navigate('/trackers')}
+                      style={{ marginTop:8, padding:'6px 14px', borderRadius:20, border:'1px solid rgba(200,149,92,0.4)', background:'rgba(200,149,92,0.12)', color:'#C8955C', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}
+                    >View tracker →</button>
+                  )}
                 </div>
               )}
               <div style={{ fontSize:10, color: C.muted, marginTop:4, textAlign: msg.role==='user' ? 'right' : 'left' }}>{formatTime(msg.timestamp)}</div>
@@ -910,7 +926,7 @@ export default function TalkToLumi() {
         {/* Typing dots */}
         {lumiState === 'processing' && (
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-            <div style={{ width:32, height:32, borderRadius:'50%', background:'rgba(165,180,252,0.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13 }}>✨</div>
+            <div style={{ flexShrink:0, width:32, display:'flex', alignItems:'center', justifyContent:'center', opacity:0.85 }}><LumiFace mood="thinking" size={40} showOrb={false} /></div>
             <div style={{ display:'flex', gap:4, padding:'12px 16px', background: C.surf, border:`1px solid ${C.brd}`, borderRadius:'4px 16px 16px 16px', backdropFilter:'blur(12px)' }}>
               {[0,1,2].map(j => <div key={j} style={{ width:7, height:7, borderRadius:'50%', background:'rgba(200,149,92,0.6)', animation:`lumidot 1.2s ${j*0.2}s infinite` }}/>)}
             </div>
@@ -1144,7 +1160,7 @@ export default function TalkToLumi() {
 
         {/* Orb */}
         <div style={{ marginBottom:20 }}>
-          <LumiOrb state={lumiState} size="xl" onClick={handleOrbClick} />
+          <LumiFace mood={LUMI_MOOD[lumiState] || 'resting'} size={128} onClick={handleOrbClick} />
         </div>
 
         {/* Text input */}

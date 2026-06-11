@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import SidebarLayout, { C } from '../components/layout/SidebarLayout'
 import { useAtmos } from '../components/Atmosphere'
+import LumiFace from '../components/lumi/LumiFace'
 import { useLumi } from '../hooks/useLumi'
 import api from '../lib/api'
 import { useAuth } from '../lib/auth'
@@ -137,12 +138,7 @@ function LumiCard() {
       border: '1px solid rgba(139,92,246,0.2)', borderRadius: 16, padding: 18,
       animation: 'fadeUp 0.5s 0.3s ease both', position: 'relative', overflow: 'hidden',
     }}>
-      <div style={{
-        width: 44, height: 44, borderRadius: '50%',
-        background: `radial-gradient(circle at 35% 35%, #ffbe4d, ${C.amber}, rgba(245,166,35,0.4))`,
-        marginBottom: 12, animation: 'breathe 3s ease-in-out infinite',
-        boxShadow: '0 0 20px rgba(245,166,35,0.3)',
-      }} />
+      <div style={{ marginBottom: 12 }}><LumiFace mood="resting" size={44} /></div>
       <div style={{ fontSize: 11, color: C.purple, fontWeight: 700, marginBottom: 6, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Lumi says</div>
       <div style={{ fontSize: 12, lineHeight: 1.6, color: C.text, opacity: 0.85 }}>
         Welcome to PLOS, Erica. I'm your daily companion. Start by journaling or talking to me about your day. I'm here to help you build the life you want.
@@ -317,6 +313,56 @@ function HabitsCard() {
   )
 }
 
+// ─── Streaks Card (tracker peek) ─────────────────────────────────────────────
+function StreaksCard({ trackers }) {
+  const navigate = useNavigate()
+  if (!trackers || trackers.length === 0) return null
+
+  const todayStr = new Date().toISOString().slice(0, 10)
+
+  return (
+    <div style={{ gridColumn: 'span 2', ...GLASS, borderRadius: 16, padding: 18, animation: 'fadeUp 0.5s 0.48s ease both' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <div style={{ fontWeight: 700, fontSize: 14 }}>Your streaks</div>
+        <div style={{ fontSize: 11, color: C.amber, cursor: 'pointer' }} onClick={() => navigate('/trackers')}>See all →</div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {trackers.slice(0, 4).map(t => {
+          const marks = new Set((t.marks || []).map(d => typeof d === 'string' ? d.slice(0, 10) : new Date(d).toISOString().slice(0, 10)))
+          const col = t.color || C.amber
+          const weekDays = []
+          for (let i = 6; i >= 0; i--) {
+            const d = new Date()
+            d.setDate(d.getDate() - i)
+            weekDays.push(d.toISOString().slice(0, 10))
+          }
+          return (
+            <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }} onClick={() => navigate('/trackers')}>
+              <span style={{ fontSize: 18, width: 24, textAlign: 'center' }}>{t.emoji}</span>
+              <span style={{ fontSize: 12, flex: 1, color: C.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: C.amber, flexShrink: 0 }}>🔥 {t.streak}</span>
+              <div style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
+                {weekDays.map(date => {
+                  const done = marks.has(date)
+                  const isToday = date === todayStr
+                  return (
+                    <div key={date} style={{
+                      width: 10, height: 10, borderRadius: 2,
+                      background: done ? col : 'rgba(255,255,255,0.06)',
+                      border: isToday ? `1.5px solid ${col}` : 'none',
+                      opacity: done ? 1 : 0.5,
+                    }} />
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function GoalsCard() {
   const navigate = useNavigate()
   const hasGoals = GOALS.length > 0
@@ -434,11 +480,7 @@ function InsightCard() {
       display: 'flex', flexDirection: 'column', gap: 10,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{
-          width: 28, height: 28, borderRadius: '50%',
-          background: 'radial-gradient(circle,#ffbe4d,#C8955C)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0,
-        }}>✨</div>
+        <div style={{ flexShrink: 0 }}><LumiFace mood="resting" size={28} /></div>
         <div>
           <div style={{ fontSize: 12, fontWeight: 700, color: C.text }}>{monthLabel} in Review</div>
           <div style={{ fontSize: 10, color: C.muted }}>Lumi's analysis of your month</div>
@@ -529,6 +571,7 @@ export default function Dashboard() {
   const [savingsGoals, setSavingsGoals] = useState([])
   const [hasLifeAudit, setHasLifeAudit] = useState(false)
   const [journalStreak, setJournalStreak] = useState(0)
+  const [trackers, setTrackers] = useState([])
   const [loading, setLoading] = useState(true)
   const sessions = typeof window !== 'undefined'
     ? Number(localStorage.getItem('plos_sessions') || 0)
@@ -548,7 +591,8 @@ export default function Dashboard() {
       api.get('/savings', { signal }),
       api.get('/lumi/life-audit/preview', { signal }),
       api.get('/journal/pages?limit=60', { signal }),
-    ]).then(([schedRes, savingsRes, auditRes, journalRes]) => {
+      api.get('/trackers', { signal }),
+    ]).then(([schedRes, savingsRes, auditRes, journalRes, trackersRes]) => {
       if (signal.aborted) return;
       if (schedRes.status === 'fulfilled')
         setScheduleItems(schedRes.value.data?.schedules || []);
@@ -568,6 +612,8 @@ export default function Dashboard() {
         }
         setJournalStreak(streak);
       }
+      if (trackersRes.status === 'fulfilled')
+        setTrackers(trackersRes.value.data?.trackers || []);
       setLoading(false);
     });
 
@@ -664,16 +710,8 @@ export default function Dashboard() {
           alignItems: 'center',
           gap: 14,
         }}>
-          {/* Lumi orb */}
-          <div style={{
-            width: 36,
-            height: 36,
-            borderRadius: '50%',
-            background: 'radial-gradient(circle at 35% 35%, #ffbe4d, #F5A623)',
-            animation: isListening ? 'breathe 0.8s infinite' : 'breathe 3s infinite',
-            flexShrink: 0,
-            boxShadow: isListening ? '0 0 20px rgba(245,166,35,0.6)' : 'none',
-          }} />
+          {/* Lumi logo */}
+          <div style={{ flexShrink: 0 }}><LumiFace mood={isListening ? 'listening' : 'resting'} size={36} /></div>
 
           {/* Text input */}
           <input
@@ -855,14 +893,48 @@ export default function Dashboard() {
           {loading ? (
             [0,1,2,3].map(i => <SkeletonCard key={i} height={90} lines={2} />)
           ) : scheduleItems.length === 0 && journalStreak === 0 && savingsGoals.length === 0 ? (
-            // Zero state hero — user has no data yet
-            <div style={{ gridColumn: isMobile ? 'span 2' : 'span 4', background:'linear-gradient(135deg,rgba(200,149,92,0.1),rgba(139,92,246,0.08))', border:'1px solid rgba(200,149,92,0.25)', borderRadius:16, padding: isMobile ? '20px 16px' : '28px 28px', display:'flex', alignItems:'center', gap:16, animation:'fadeUp 0.4s ease both', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
-              <div style={{ fontSize:40 }}>✨</div>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:16, fontWeight:700, color:'#e8e8f0', marginBottom:6 }}>Your life plan starts here</div>
-                <div style={{ fontSize:13, color:'rgba(255,255,255,0.45)', lineHeight:1.6 }}>Let Lumi interview you across 8 areas of your life and build your complete weekly schedule in 10 minutes.</div>
+            // Zero state hero — warm, teaching first screen for a brand-new user
+            <div style={{ gridColumn: isMobile ? 'span 2' : 'span 4', background:'linear-gradient(160deg,rgba(200,149,92,0.10),rgba(139,92,246,0.07))', border:'1px solid rgba(200,149,92,0.22)', borderRadius:20, padding: isMobile ? '24px 16px' : '32px 28px', animation:'fadeUp 0.4s ease both' }}>
+              {/* Greeting */}
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center', marginBottom:26 }}>
+                <div style={{ fontSize:40, marginBottom:12 }}>✨</div>
+                <div style={{ fontSize:12, color:'#DBA870', letterSpacing:'0.14em', textTransform:'uppercase' }}>Welcome to PLOS</div>
+                <div style={{ fontFamily:'Georgia, serif', fontSize: isMobile ? 22 : 26, fontWeight:500, color:'#f6f2ea', marginTop:10, lineHeight:1.3 }}>
+                  {user?.name ? `Hi ${user.name.split(' ')[0]}` : 'Hi there'} — your space is blank on purpose.
+                </div>
+                <div style={{ fontSize:14, color:'rgba(255,255,255,0.5)', marginTop:12, maxWidth:420, lineHeight:1.65 }}>We'll fill it together, one small thing at a time. Pick wherever feels easy — there's no wrong start.</div>
               </div>
-              <button onClick={() => navigate('/talk-to-lumi?mode=onboarding')} style={{ padding:'11px 22px', borderRadius:24, border:'none', background:'rgba(200,149,92,0.85)', color:'#000', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap' }}>Start with Lumi →</button>
+
+              {/* Four doors */}
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:18 }}>
+                <div onClick={() => navigate('/talk-to-lumi?mode=onboarding')} style={{ background:'rgba(10,12,8,0.5)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:16, padding:18, cursor:'pointer' }}>
+                  <div style={{ fontSize:22, marginBottom:9 }}>✨</div>
+                  <div style={{ fontSize:15, fontWeight:500, color:'#f0ece2' }}>Let Lumi plan your life</div>
+                  <div style={{ fontSize:12, color:'rgba(255,255,255,0.42)', marginTop:5, lineHeight:1.55 }}>A 10-min chat → your whole week, built for you.</div>
+                </div>
+                <div onClick={() => navigate('/trackers')} style={{ background:'rgba(10,12,8,0.5)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:16, padding:18, cursor:'pointer' }}>
+                  <div style={{ fontSize:22, marginBottom:9 }}>🔥</div>
+                  <div style={{ fontSize:15, fontWeight:500, color:'#f0ece2' }}>Start a streak</div>
+                  <div style={{ fontSize:12, color:'rgba(255,255,255,0.42)', marginTop:5, lineHeight:1.55 }}>Workout, water, reading — watch the chain grow.</div>
+                </div>
+                <div onClick={() => navigate('/journal')} style={{ background:'rgba(10,12,8,0.5)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:16, padding:18, cursor:'pointer' }}>
+                  <div style={{ fontSize:22, marginBottom:9 }}>📖</div>
+                  <div style={{ fontSize:15, fontWeight:500, color:'#f0ece2' }}>Write a line</div>
+                  <div style={{ fontSize:12, color:'rgba(255,255,255,0.42)', marginTop:5, lineHeight:1.55 }}>A quick journal entry. How's today going?</div>
+                </div>
+                <div onClick={() => navigate('/budget')} style={{ background:'rgba(10,12,8,0.5)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:16, padding:18, cursor:'pointer' }}>
+                  <div style={{ fontSize:22, marginBottom:9 }}>💰</div>
+                  <div style={{ fontSize:15, fontWeight:500, color:'#f0ece2' }}>Log an expense</div>
+                  <div style={{ fontSize:12, color:'rgba(255,255,255,0.42)', marginTop:5, lineHeight:1.55 }}>Start your money picture in one tap.</div>
+                </div>
+              </div>
+
+              {/* Catch-all */}
+              <div onClick={() => navigate('/talk-to-lumi')} style={{ background:'rgba(139,92,246,0.1)', border:'1px solid rgba(139,92,246,0.22)', borderRadius:14, padding:'14px 16px', display:'flex', alignItems:'center', gap:12, cursor:'pointer' }}>
+                <div style={{ fontSize:20 }}>💬</div>
+                <div style={{ flex:1, fontSize:13, color:'#c4b4ee', lineHeight:1.5 }}>Not sure? Just talk to Lumi — say anything about your day and she'll take it from there.</div>
+                <div style={{ fontSize:16, color:'#8b5cf6' }}>→</div>
+              </div>
             </div>
           ) : (
             <>
@@ -886,6 +958,9 @@ export default function Dashboard() {
           </div>
           <ErrorBoundary compact label="Budget"><BudgetCard /></ErrorBoundary>
           <ErrorBoundary compact label="Habits"><HabitsCard /></ErrorBoundary>
+
+          {/* Row 3b: Streaks (trackers) — full width if present */}
+          <ErrorBoundary compact label="Streaks"><StreaksCard trackers={trackers} /></ErrorBoundary>
 
           {/* Row 4: Today's data — content, journal, life audit, savings */}
           <ErrorBoundary compact label="Content"><ContentTodayCard /></ErrorBoundary>

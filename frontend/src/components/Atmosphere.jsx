@@ -229,7 +229,18 @@ function ParticleLayer({ type }) {
 export default function Atmosphere({ section = 'all', children }) {
   const [scene,       setScene]       = useState(() => pickScene({ section }));
   const [photoLoaded, setPhotoLoaded] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
   const imgRef = useRef(null);
+
+  // Detect prefers-reduced-motion
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReducedMotion(mq.matches);
+    const fn = (e) => setReducedMotion(e.matches);
+    mq.addEventListener ? mq.addEventListener('change', fn) : mq.addListener(fn);
+    return () => { mq.removeEventListener ? mq.removeEventListener('change', fn) : mq.removeListener(fn); };
+  }, []);
 
   // Re-pick scene every 60s so time-of-day transitions work
   useEffect(() => {
@@ -239,8 +250,12 @@ export default function Atmosphere({ section = 'all', children }) {
     return () => { clearInterval(id); window.removeEventListener('atmos-scene-changed', pick); };
   }, [section]);
 
-  // Load photo
+  // Load photo (skip for plain mode)
   useEffect(() => {
+    if (scene.id === 'plain' || !scene.photo) {
+      setPhotoLoaded(false);
+      return;
+    }
     setPhotoLoaded(false);
     const img = new Image();
     img.onload  = () => setPhotoLoaded(true);
@@ -248,7 +263,7 @@ export default function Atmosphere({ section = 'all', children }) {
     img.src = scene.photo;
     imgRef.current = img;
     return () => { img.onload = null; img.onerror = null; };
-  }, [scene.photo]);
+  }, [scene.photo, scene.id]);
 
   // Pause animations when tab hidden
   useEffect(() => {
@@ -262,6 +277,12 @@ export default function Atmosphere({ section = 'all', children }) {
 
   const ctx = useMemo(() => ({ palette: scene.palette, scene }), [scene]);
 
+  // Motion intensity: 'minimal' (default) = no particles, 'reduced' = no particles, 'full' = particles
+  const intensity = typeof window !== 'undefined'
+    ? (localStorage.getItem('plos_wallpaper_intensity') || 'minimal')
+    : 'minimal';
+  const showParticles = !reducedMotion && intensity === 'full' && scene.particles && scene.id !== 'plain';
+
   return (
     <AtmosContext.Provider value={ctx}>
       <div className="atmos-root">
@@ -271,14 +292,16 @@ export default function Atmosphere({ section = 'all', children }) {
           style={{ background: scene.fallback }}
         />
 
-        {/* Layer 2: photo (fades in when loaded) */}
-        <div
-          className="atmos-layer atmos-photo"
-          style={{
-            backgroundImage: scene.photo ? `url(${scene.photo})` : 'none',
-            opacity:         photoLoaded ? 1 : 0,
-          }}
-        />
+        {/* Layer 2: photo (fades in when loaded) — skipped in plain mode */}
+        {scene.id !== 'plain' && scene.photo && (
+          <div
+            className="atmos-layer atmos-photo"
+            style={{
+              backgroundImage: `url(${scene.photo})`,
+              opacity:         photoLoaded ? 1 : 0,
+            }}
+          />
+        )}
 
         {/* Layer 3: scene-tinted overlay */}
         <div
@@ -294,8 +317,8 @@ export default function Atmosphere({ section = 'all', children }) {
           {children}
         </div>
 
-        {/* Layer 5: particles — fixed ABOVE content so they're always visible */}
-        <ParticleLayer type={scene.particles} />
+        {/* Layer 5: particles — only when intensity is 'full' and motion allowed */}
+        {showParticles && <ParticleLayer type={scene.particles} />}
       </div>
     </AtmosContext.Provider>
   );
