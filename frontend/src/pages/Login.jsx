@@ -165,8 +165,8 @@ export default function Login() {
                 transition: 'border-color 0.2s, box-shadow 0.2s',
               }}
               onFocus={(e) => {
-                e.target.style.borderColor = '#7A8B52';
-                e.target.style.boxShadow = '0 0 0 2px rgba(122, 139, 82, 0.2)';
+                e.target.style.borderColor = '#C8955C';
+                e.target.style.boxShadow = '0 0 0 2px rgba(200, 149, 92, 0.2)';
               }}
               onBlur={(e) => {
                 e.target.style.borderColor = '#2E2E2E';
@@ -204,8 +204,8 @@ export default function Login() {
                 transition: 'border-color 0.2s, box-shadow 0.2s',
               }}
               onFocus={(e) => {
-                e.target.style.borderColor = '#7A8B52';
-                e.target.style.boxShadow = '0 0 0 2px rgba(122, 139, 82, 0.2)';
+                e.target.style.borderColor = '#C8955C';
+                e.target.style.boxShadow = '0 0 0 2px rgba(200, 149, 92, 0.2)';
               }}
               onBlur={(e) => {
                 e.target.style.borderColor = '#2E2E2E';
@@ -248,8 +248,8 @@ export default function Login() {
                   transition: 'border-color 0.2s, box-shadow 0.2s',
                 }}
                 onFocus={(e) => {
-                  e.target.style.borderColor = '#7A8B52';
-                  e.target.style.boxShadow = '0 0 0 2px rgba(122, 139, 82, 0.2)';
+                  e.target.style.borderColor = '#C8955C';
+                  e.target.style.boxShadow = '0 0 0 2px rgba(200, 149, 92, 0.2)';
                 }}
                 onBlur={(e) => {
                   e.target.style.borderColor = '#2E2E2E';
@@ -267,7 +267,7 @@ export default function Login() {
               padding: '14px',
               borderRadius: '12px',
               border: 'none',
-              backgroundColor: '#7A8B52',
+              backgroundColor: '#C8955C',
               color: '#0D0D0D',
               fontSize: '14px',
               fontWeight: 600,
@@ -279,12 +279,12 @@ export default function Login() {
             }}
             onMouseEnter={(e) => {
               if (!loading) {
-                e.target.style.backgroundColor = '#8FA060';
+                e.target.style.backgroundColor = '#D4A06A';
                 e.target.style.transform = 'translateY(-1px)';
               }
             }}
             onMouseLeave={(e) => {
-              e.target.style.backgroundColor = '#7A8B52';
+              e.target.style.backgroundColor = '#C8955C';
               e.target.style.transform = 'translateY(0)';
             }}
           >
@@ -309,7 +309,7 @@ export default function Login() {
             style={{
               width: '100%', padding: '13px', borderRadius: 12,
               border: 'none',
-              background: demoLoading ? 'rgba(122,139,82,0.4)' : 'rgba(122,139,82,0.85)',
+              background: demoLoading ? 'rgba(200,149,92,0.4)' : 'rgba(200,149,92,0.85)',
               color: '#0D0D0D',
               fontSize: 14, fontWeight: 700, cursor: demoLoading ? 'wait' : 'pointer',
               fontFamily: "'Inter', sans-serif",
@@ -334,7 +334,7 @@ export default function Login() {
           <Link
             to="/register"
             style={{
-              color: '#7A8B52',
+              color: '#C8955C',
               textDecoration: 'none',
               fontWeight: 500,
             }}

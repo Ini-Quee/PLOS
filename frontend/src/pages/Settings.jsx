@@ -266,7 +266,7 @@ export default function Settings() {
             }}
             onMouseEnter={(e) => {
               e.target.style.color = '#F5F0E8';
-              e.target.style.borderColor = '#7A8B52';
+              e.target.style.borderColor = '#C8955C';
             }}
             onMouseLeave={(e) => {
               e.target.style.color = '#A89880';
@@ -279,7 +279,7 @@ export default function Settings() {
             onClick={handleLogout}
             style={{
               padding: '8px 16px',
-              backgroundColor: '#7A8B52',
+              backgroundColor: '#C8955C',
               border: 'none',
               borderRadius: '12px',
               color: '#0D0D0D',
@@ -290,10 +290,10 @@ export default function Settings() {
               transition: 'all 0.2s',
             }}
             onMouseEnter={(e) => {
-              e.target.style.backgroundColor = '#8FA060';
+              e.target.style.backgroundColor = '#D4A06A';
             }}
             onMouseLeave={(e) => {
-              e.target.style.backgroundColor = '#7A8B52';
+              e.target.style.backgroundColor = '#C8955C';
             }}
           >
             Sign Out
@@ -330,7 +330,7 @@ export default function Settings() {
                   type="checkbox"
                   checked={voiceEnabled}
                   onChange={(e) => setVoiceEnabled(e.target.checked)}
-                  style={{ width: '20px', height: '20px', accentColor: '#7A8B52' }}
+                  style={{ width: '20px', height: '20px', accentColor: '#C8955C' }}
                 />
                 <span
                   style={{
@@ -406,7 +406,7 @@ export default function Settings() {
                     }}
                   >
                     <span>Speed</span>
-                    <span style={{ color: '#7A8B52' }}>{voiceRate.toFixed(2)}x</span>
+                    <span style={{ color: '#C8955C' }}>{voiceRate.toFixed(2)}x</span>
                   </label>
                   <input
                     type="range"
@@ -415,7 +415,7 @@ export default function Settings() {
                     step="0.05"
                     value={voiceRate}
                     onChange={(e) => setVoiceRate(parseFloat(e.target.value))}
-                    style={{ width: '100%', accentColor: '#7A8B52' }}
+                    style={{ width: '100%', accentColor: '#C8955C' }}
                   />
                   <div
                     style={{
@@ -444,7 +444,7 @@ export default function Settings() {
                     }}
                   >
                     <span>Pitch</span>
-                    <span style={{ color: '#7A8B52' }}>{voicePitch.toFixed(2)}</span>
+                    <span style={{ color: '#C8955C' }}>{voicePitch.toFixed(2)}</span>
                   </label>
                   <input
                     type="range"
@@ -453,7 +453,7 @@ export default function Settings() {
                     step="0.05"
                     value={voicePitch}
                     onChange={(e) => setVoicePitch(parseFloat(e.target.value))}
-                    style={{ width: '100%', accentColor: '#7A8B52' }}
+                    style={{ width: '100%', accentColor: '#C8955C' }}
                   />
                   <div
                     style={{
@@ -475,9 +475,9 @@ export default function Settings() {
                   style={{
                     padding: '10px 20px',
                     backgroundColor: 'transparent',
-                    border: '1px solid #7A8B52',
+                    border: '1px solid #C8955C',
                     borderRadius: '12px',
-                    color: '#7A8B52',
+                    color: '#C8955C',
                     fontSize: '14px',
                     fontWeight: 500,
                     cursor: 'pointer',
@@ -485,7 +485,7 @@ export default function Settings() {
                     transition: 'all 0.2s',
                   }}
                   onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = 'rgba(122, 139, 82, 0.12)';
+                    e.target.style.backgroundColor = 'rgba(200, 149, 92, 0.12)';
                   }}
                   onMouseLeave={(e) => {
                     e.target.style.backgroundColor = 'transparent';
@@ -561,7 +561,7 @@ export default function Settings() {
                   onClick={() => setShowWallpaperPicker(true)}
                   style={{
                     padding: '10px 20px',
-                    backgroundColor: '#7A8B52',
+                    backgroundColor: '#C8955C',
                     border: 'none',
                     borderRadius: 12,
                     color: '#0D0D0D',
@@ -572,8 +572,8 @@ export default function Settings() {
                     transition: 'all 0.2s',
                     flexShrink: 0
                   }}
-                  onMouseEnter={(e) => { e.target.style.backgroundColor = '#8FA060'; }}
-                  onMouseLeave={(e) => { e.target.style.backgroundColor = '#7A8B52'; }}
+                  onMouseEnter={(e) => { e.target.style.backgroundColor = '#D4A06A'; }}
+                  onMouseLeave={(e) => { e.target.style.backgroundColor = '#C8955C'; }}
                 >
                   Change World
                 </button>
@@ -586,7 +586,7 @@ export default function Settings() {
                 Custom Background Photo
               </label>
               {customPhotoActive ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 12, background: 'rgba(122,139,82,0.08)', border: '1px solid rgba(122,139,82,0.25)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 12, background: 'rgba(200,149,92,0.08)', border: '1px solid rgba(200,149,92,0.25)' }}>
                   <span style={{ fontSize: 13, color: '#EAE0D5', flex: 1 }}>Custom photo active</span>
                   <button onClick={removeCustomPhoto} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(224,82,82,0.4)', background: 'transparent', color: '#E05252', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
                     Remove
@@ -600,9 +600,9 @@ export default function Settings() {
                     onChange={e => setCustomPhotoInput(e.target.value)}
                     placeholder="Paste any photo URL…"
                     onKeyDown={e => { if (e.key === 'Enter') applyCustomPhoto(); }}
-                    style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(122,139,82,0.2)', background: 'rgba(20,12,6,0.6)', color: '#EAE0D5', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
+                    style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(200,149,92,0.2)', background: 'rgba(20,12,6,0.6)', color: '#EAE0D5', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
                   />
-                  <button onClick={applyCustomPhoto} style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: '#7A8B52', color: '#080503', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <button onClick={applyCustomPhoto} style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: '#C8955C', color: '#080503', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                     Set
                   </button>
                 </div>
@@ -634,7 +634,7 @@ export default function Settings() {
                   style={{
                     flex: 1,
                     padding: '12px',
-                    backgroundColor: theme === 'dark' ? '#7A8B52' : '#1A100A',
+                    backgroundColor: theme === 'dark' ? '#C8955C' : '#1A100A',
                     border: 'none',
                     borderRadius: '12px',
                     color: theme === 'dark' ? '#080503' : '#EAE0D5',
@@ -682,7 +682,7 @@ export default function Settings() {
                   type="checkbox"
                   checked={livingBackground}
                   onChange={(e) => setLivingBackground(e.target.checked)}
-                  style={{ width: '20px', height: '20px', accentColor: '#7A8B52' }}
+                  style={{ width: '20px', height: '20px', accentColor: '#C8955C' }}
                 />
                 <span
                   style={{
@@ -758,7 +758,7 @@ export default function Settings() {
                     }}
                   >
                     <span>Motion Intensity</span>
-                    <span style={{ color: '#7A8B52', textTransform: 'capitalize' }}>
+                    <span style={{ color: '#C8955C', textTransform: 'capitalize' }}>
                       {motionIntensity}
                     </span>
                   </label>
@@ -770,7 +770,7 @@ export default function Settings() {
                         style={{
                           flex: 1,
                           padding: '10px',
-                          backgroundColor: motionIntensity === level ? '#7A8B52' : '#242424',
+                          backgroundColor: motionIntensity === level ? '#C8955C' : '#242424',
                           border: 'none',
                           borderRadius: '12px',
                           color: motionIntensity === level ? '#0D0D0D' : '#F5F0E8',
@@ -866,7 +866,7 @@ export default function Settings() {
                     style={{
                       flex: '1 1 calc(50% - 4px)',
                       padding: '12px',
-                      backgroundColor: journalFont === font.value ? '#7A8B52' : '#242424',
+                      backgroundColor: journalFont === font.value ? '#C8955C' : '#242424',
                       border: 'none',
                       borderRadius: '12px',
                       color: journalFont === font.value ? '#0D0D0D' : '#F5F0E8',
@@ -916,7 +916,7 @@ export default function Settings() {
                       backgroundColor:
                         journalPenColor === color.value ? 'rgba(245, 166, 35, 0.2)' : '#242424',
                       border:
-                        journalPenColor === color.value ? '1px solid #7A8B52' : '1px solid #2E2E2E',
+                        journalPenColor === color.value ? '1px solid #C8955C' : '1px solid #2E2E2E',
                       borderRadius: '12px',
                       color: '#F5F0E8',
                       fontSize: '13px',
@@ -965,7 +965,7 @@ export default function Settings() {
                     style={{
                       flex: 1,
                       padding: '12px',
-                      backgroundColor: journalPaperStyle === style.value ? '#7A8B52' : '#242424',
+                      backgroundColor: journalPaperStyle === style.value ? '#C8955C' : '#242424',
                       border: 'none',
                       borderRadius: '12px',
                       color: journalPaperStyle === style.value ? '#0D0D0D' : '#F5F0E8',
@@ -1009,7 +1009,7 @@ export default function Settings() {
                       flex: 1,
                       padding: '12px',
                       backgroundColor: 'rgba(12,12,24,0.40)',
-                      border: '1px solid #7A8B52',
+                      border: '1px solid #C8955C',
                       borderRadius: '12px',
                       color: '#F5F0E8',
                       fontSize: '14px',
@@ -1021,7 +1021,7 @@ export default function Settings() {
                     onClick={saveDisplayName}
                     style={{
                       padding: '10px 20px',
-                      backgroundColor: '#7A8B52',
+                      backgroundColor: '#C8955C',
                       border: 'none',
                       borderRadius: '12px',
                       color: '#0D0D0D',
@@ -1105,9 +1105,9 @@ export default function Settings() {
               style={{
                 padding: '12px 24px',
                 backgroundColor: 'transparent',
-                border: '1px solid #7A8B52',
+                border: '1px solid #C8955C',
                 borderRadius: '12px',
-                color: '#7A8B52',
+                color: '#C8955C',
                 fontSize: '14px',
                 fontWeight: 500,
                 cursor: 'pointer',
@@ -1115,7 +1115,7 @@ export default function Settings() {
                 transition: 'all 0.2s',
               }}
               onMouseEnter={(e) => {
-                e.target.style.backgroundColor = 'rgba(122, 139, 82, 0.12)';
+                e.target.style.backgroundColor = 'rgba(200, 149, 92, 0.12)';
               }}
               onMouseLeave={(e) => {
                 e.target.style.backgroundColor = 'transparent';
@@ -1167,16 +1167,16 @@ export default function Settings() {
                 style={{
                   padding: '8px 16px',
                   backgroundColor: 'transparent',
-                  border: '1px solid #7A8B52',
+                  border: '1px solid #C8955C',
                   borderRadius: '12px',
-                  color: '#7A8B52',
+                  color: '#C8955C',
                   fontSize: '14px',
                   cursor: 'pointer',
                   fontFamily: "'Inter', sans-serif",
                   transition: 'all 0.2s',
                 }}
                 onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = 'rgba(122, 139, 82, 0.12)';
+                  e.target.style.backgroundColor = 'rgba(200, 149, 92, 0.12)';
                 }}
                 onMouseLeave={(e) => {
                   e.target.style.backgroundColor = 'transparent';
@@ -1290,7 +1290,7 @@ export default function Settings() {
                   type="checkbox"
                   checked={notificationsEnabled}
                   onChange={(e) => setNotificationsEnabled(e.target.checked)}
-                  style={{ width: '20px', height: '20px', accentColor: '#7A8B52' }}
+                  style={{ width: '20px', height: '20px', accentColor: '#C8955C' }}
                 />
                 <span
                   style={{
@@ -1409,7 +1409,7 @@ function SettingsSection({ title, icon, children }) {
         transition: 'box-shadow 0.2s',
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = '0 0 24px rgba(122, 139, 82, 0.08)';
+        e.currentTarget.style.boxShadow = '0 0 24px rgba(200, 149, 92, 0.08)';
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.boxShadow = 'none';

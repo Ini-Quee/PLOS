@@ -1299,7 +1299,7 @@ function DiscoveryPanel() {
   const SAGE = 'var(--color-primary)'
   const cardStyle = {
     background: 'rgba(20,12,6,0.55)',
-    border: '1px solid rgba(122,139,82,0.15)',
+    border: '1px solid rgba(200,149,92,0.15)',
     borderRadius: 14,
     padding: '16px 18px',
     flex: 1,
@@ -1312,7 +1312,7 @@ function DiscoveryPanel() {
       borderRadius: 16,
       padding: '20px 22px',
       animation: 'fadeUp 0.5s 0.8s ease both',
-      borderTop: '1px solid rgba(122,139,82,0.2)',
+      borderTop: '1px solid rgba(200,149,92,0.2)',
     }}>
       <div style={{ fontSize: 11, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
         <span>⚡</span> Account &amp; Connections
@@ -1339,7 +1339,7 @@ function DiscoveryPanel() {
             ) : (
               <button
                 onClick={() => navigate('/upgrade')}
-                style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'rgba(122,139,82,0.85)', color: '#080503', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'rgba(200,149,92,0.85)', color: '#080503', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
               >Upgrade →</button>
             )}
           </div>
@@ -1379,7 +1379,7 @@ function DiscoveryPanel() {
             {notifPermission === 'default' && (
               <button
                 onClick={async () => { const r = await Notification.requestPermission(); setNotifPermission(r); }}
-                style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(122,139,82,0.4)', background: 'rgba(122,139,82,0.1)', color: SAGE, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(200,149,92,0.4)', background: 'rgba(200,149,92,0.1)', color: SAGE, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
               >Enable →</button>
             )}
           </div>
@@ -1397,7 +1397,7 @@ function DiscoveryPanel() {
               <button
                 key={section}
                 onClick={() => navigate(`/settings?section=${section}`)}
-                style={{ padding: '5px 12px', borderRadius: 20, border: '1px solid rgba(122,139,82,0.25)', background: 'rgba(122,139,82,0.08)', color: C.text, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}
+                style={{ padding: '5px 12px', borderRadius: 20, border: '1px solid rgba(200,149,92,0.25)', background: 'rgba(200,149,92,0.08)', color: C.text, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}
               >{label}</button>
             ))}
           </div>

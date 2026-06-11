@@ -477,8 +477,8 @@ function BottomNav({ palette }) {
             >
               <div style={{
                 width: 44, height: 44, borderRadius: 14,
-                background: isAct ? 'rgba(122,139,82,0.35)' : 'rgba(122,139,82,0.18)',
-                border: `1.5px solid rgba(122,139,82,0.45)`,
+                background: isAct ? 'rgba(200,149,92,0.35)' : 'rgba(200,149,92,0.18)',
+                border: `1.5px solid rgba(200,149,92,0.45)`,
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
                 justifyContent: 'center', gap: 1,
                 marginBottom: 2,

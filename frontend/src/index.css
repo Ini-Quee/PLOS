@@ -6,16 +6,16 @@
   --color-background: #080503;
   --color-surface-card: rgba(20, 12, 6, 0.88);
   --color-surface-elevated: rgba(35, 22, 12, 0.95);
-  --color-primary: #7A8B52;
-  --color-primary-hover: #8FA060;
-  --color-primary-muted: rgba(122, 139, 82, 0.12);
+  --color-primary: #C8955C;
+  --color-primary-hover: #D4A06A;
+  --color-primary-muted: rgba(200, 149, 92, 0.12);
   --color-text-primary: #EAE0D5;
   --color-text-secondary: #9B8A7A;
   --color-text-muted: #5E5048;
-  --color-border: rgba(122, 139, 82, 0.12);
+  --color-border: rgba(200, 149, 92, 0.09);
   --color-success: #4CAF7D;
   --color-error: #E05252;
-  --color-lumi-glow: rgba(122, 139, 82, 0.22);
+  --color-lumi-glow: rgba(200, 149, 92, 0.22);
 
   /* Typography */
   --font-display: 'DM Serif Display', Georgia, serif;
@@ -50,14 +50,14 @@
   --color-background: #0F0804;
   --color-surface-card: rgba(30, 18, 8, 0.90);
   --color-surface-elevated: rgba(52, 32, 16, 0.97);
-  --color-primary: #A8935A;
-  --color-primary-hover: #BFA870;
-  --color-primary-muted: rgba(168, 147, 90, 0.15);
+  --color-primary: #D4A06A;
+  --color-primary-hover: #E0B080;
+  --color-primary-muted: rgba(212, 160, 106, 0.15);
   --color-text-primary: #F5EDE2;
   --color-text-secondary: #C4A882;
   --color-text-muted: #7A6450;
-  --color-border: rgba(168, 147, 90, 0.15);
-  --color-lumi-glow: rgba(168, 147, 90, 0.22);
+  --color-border: rgba(212, 160, 106, 0.15);
+  --color-lumi-glow: rgba(212, 160, 106, 0.22);
 }
 
 * {
@@ -111,13 +111,13 @@ body.living-background-enabled #root {
   color: var(--color-text-primary);
 }
 
-/* Sage Glow Effect */
+/* Amber Glow Effect */
 .amber-glow {
-  box-shadow: 0 0 24px rgba(122, 139, 82, 0.10);
+  box-shadow: 0 0 24px rgba(200, 149, 92, 0.10);
 }
 
 .amber-glow-hover:hover {
-  box-shadow: 0 0 24px rgba(122, 139, 82, 0.16);
+  box-shadow: 0 0 24px rgba(200, 149, 92, 0.16);
 }
 
 /* Card Styles — glass */
@@ -131,7 +131,7 @@ body.living-background-enabled #root {
 }
 
 .card:hover {
-  box-shadow: 0 0 28px rgba(200, 149, 92, 0.1);
+  box-shadow: 0 0 28px rgba(200, 149, 92, 0.12);
 }
 
 /* Button Styles */

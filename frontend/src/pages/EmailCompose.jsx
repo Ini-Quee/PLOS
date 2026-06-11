@@ -9,7 +9,7 @@ const GLASS = {
   background: 'rgba(20,12,6,0.55)',
   backdropFilter: 'blur(18px)',
   WebkitBackdropFilter: 'blur(18px)',
-  border: '1px solid rgba(122,139,82,0.15)',
+  border: '1px solid rgba(200,149,92,0.15)',
   borderRadius: 14,
 }
 
@@ -33,7 +33,7 @@ function EmailBlock({ block, index, onChange, onRemove, onSend, sending }) {
           rows={3}
           style={{
             width: '100%', padding: '10px 13px', borderRadius: 10,
-            border: '1px solid rgba(122,139,82,0.2)', background: 'rgba(8,5,3,0.5)',
+            border: '1px solid rgba(200,149,92,0.2)', background: 'rgba(8,5,3,0.5)',
             color: C.cream || '#EAE0D5', fontSize: 13, fontFamily: 'inherit',
             outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box',
           }}
@@ -43,7 +43,7 @@ function EmailBlock({ block, index, onChange, onRemove, onSend, sending }) {
           disabled={block.extracting || !block.context.trim()}
           style={{
             marginTop: 8, padding: '7px 18px', borderRadius: 8, border: 'none',
-            background: block.extracting ? 'rgba(122,139,82,0.3)' : 'rgba(122,139,82,0.85)',
+            background: block.extracting ? 'rgba(200,149,92,0.3)' : 'rgba(200,149,92,0.85)',
             color: '#080503', fontSize: 12, fontWeight: 700,
             cursor: block.extracting || !block.context.trim() ? 'not-allowed' : 'pointer',
             fontFamily: 'inherit',
@@ -66,14 +66,14 @@ function EmailBlock({ block, index, onChange, onRemove, onSend, sending }) {
               rows={5}
               style={{
                 width: '100%', padding: '10px 13px', borderRadius: 10,
-                border: '1px solid rgba(122,139,82,0.15)', background: 'rgba(8,5,3,0.5)',
+                border: '1px solid rgba(200,149,92,0.15)', background: 'rgba(8,5,3,0.5)',
                 color: C.cream || '#EAE0D5', fontSize: 13, fontFamily: 'inherit',
                 outline: 'none', resize: 'vertical', lineHeight: 1.6, boxSizing: 'border-box',
               }}
             />
           </div>
           {block.cta && (
-            <div style={{ fontSize: 11, color: C.muted, padding: '8px 12px', borderRadius: 8, background: 'rgba(122,139,82,0.06)', border: '1px solid rgba(122,139,82,0.12)' }}>
+            <div style={{ fontSize: 11, color: C.muted, padding: '8px 12px', borderRadius: 8, background: 'rgba(200,149,92,0.06)', border: '1px solid rgba(200,149,92,0.12)' }}>
               CTA: {block.cta}
             </div>
           )}
@@ -83,7 +83,7 @@ function EmailBlock({ block, index, onChange, onRemove, onSend, sending }) {
               disabled={sending === index || !block.to || !block.body}
               style={{
                 padding: '9px 20px', borderRadius: 10, border: 'none',
-                background: sending === index ? 'rgba(122,139,82,0.4)' : 'rgba(122,139,82,0.85)',
+                background: sending === index ? 'rgba(200,149,92,0.4)' : 'rgba(200,149,92,0.85)',
                 color: '#080503', fontSize: 13, fontWeight: 700,
                 cursor: (sending === index || !block.to || !block.body) ? 'not-allowed' : 'pointer',
                 fontFamily: 'inherit',
@@ -119,7 +119,7 @@ function Field({ label, value, onChange, placeholder }) {
         placeholder={placeholder}
         style={{
           width: '100%', padding: '9px 13px', borderRadius: 10,
-          border: '1px solid rgba(122,139,82,0.15)', background: 'rgba(8,5,3,0.5)',
+          border: '1px solid rgba(200,149,92,0.15)', background: 'rgba(8,5,3,0.5)',
           color: C.cream || '#EAE0D5', fontSize: 13, fontFamily: 'inherit',
           outline: 'none', boxSizing: 'border-box',
         }}
@@ -230,7 +230,7 @@ export default function EmailCompose() {
             onClick={() => setBlocks(prev => [...prev, emptyBlock()])}
             style={{
               padding: '9px 18px', borderRadius: 10,
-              border: '1px solid rgba(122,139,82,0.3)', background: 'rgba(122,139,82,0.08)',
+              border: '1px solid rgba(200,149,92,0.3)', background: 'rgba(200,149,92,0.08)',
               color: 'var(--color-primary)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
             }}
           >
@@ -243,7 +243,7 @@ export default function EmailCompose() {
               disabled={sendingAll}
               style={{
                 padding: '9px 22px', borderRadius: 10, border: 'none',
-                background: sendingAll ? 'rgba(122,139,82,0.4)' : 'rgba(122,139,82,0.85)',
+                background: sendingAll ? 'rgba(200,149,92,0.4)' : 'rgba(200,149,92,0.85)',
                 color: '#080503', fontSize: 13, fontWeight: 700,
                 cursor: sendingAll ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
               }}
@@ -254,7 +254,7 @@ export default function EmailCompose() {
         </div>
 
         {/* Gmail not connected warning */}
-        <div style={{ marginTop: 28, padding: '12px 16px', borderRadius: 10, background: 'rgba(122,139,82,0.06)', border: '1px solid rgba(122,139,82,0.12)', fontSize: 12, color: C.muted }}>
+        <div style={{ marginTop: 28, padding: '12px 16px', borderRadius: 10, background: 'rgba(200,149,92,0.06)', border: '1px solid rgba(200,149,92,0.12)', fontSize: 12, color: C.muted }}>
           Gmail must be connected to send. <span onClick={() => navigate('/dashboard')} style={{ color: 'var(--color-primary)', cursor: 'pointer', textDecoration: 'underline' }}>Connect on Dashboard →</span>
         </div>
       </div>

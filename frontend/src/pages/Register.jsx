@@ -123,7 +123,7 @@ export default function Register() {
     if (/[^A-Za-z0-9]/.test(password)) strength++;
 
     const labels = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong'];
-    const colors = ['#E05252', '#E05252', '#7A8B52', '#4CAF7D', '#4CAF7D'];
+    const colors = ['#E05252', '#E05252', '#C8955C', '#4CAF7D', '#4CAF7D'];
     
     return { 
       strength, 
@@ -233,8 +233,8 @@ export default function Register() {
               }}
               onFocus={(e) => {
                 if (!fieldErrors.name) {
-                  e.target.style.borderColor = '#7A8B52';
-                  e.target.style.boxShadow = '0 0 0 2px rgba(122, 139, 82, 0.2)';
+                  e.target.style.borderColor = '#C8955C';
+                  e.target.style.boxShadow = '0 0 0 2px rgba(200, 149, 92, 0.2)';
                 }
               }}
               onBlur={(e) => {
@@ -286,8 +286,8 @@ export default function Register() {
               }}
               onFocus={(e) => {
                 if (!fieldErrors.email) {
-                  e.target.style.borderColor = '#7A8B52';
-                  e.target.style.boxShadow = '0 0 0 2px rgba(122, 139, 82, 0.2)';
+                  e.target.style.borderColor = '#C8955C';
+                  e.target.style.boxShadow = '0 0 0 2px rgba(200, 149, 92, 0.2)';
                 }
               }}
               onBlur={(e) => {
@@ -339,8 +339,8 @@ export default function Register() {
               }}
               onFocus={(e) => {
                 if (!fieldErrors.password) {
-                  e.target.style.borderColor = '#7A8B52';
-                  e.target.style.boxShadow = '0 0 0 2px rgba(122, 139, 82, 0.2)';
+                  e.target.style.borderColor = '#C8955C';
+                  e.target.style.boxShadow = '0 0 0 2px rgba(200, 149, 92, 0.2)';
                 }
               }}
               onBlur={(e) => {
@@ -423,8 +423,8 @@ export default function Register() {
               }}
               onFocus={(e) => {
                 if (!fieldErrors.confirmPassword) {
-                  e.target.style.borderColor = '#7A8B52';
-                  e.target.style.boxShadow = '0 0 0 2px rgba(122, 139, 82, 0.2)';
+                  e.target.style.borderColor = '#C8955C';
+                  e.target.style.boxShadow = '0 0 0 2px rgba(200, 149, 92, 0.2)';
                 }
               }}
               onBlur={(e) => {
@@ -493,7 +493,7 @@ export default function Register() {
               padding: '14px',
               borderRadius: '12px',
               border: 'none',
-              backgroundColor: '#7A8B52',
+              backgroundColor: '#C8955C',
               color: '#0D0D0D',
               fontSize: '14px',
               fontWeight: 600,
@@ -505,12 +505,12 @@ export default function Register() {
             }}
             onMouseEnter={(e) => {
               if (!loading) {
-                e.target.style.backgroundColor = '#8FA060';
+                e.target.style.backgroundColor = '#D4A06A';
                 e.target.style.transform = 'translateY(-1px)';
               }
             }}
             onMouseLeave={(e) => {
-              e.target.style.backgroundColor = '#7A8B52';
+              e.target.style.backgroundColor = '#C8955C';
               e.target.style.transform = 'translateY(0)';
             }}
           >
@@ -526,7 +526,7 @@ export default function Register() {
           fontFamily: "'Inter', sans-serif",
         }}>
           Already have an account?{' '}
-          <Link to="/login" style={{ color: '#7A8B52', textDecoration: 'none', fontWeight: 500 }}>
+          <Link to="/login" style={{ color: '#C8955C', textDecoration: 'none', fontWeight: 500 }}>
             Sign in
           </Link>
         </p>
