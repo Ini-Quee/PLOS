@@ -184,7 +184,7 @@ function NavItem({ icon, label, path, isActive, onClick, lumi = false }) {
       }}
     >
       {lumi
-        ? <span style={{ width: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><LumiFace mood="resting" size={36} showOrb={false} /></span>
+        ? <span style={{ width: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><LumiFace mood="resting" size={22} showOrb={false} subtle /></span>
         : <span style={{ fontSize: 15, width: 20, textAlign: 'center' }}>{icon}</span>}
       {label}
     </div>
@@ -483,7 +483,7 @@ function BottomNav({ palette }) {
                 justifyContent: 'center', gap: 1,
                 marginBottom: 2,
               }}>
-                <span style={{ fontSize: 20, lineHeight: 1 }}><LumiFace mood="resting" size={28} showOrb={false} /></span>
+                <span style={{ fontSize: 20, lineHeight: 1 }}><LumiFace mood="resting" size={22} showOrb={false} subtle /></span>
               </div>
               <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--color-primary)' }}>{item.label}</span>
             </button>

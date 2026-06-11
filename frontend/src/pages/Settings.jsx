@@ -4,9 +4,8 @@ import { useAuth } from '../lib/auth';
 import api from '../lib/api';
 import { useToast } from '../hooks/useToast';
 import * as lumiVoice from '../lib/lumi-voice';
-import { THEME_LIBRARY } from '../lib/livingBackgroundConfig';
+import { SCENES } from '../lib/atmos';
 import WallpaperPicker from '../components/WallpaperPicker';
-import { getSceneById } from '../lib/wallpaperScenes';
 
 /**
  * Settings Page — 8 sections per AGENTS.md Part 6.12
@@ -187,26 +186,11 @@ export default function Settings() {
     }
   }
 
-  // Get preview gradient for selected theme
-  function getPreviewGradient(themeKey) {
-    const themeConfig = THEME_LIBRARY[themeKey];
-    if (!themeConfig || !themeConfig.override) {
-      // Default auto theme - dawn gradient
-      return 'linear-gradient(180deg, #1a0a2e 0%, #4a1942 30%, #FF6B35 70%, #FFB347 100%)';
-    }
-
-    if (themeConfig.override.sky_override) {
-      return themeConfig.override.sky_override;
-    }
-
-    // Construct from sky colors if available
-    const { sky_top, sky_mid, sky_horizon, sky_low } = themeConfig.override;
-    if (sky_top && sky_mid) {
-      return `linear-gradient(180deg, ${sky_top} 0%, ${sky_mid} 30%, ${sky_horizon || sky_mid} 70%, ${sky_low || sky_horizon || sky_mid} 100%)`;
-    }
-
-    // Fallback
-    return 'linear-gradient(180deg, #1a0a2e 0%, #4a1942 30%, #FF6B35 70%, #FFB347 100%)';
+  // Get preview gradient for selected scene
+  function getPreviewGradient(sceneKey) {
+    const scene = SCENES[sceneKey];
+    if (!scene) return 'linear-gradient(180deg, #1a0a2e 0%, #4a1942 30%, #FF6B35 70%, #FFB347 100%)';
+    return scene.fallback;
   }
 
   // Settings sections
@@ -543,7 +527,9 @@ export default function Settings() {
                     borderRadius: 8,
                     backgroundImage: currentWallpaperScene === 'auto'
                       ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                      : `url(https://picsum.photos/400/300?random=${getSceneById(currentWallpaperScene)?.photo_seed || 1})`,
+                      : SCENES[currentWallpaperScene]?.photo
+                        ? `url(${SCENES[currentWallpaperScene].photo.replace('1920', '400').replace('1080', '300')})`
+                        : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
                     flexShrink: 0
@@ -551,10 +537,10 @@ export default function Settings() {
                 />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 16, color: '#F5F0E8', fontWeight: 600, marginBottom: 4 }}>
-                    {currentWallpaperScene === 'auto' ? '🤖 Auto (Smart)' : `${getSceneById(currentWallpaperScene)?.emoji} ${getSceneById(currentWallpaperScene)?.label}`}
+                    {currentWallpaperScene === 'auto' ? '🤖 Auto (Smart)' : `${SCENES[currentWallpaperScene]?.label || 'Custom'}`}
                   </div>
                   <div style={{ fontSize: 12, color: '#6B5F52' }}>
-                    {currentWallpaperScene === 'auto' ? 'Matches time & season automatically' : getSceneById(currentWallpaperScene)?.description}
+                    {currentWallpaperScene === 'auto' ? 'Matches time & season automatically' : 'Photo wallpaper active'}
                   </div>
                 </div>
                 <button
@@ -737,9 +723,9 @@ export default function Settings() {
                       outline: 'none',
                     }}
                   >
-                    {Object.entries(THEME_LIBRARY).map(([key, theme]) => (
+                    {Object.entries(SCENES).map(([key, scene]) => (
                       <option key={key} value={key}>
-                        {theme.name} — {theme.description}
+                        {scene.label}
                       </option>
                     ))}
                   </select>
