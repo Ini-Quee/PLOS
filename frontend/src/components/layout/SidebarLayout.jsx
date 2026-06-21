@@ -9,23 +9,23 @@ import LumiFace from '../lumi/LumiFace';
 
 // ─── Base design tokens (palette values get layered on top via useAtmos) ───────
 export const C = {
-  bg: 'rgba(6,6,14,0.0)',       // transparent — atmosphere shows through
-  bg2: 'rgba(6,6,14,0.30)',     // glass panels
-  bg3: 'rgba(10,10,20,0.38)',
-  bg4: 'rgba(14,14,28,0.48)',
-  amber: '#C8955C',             // warm wood, not harsh orange
+  bg: 'rgba(8,5,3,0.0)',         // transparent — atmosphere shows through
+  bg2: 'rgba(20,12,6,0.30)',     // glass panels
+  bg3: 'rgba(30,18,8,0.38)',
+  bg4: 'rgba(52,32,16,0.48)',
+  amber: '#C8955C',              // warm wood accent
   amber2: '#DBA870',
-  cream: '#f5f0e8',
-  warm: '#c9b99a',
-  muted: '#9a9aaa',
-  border: 'rgba(255,255,255,0.07)',
-  border2: 'rgba(255,255,255,0.05)',
-  teal: '#00d4aa',
-  purple: '#8b5cf6',
-  rose: '#f472b6',
-  pink: '#f472b6',
-  sage: '#7fb87f',
-  text: '#e8e8f0',
+  cream: '#F5EDE2',
+  warm: '#C4A882',
+  muted: '#7A6450',
+  border: 'rgba(200,149,92,0.09)',
+  border2: 'rgba(200,149,92,0.06)',
+  teal: '#5BA88A',
+  purple: '#9B7FD4',
+  rose: '#E05252',
+  pink: '#D4789A',
+  sage: '#7ABFB8',
+  text: '#EAE0D5',
 };
 
 // ─── Navigation Items ──────────────────────────────────────────────────────────
@@ -392,19 +392,27 @@ export function Sidebar() {
         }}
       />
 
-      {/* Logo */}
+      {/* Logo — Lumi's face */}
       <div
         style={{
-          fontSize: 20,
-          fontWeight: 800,
-          color: palette.accent,
-          letterSpacing: '-0.5px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
           padding: '4px 12px 20px',
           borderBottom: `1px solid ${palette.border}`,
           marginBottom: 12,
         }}
       >
-        IniQ<span style={{ color: palette.text, opacity: 0.3 }}>.</span>
+        <LumiFace mood="resting" size={28} showOrb={false} subtle />
+        <span style={{
+          fontSize: 18,
+          fontWeight: 700,
+          color: palette.accent,
+          letterSpacing: '-0.3px',
+          fontFamily: "'DM Serif Display', serif",
+        }}>
+          Lumi
+        </span>
       </div>
 
       {/* Today — Dashboard, Planner, Lumi */}
@@ -546,7 +554,10 @@ function MobileDrawer({ open, onClose, palette }) {
       }}>
         <style>{`@keyframes slideInLeft { from { transform:translateX(-100%) } to { transform:translateX(0) } }`}</style>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
-          <div style={{ fontSize:20, fontWeight:800, color:palette.accent }}>IniQ.</div>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <LumiFace mood="resting" size={24} showOrb={false} subtle />
+            <span style={{ fontSize:18, fontWeight:700, color:palette.accent, fontFamily:"'DM Serif Display', serif" }}>Lumi</span>
+          </div>
           <button onClick={onClose} style={{ background:'none', border:'none', color:C.muted, fontSize:20, cursor:'pointer' }}>✕</button>
         </div>
         {NAV_ITEMS.today.map(item => (
@@ -589,7 +600,7 @@ export default function SidebarLayout({ children, customStyles = {} }) {
           minHeight: '100vh',
           background: 'transparent',
           color: C.text,
-          fontFamily: "'DM Sans', system-ui, sans-serif",
+          fontFamily: "'Inter', system-ui, sans-serif",
           position: 'relative',
           zIndex: 1,
           ...customStyles,

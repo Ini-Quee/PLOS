@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../lib/api';
+import LumiFace from '../components/lumi/LumiFace';
 import { useAuth } from '../lib/auth';
 import { encryptText } from '../lib/encryption';
 
@@ -271,7 +272,7 @@ export default function Journal() {
                       boxShadow: '0 0 24px rgba(245, 166, 35, 0.25)',
                     }}
                   >
-                    <span style={{ fontSize: 24 }}>✨</span>
+                    <LumiFace mood="resting" size={48} showOrb={false} />
                   </div>
                   <div>
                     <h3

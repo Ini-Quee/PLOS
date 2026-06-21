@@ -164,7 +164,7 @@ export default function Register() {
             justifyContent: 'center',
             margin: '0 auto 16px',
           }}>
-            <LumiFace mood="resting" size={64} />
+            <LumiFace mood="resting" size={48} />
           </div>
           <h1 style={{
             fontSize: '32px',
@@ -181,7 +181,7 @@ export default function Register() {
             margin: 0,
             fontFamily: "'Inter', sans-serif",
           }}>
-            Set up your IniQ account
+            Set up your Lumi account
           </p>
         </div>
 

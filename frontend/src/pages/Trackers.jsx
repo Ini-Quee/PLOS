@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import SidebarLayout, { C } from '../components/layout/SidebarLayout'
 import { useAtmos } from '../components/Atmosphere'
 import api from '../lib/api'
@@ -467,6 +468,7 @@ export default function Trackers() {
   useAtmos()
   const isMobile = useIsMobile()
   const toast = useToast()
+  const navigate = useNavigate()
   const [trackers, setTrackers] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -534,13 +536,16 @@ export default function Trackers() {
         ) : (
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <div>
-                <h1 style={{
-                  fontFamily: "'DM Serif Display', serif", fontSize: isMobile ? 28 : 34,
-                  color: '#f1f5ea', margin: 0, fontWeight: 500,
-                }}>Trackers</h1>
-                <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>
-                  Don't break the chain
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div onClick={() => navigate('/dashboard')} style={{ width:32, height:32, borderRadius:10, background:'rgba(200,149,92,0.10)', border:'1px solid rgba(200,149,92,0.15)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:14, color:C.muted, flexShrink:0 }} title="Back to Home">◈</div>
+                <div>
+                  <h1 style={{
+                    fontFamily: "'DM Serif Display', serif", fontSize: isMobile ? 28 : 34,
+                    color: '#f1f5ea', margin: 0, fontWeight: 500,
+                  }}>Trackers</h1>
+                  <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>
+                    Don't break the chain
+                  </div>
                 </div>
               </div>
               <button

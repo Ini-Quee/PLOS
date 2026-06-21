@@ -2,25 +2,29 @@
 @import 'tailwindcss';
 
 :root {
-  /* IniQ Design System — woody dark (default) */
+  /* Lumi Design System — woody dark (default) */
   --color-background: #080503;
-  --color-surface-card: rgba(20, 12, 6, 0.88);
+  --color-surface-card: rgba(20, 12, 6, 0.90);
   --color-surface-elevated: rgba(35, 22, 12, 0.95);
   --color-primary: #C8955C;
   --color-primary-hover: #D4A06A;
   --color-primary-muted: rgba(200, 149, 92, 0.12);
-  --color-text-primary: #EAE0D5;
-  --color-text-secondary: #9B8A7A;
-  --color-text-muted: #5E5048;
-  --color-border: rgba(200, 149, 92, 0.09);
+  --color-text-primary: #F5EDE2;
+  --color-text-secondary: #C4A882;
+  --color-text-muted: #7A6450;
+  --color-border: rgba(200, 149, 92, 0.12);
   --color-success: #4CAF7D;
   --color-error: #E05252;
   --color-lumi-glow: rgba(200, 149, 92, 0.22);
 
-  /* Typography */
+  /* Typography — bigger, bolder */
   --font-display: 'DM Serif Display', Georgia, serif;
   --font-body: 'Inter', system-ui, sans-serif;
   --font-handwriting: 'Caveat', cursive;
+
+  /* Text shadows for readability over photos */
+  --text-shadow-photo: 0 1px 4px rgba(0,0,0,0.7), 0 2px 12px rgba(0,0,0,0.5);
+  --text-shadow-subtle: 0 1px 3px rgba(0,0,0,0.5);
 
   /* Spacing */
   --space-1: 4px;
@@ -48,7 +52,7 @@
 /* Coloured Mode — warm woody with richer accents */
 [data-theme="coloured"] {
   --color-background: #0F0804;
-  --color-surface-card: rgba(30, 18, 8, 0.90);
+  --color-surface-card: rgba(30, 18, 8, 0.92);
   --color-surface-elevated: rgba(52, 32, 16, 0.97);
   --color-primary: #D4A06A;
   --color-primary-hover: #E0B080;
@@ -76,18 +80,11 @@ html, body, #root {
   background-color: var(--color-background);
   color: var(--color-text-primary);
   font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-/* Living Background enabled - make body transparent */
-body.living-background-enabled {
-  background-color: transparent;
-}
-
-/* Ensure main app container has transparent background when Living Background is on */
-body.living-background-enabled #root {
-  background-color: transparent;
 }
 
 /* Typography Classes */
@@ -106,32 +103,34 @@ body.living-background-enabled #root {
 /* Lumi Voice Text Style */
 .lumi-voice {
   font-family: var(--font-display);
-  font-size: 20px;
+  font-size: 22px;
   font-style: italic;
   color: var(--color-text-primary);
+  text-shadow: var(--text-shadow-subtle);
 }
 
 /* Amber Glow Effect */
 .amber-glow {
-  box-shadow: 0 0 24px rgba(200, 149, 92, 0.10);
+  box-shadow: 0 0 24px rgba(200, 149, 92, 0.12);
 }
 
 .amber-glow-hover:hover {
-  box-shadow: 0 0 24px rgba(200, 149, 92, 0.16);
+  box-shadow: 0 0 28px rgba(200, 149, 92, 0.18);
 }
 
-/* Card Styles — glass */
+/* Card Styles — glass, research-based: 90% opacity, 22px blur */
 .card {
   background-color: var(--color-surface-card);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(22px) saturate(1.2);
+  -webkit-backdrop-filter: blur(22px) saturate(1.2);
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
   transition: box-shadow var(--transition-base);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(200, 149, 92, 0.06);
 }
 
 .card:hover {
-  box-shadow: 0 0 28px rgba(200, 149, 92, 0.12);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 28px rgba(200, 149, 92, 0.12);
 }
 
 /* Button Styles */
@@ -141,6 +140,7 @@ body.living-background-enabled #root {
   border: none;
   border-radius: var(--radius-md);
   font-weight: 600;
+  font-size: 15px;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
@@ -155,7 +155,8 @@ body.living-background-enabled #root {
   color: var(--color-primary);
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-md);
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 15px;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
@@ -172,6 +173,8 @@ body.living-background-enabled #root {
   border-radius: var(--radius-md);
   padding: 12px 16px;
   font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 500;
   transition: all var(--transition-fast);
 }
 
@@ -182,21 +185,21 @@ body.living-background-enabled #root {
 
 /* Scrollbar Styling */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-surface-card);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-text-muted);
-  border-radius: 4px;
+  background: rgba(200, 149, 92, 0.2);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-secondary);
+  background: rgba(200, 149, 92, 0.35);
 }
 
 /* Lumi Orb Animation */
@@ -219,4 +222,10 @@ body.living-background-enabled #root {
 ::selection {
   background-color: var(--color-primary);
   color: var(--color-background);
+}
+
+/* Global text readability helper — use on elements over photos */
+.text-over-photo {
+  text-shadow: var(--text-shadow-photo);
+  font-weight: 600;
 }

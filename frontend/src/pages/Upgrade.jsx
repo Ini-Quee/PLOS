@@ -54,7 +54,7 @@ export default function Upgrade() {
           </div>
           <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', lineHeight: 1.7 }}>
             {isPro
-              ? 'You have full access to every feature in PLOS.'
+              ? 'You have full access to every feature in Lumi.'
               : 'Unlock unlimited Lumi, all journals, and every feature built for your life.'}
           </div>
         </div>

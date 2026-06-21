@@ -758,7 +758,7 @@ export default function TalkToLumi() {
   const formatTime = ts => { try { return new Date(ts).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }); } catch { return ''; } };
 
   return (
-    <div style={{ minHeight:'100vh', position:'relative', display:'flex', flexDirection:'column', fontFamily:"'DM Sans',system-ui,sans-serif" }}>
+    <div style={{ minHeight:'100vh', position:'relative', display:'flex', flexDirection:'column', fontFamily:"'Inter',system-ui,sans-serif" }}>
 
       {/* ── Header ── */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'18px 28px', borderBottom:`1px solid ${C.brd}`, backdropFilter:'blur(16px)', background:'rgba(14,10,6,0.45)', flexShrink:0 }}>
@@ -817,7 +817,7 @@ export default function TalkToLumi() {
           <div style={{ fontSize:12, color: C.muted, lineHeight:1.7, marginBottom:12 }}>
             For the deepest, most intelligent planning session — use Claude AI on claude.ai.
             It will interview you on every part of your life, write out your full weekly schedule in detail, and help you think through decisions.
-            Then come back here and paste your plan to import it into PLOS.
+            Then come back here and paste your plan to import it into Lumi.
           </div>
           <div style={{ display:'flex', gap:8, marginBottom:12, flexWrap:'wrap' }}>
             <a

@@ -207,7 +207,7 @@ export default function EmailCompose() {
             Smart Email
           </div>
           <div style={{ fontSize: 13, color: C.muted }}>
-            Paste client notes — IniQ reads the context, finds the email, and writes the email for you.
+            Paste client notes — Lumi reads the context, finds the email, and writes the email for you.
           </div>
         </div>
 

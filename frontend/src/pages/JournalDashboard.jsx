@@ -7,6 +7,7 @@ import CreateBookWizard from '../components/journal/CreateBookWizard';
 import { initializeSeasonDetection, getCachedSeason, SEASONS } from '../lib/seasonDetection';
 import { getBookTheme, BOOK_TYPES } from '../lib/bookThemes';
 import api from '../lib/api';
+import LumiFace from '../components/lumi/LumiFace';
 
 // ─── Default journal book definitions (visual templates — no fake entry counts) ──
 const JOURNAL_TEMPLATES = [
@@ -673,15 +674,7 @@ function OpenJournal({ journal, onClose }) {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                  <div
-                    style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: '50%',
-                      background: 'radial-gradient(circle,#ffbe4d,#F5A623)',
-                      animation: 'breathe 3s infinite',
-                    }}
-                  />
+                  <div style={{ flexShrink: 0 }}><LumiFace mood="resting" size={32} /></div>
                   <div style={{ fontSize: 12, fontWeight: 600, color: '#9b7fe8' }}>Lumi&apos;s analysis</div>
                 </div>
                 <div style={{ fontSize: 12, color: C.warm, lineHeight: 1.7 }}>
@@ -727,6 +720,20 @@ export default function JournalDashboard() {
   const [filter, setFilter] = useState('all');
   const [showWizard, setShowWizard] = useState(false);
   const [customJournals, setCustomJournals] = useState([]);
+  const [showStylePanel, setShowStylePanel] = useState(false);
+
+  // Journal style settings (moved from Settings page — belongs here)
+  const [journalFont, setJournalFont] = useState(() => localStorage.getItem('journal_font') || 'Caveat');
+  const [journalPenColor, setJournalPenColor] = useState(() => localStorage.getItem('journal_pen_color') || '#1A1A1A');
+  const [journalPaperStyle, setJournalPaperStyle] = useState(() => localStorage.getItem('journal_paper_style') || 'linen');
+
+  // Persist journal style
+  useEffect(() => {
+    localStorage.setItem('journal_font', journalFont);
+    localStorage.setItem('journal_pen_color', journalPenColor);
+    localStorage.setItem('journal_paper_style', journalPaperStyle);
+    api.put('/users/settings', { journalFont, journalPenColor, journalPaperStyle }).catch(() => {});
+  }, [journalFont, journalPenColor, journalPaperStyle]);
 
   // Load custom journal types created by the user
   useEffect(() => {
@@ -882,7 +889,9 @@ export default function JournalDashboard() {
         {/* Header Section */}
         <div style={{ padding: '28px 32px 0' }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 6 }}>
-            <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div onClick={() => navigate('/dashboard')} style={{ width:32, height:32, borderRadius:10, background:'rgba(200,149,92,0.10)', border:'1px solid rgba(200,149,92,0.15)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:14, color:C.muted, flexShrink:0 }} title="Back to Home">◈</div>
+              <div>
             <div
               style={{
                 fontSize: 11,
@@ -916,8 +925,97 @@ export default function JournalDashboard() {
                 {JOURNAL_TEMPLATES.length} journals · {statsLoading ? '…' : Object.values(journalStats).reduce((acc, s) => acc + (s.count || 0), 0)} total entries
                 {Object.values(journalStats).some(s => s.latestDaysAgo === 0) ? ' · updated today' : ''}
               </div>
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {/* Style settings button */}
+              <div style={{ position: 'relative' }}>
+                <div
+                  onClick={() => setShowStylePanel(!showStylePanel)}
+                  style={{
+                    background: C.bg3,
+                    border: `1px solid ${C.border2}`,
+                    borderRadius: 10,
+                    padding: '8px 14px',
+                    fontSize: 11,
+                    color: C.muted,
+                    cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 6,
+                  }}
+                >
+                  <span style={{ fontSize: 14 }}>🖋</span> Style
+                </div>
+                {showStylePanel && (
+                  <div style={{
+                    position: 'absolute', top: '100%', right: 0, marginTop: 8, zIndex: 50,
+                    background: 'rgba(20, 12, 6, 0.95)', backdropFilter: 'blur(22px)',
+                    border: `1px solid rgba(200, 149, 92, 0.15)`, borderRadius: 14,
+                    padding: 20, width: 280,
+                    boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
+                  }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 16 }}>Journal Style</div>
+
+                    {/* Font */}
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: 11, color: C.muted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Font</div>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {[
+                          { value: 'Caveat', label: 'Handwriting' },
+                          { value: '"DM Serif Display"', label: 'Elegant' },
+                          { value: '"Courier Prime"', label: 'Typewriter' },
+                          { value: 'Inter', label: 'Clean' },
+                        ].map(f => (
+                          <div key={f.value} onClick={() => setJournalFont(f.value)} style={{
+                            padding: '6px 12px', borderRadius: 8, fontSize: 12, cursor: 'pointer',
+                            background: journalFont === f.value ? C.amber : 'rgba(255,255,255,0.05)',
+                            color: journalFont === f.value ? '#080503' : C.text,
+                            fontWeight: journalFont === f.value ? 600 : 400,
+                            fontFamily: f.value, transition: 'all 0.15s',
+                          }}>{f.label}</div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Pen color */}
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: 11, color: C.muted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Pen Color</div>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        {[
+                          { value: '#1A1A1A', label: 'Black' },
+                          { value: '#1E3A5F', label: 'Navy' },
+                          { value: '#8B0000', label: 'Deep Red' },
+                          { value: '#2F4F2F', label: 'Forest' },
+                          { value: '#B8860B', label: 'Amber' },
+                          { value: '#4B0082', label: 'Purple' },
+                        ].map(c => (
+                          <div key={c.value} onClick={() => setJournalPenColor(c.value)} style={{
+                            width: 28, height: 28, borderRadius: '50%', cursor: 'pointer',
+                            background: c.value, border: journalPenColor === c.value ? `2px solid ${C.amber}` : '2px solid rgba(255,255,255,0.1)',
+                            transition: 'all 0.15s',
+                          }} title={c.label} />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Paper */}
+                    <div>
+                      <div style={{ fontSize: 11, color: C.muted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Paper</div>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        {['linen', 'lined', 'plain'].map(p => (
+                          <div key={p} onClick={() => setJournalPaperStyle(p)} style={{
+                            flex: 1, padding: '6px', borderRadius: 8, fontSize: 12, cursor: 'pointer', textAlign: 'center',
+                            background: journalPaperStyle === p ? C.amber : 'rgba(255,255,255,0.05)',
+                            color: journalPaperStyle === p ? '#080503' : C.text,
+                            fontWeight: journalPaperStyle === p ? 600 : 400,
+                            textTransform: 'capitalize', transition: 'all 0.15s',
+                          }}>{p}</div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div
                 style={{
                   background: C.bg3,

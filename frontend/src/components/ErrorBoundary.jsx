@@ -41,7 +41,7 @@ export default class ErrorBoundary extends Component {
           border: '1px solid rgba(239,68,68,0.12)',
           display: 'flex', alignItems: 'center', gap: 10,
           fontSize: 12, color: 'rgba(255,255,255,0.4)',
-          fontFamily: "'DM Sans', system-ui, sans-serif",
+          fontFamily: "'Inter', system-ui, sans-serif",
         }}>
           <span style={{ flexShrink: 0 }}>⚠️</span>
           <span>{label ? `${label} couldn't load.` : "This section couldn't load."}</span>

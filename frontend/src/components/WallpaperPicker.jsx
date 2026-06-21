@@ -21,25 +21,32 @@ const CATEGORY_FILTER = {
   night:     s => s.time?.some(t => ['night','blue_hour'].includes(t)),
   sunset:    s => s.time?.some(t => ['golden_hour','sunset'].includes(t)),
   seasonal:  s => ['cherry_blossoms','snowy_forest','autumn_leaves'].includes(s.id),
-  lifestyle: s => ['cozy_library','morning_coffee','ocean_blue','tropical_green'].includes(s.id),
+  lifestyle: s => ['cozy_library','morning_coffee','ocean_blue','tropical_green','mountain_lake','african_savanna','desert_dunes','aurora_mountains'].includes(s.id),
 };
 
 const SCENE_ICONS = {
-  morning_coffee:    '☕',
-  morning_mountain:  '⛰️',
-  rain_window:       '🌧️',
-  forest_rain:       '🌲',
-  cozy_library:      '📚',
-  sunset_field:      '🌅',
-  beach_sunset:      '🏖️',
-  night_sky:         '✨',
-  fireplace:         '🔥',
-  night_city:        '🌃',
-  cherry_blossoms:   '🌸',
-  snowy_forest:      '❄️',
-  autumn_leaves:     '🍂',
-  tropical_green:    '🌿',
-  ocean_blue:        '🌊',
+  morning_coffee:           '☕',
+  morning_mountain:         '⛰️',
+  morning_forest_sunlight:  '🌳',
+  rain_window:              '🌧️',
+  forest_rain:              '🌲',
+  rain_fresh_leaves:        '🍃',
+  cozy_library:             '📚',
+  sunset_field:             '🌅',
+  beach_sunset:             '🏖️',
+  desert_sunset:            '🏜️',
+  night_sky:                '✨',
+  fireplace:                '🔥',
+  night_city:               '🌃',
+  aurora_mountains:         '🌌',
+  cherry_blossoms:          '🌸',
+  snowy_forest:             '❄️',
+  autumn_leaves:            '🍂',
+  tropical_green:           '🌿',
+  ocean_blue:               '🌊',
+  mountain_lake:            '🏞️',
+  african_savanna:          '🦁',
+  desert_dunes:             '🏜️',
 };
 
 export default function WallpaperPicker({ isOpen, onClose }) {
@@ -49,7 +56,7 @@ export default function WallpaperPicker({ isOpen, onClose }) {
 
   useEffect(() => {
     const savedScene = localStorage.getItem('plos_atmos_scene') || 'auto';
-    const savedIntensity = localStorage.getItem('plos_wallpaper_intensity') || 'minimal';
+    const savedIntensity = localStorage.getItem('plos_wallpaper_intensity') || 'full';
     setCurrentSceneId(savedScene);
     setIntensity(savedIntensity);
   }, [isOpen]);
@@ -179,9 +186,9 @@ export default function WallpaperPicker({ isOpen, onClose }) {
                       className={`intensity-btn ${intensity === level ? 'active' : ''}`}
                       onClick={() => handleIntensityChange(level)}
                     >
-                      {level === 'minimal' && '🔇 Minimal'}
-                      {level === 'reduced' && '🔉 Balanced'}
-                      {level === 'full' && '🔊 Cinematic'}
+                      {level === 'minimal' && 'Off'}
+                      {level === 'reduced' && 'Subtle'}
+                      {level === 'full' && 'Full Effects'}
                     </button>
                   ))}
                 </div>

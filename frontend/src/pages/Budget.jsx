@@ -79,7 +79,7 @@ const CSS = `
   --purple:#a5b4fc;
   --radius:14px;
   --sidebar:220px;
-  font-family:'DM Sans',sans-serif
+  font-family:'Inter',sans-serif
 }
 *{box-sizing:border-box;margin:0;padding:0}
 .pave-sidebar{width:var(--sidebar);background:var(--bg2);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:24px 0;position:fixed;height:100vh;z-index:100;top:0;left:0}

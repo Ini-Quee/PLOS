@@ -100,16 +100,16 @@ export default function Login() {
             justifyContent: 'center',
             margin: '0 auto 16px',
           }}>
-            <LumiFace mood="resting" size={64} />
+            <LumiFace mood="resting" size={48} />
           </div>
           <h1 style={{
-            fontSize: '32px',
+            fontSize: '28px',
             fontWeight: 700,
             margin: '0 0 8px 0',
             fontFamily: "'DM Serif Display', serif",
             color: '#F5F0E8',
           }}>
-            IniQ
+            Lumi
           </h1>
           <p style={{
             fontSize: '14px',

@@ -5,7 +5,7 @@ const S = {
     minHeight: '100vh',
     background: '#0a0a14',
     color: '#e8e8f0',
-    fontFamily: "'DM Sans', system-ui, sans-serif",
+    fontFamily: "'Inter', system-ui, sans-serif",
     padding: '48px 24px',
   },
   wrap: { maxWidth: 720, margin: '0 auto' },
@@ -36,7 +36,7 @@ export default function PrivacyPolicy() {
         <p style={S.sub}>Last updated: {lastUpdated}</p>
 
         <p style={S.p}>
-          IniQ ("we", "our", "us") is a personal life planning application. This policy explains what data
+          Lumi ("we", "our", "us") is a personal life planning application. This policy explains what data
           we collect, how we use it, and your rights over it.
         </p>
 
@@ -64,7 +64,7 @@ export default function PrivacyPolicy() {
 
         <h2 style={S.h2}>AI processing</h2>
         <p style={S.p}>
-          IniQ uses Google Gemini or Groq (depending on configuration) to power Lumi. When you send a message
+          Lumi uses Google Gemini or Groq (depending on configuration) to power Lumi. When you send a message
           to Lumi, your message and relevant context from your account are sent to the AI provider to generate
           a response. We do not use your data to train AI models. Refer to{' '}
           <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer"
@@ -77,12 +77,12 @@ export default function PrivacyPolicy() {
 
         <h2 style={S.h2}>Google account data</h2>
         <p style={S.p}>
-          If you connect your Google account, IniQ only uses your Gmail access to send emails you
+          If you connect your Google account, Lumi only uses your Gmail access to send emails you
           explicitly request through the app. We store your OAuth access token securely in our database.
           You can disconnect your Google account at any time in Settings.
         </p>
         <p style={S.p}>
-          IniQ's use of Google user data complies with the{' '}
+          Lumi's use of Google user data complies with the{' '}
           <a href="https://developers.google.com/terms/api-services-user-data-policy"
             target="_blank" rel="noopener noreferrer" style={{ color: '#C8955C' }}>
             Google API Services User Data Policy
@@ -107,13 +107,13 @@ export default function PrivacyPolicy() {
 
         <h2 style={S.h2}>Children</h2>
         <p style={S.p}>
-          IniQ is not intended for users under 13 years of age. We do not knowingly collect data from children.
+          Lumi is not intended for users under 13 years of age. We do not knowingly collect data from children.
         </p>
 
         <h2 style={S.h2}>Changes to this policy</h2>
         <p style={S.p}>
           We may update this policy as the app evolves. We will update the "last updated" date at the top.
-          Continued use of IniQ after changes constitutes acceptance of the updated policy.
+          Continued use of Lumi after changes constitutes acceptance of the updated policy.
         </p>
 
         <hr style={S.hr} />

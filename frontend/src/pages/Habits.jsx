@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import SidebarLayout, { C } from '../components/layout/SidebarLayout'
 import { useAtmos } from '../components/Atmosphere'
 import api from '../lib/api'
@@ -931,6 +932,7 @@ export default function Habits() {
   useAtmos()
   const isMobile = useIsMobile()
   const toast = useToast()
+  const navigate = useNavigate()
   const [showHabitsUpgrade, setShowHabitsUpgrade] = useState(false)
   const [habits, setHabits] = useState([])
   const [loading, setLoading] = useState(true)
@@ -1021,7 +1023,11 @@ export default function Habits() {
       `}</style>
       <div style={{ padding: isMobile ? '14px 14px' : '20px 28px', maxWidth: 1120 }}>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div onClick={() => navigate('/dashboard')} style={{ width:32, height:32, borderRadius:10, background:'rgba(200,149,92,0.10)', border:'1px solid rgba(200,149,92,0.15)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:14, color:C.muted, flexShrink:0 }} title="Back to Home">◈</div>
+            <span style={{ fontSize: 14, fontWeight: 600, color: C.muted }}>Habits</span>
+          </div>
           <button
             onClick={() => setShowAddForm(v => !v)}
             style={{

@@ -90,7 +90,7 @@ export default function AlarmBar() {
     const icon = platformIcons[contentAlert.platform] || '📣';
     const scheduledTime = new Date(contentAlert.scheduled_for).toLocaleTimeString('en-NG', { hour:'numeric', minute:'2-digit', hour12:true });
     return (
-      <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:9999, background:'rgba(139,92,246,0.15)', borderBottom:'2px solid rgba(139,92,246,0.4)', backdropFilter:'blur(16px)', padding:'10px 20px', display:'flex', alignItems:'center', gap:12, animation:'slideDown 0.3s ease', fontFamily:"'DM Sans',sans-serif" }}>
+      <div style={{ position:'fixed', top:0, left:0, right:0, zIndex:9999, background:'rgba(139,92,246,0.15)', borderBottom:'2px solid rgba(139,92,246,0.4)', backdropFilter:'blur(16px)', padding:'10px 20px', display:'flex', alignItems:'center', gap:12, animation:'slideDown 0.3s ease', fontFamily:"'Inter',sans-serif" }}>
         <style>{`@keyframes slideDown { from { transform:translateY(-100%) } to { transform:translateY(0) } }`}</style>
         <div style={{ width:10, height:10, borderRadius:'50%', background:'#a5b4fc', flexShrink:0 }} />
         <div style={{ flex:1, fontSize:13, fontWeight:600, color:'#f0ead8' }}>
@@ -139,7 +139,7 @@ export default function AlarmBar() {
       padding: '10px 20px',
       display: 'flex', alignItems: 'center', gap: 12,
       animation: 'slideDown 0.3s ease',
-      fontFamily: "'DM Sans', sans-serif",
+      fontFamily: "'Inter', sans-serif",
     }}>
       <style>{`
         @keyframes slideDown { from { transform:translateY(-100%) } to { transform:translateY(0) } }

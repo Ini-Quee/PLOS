@@ -39,12 +39,13 @@ const JOURNAL_SPARK = []
 const COMPLETED_DAYS = []
 const TODAY_DATE = 27
 
-// Glass style for cards — semi-transparent so the atmosphere shows through
+// Glass style for cards — research-based: 90% opacity, 22px blur
 const GLASS = {
-  background: 'rgba(6,6,14,0.30)',
-  backdropFilter: 'blur(18px)',
-  WebkitBackdropFilter: 'blur(18px)',
-  border: '1px solid rgba(255,255,255,0.07)',
+  background: 'rgba(20, 12, 6, 0.90)',
+  backdropFilter: 'blur(22px) saturate(1.2)',
+  WebkitBackdropFilter: 'blur(22px) saturate(1.2)',
+  border: '1px solid rgba(200, 149, 92, 0.12)',
+  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(200, 149, 92, 0.06)',
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -769,14 +770,8 @@ export default function Dashboard() {
           padding: '16px 20px',
         }}>
           <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-            {/* Lumi orb */}
-            <div style={{
-              width: 36,
-              height: 36,
-              borderRadius: '50%',
-              background: 'radial-gradient(circle at 35% 35%, #ffbe4d, #F5A623)',
-              flexShrink: 0,
-            }} />
+            {/* Lumi */}
+            <div style={{ flexShrink: 0 }}><LumiFace mood="resting" size={36} /></div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13, color: '#e8e0d0', lineHeight: 1.6 }}>
                 {lumiResponse}

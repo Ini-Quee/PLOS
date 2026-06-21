@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import './JournalPage.css';
 import api from '../lib/api';
 import BlockEditor from '../components/journal/BlockEditor';
@@ -57,6 +57,7 @@ const ALL_STICKERS = ['😊', '😢', '😤', '🤩', '😌', '🥺', '😴', '�
 
 // ─── JOURNAL PAGE COMPONENT ───────────────────────────────────────────────────
 export default function JournalPage() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialType = searchParams.get('type') || 'personal';
   const initialTemplate = searchParams.get('template') || null;
@@ -538,7 +539,7 @@ export default function JournalPage() {
       position:'fixed', bottom:'24px', left:'50%', transform:'translateX(-50%)',
       background:'rgba(0,212,170,0.15)', border:'1px solid rgba(0,212,170,0.3)',
       color:'#00d4aa', padding:'10px 22px', borderRadius:'10px', fontSize:'13px',
-      fontWeight:'600', zIndex:'9999', fontFamily:'DM Sans, sans-serif',
+      fontWeight:'600', zIndex:'9999', fontFamily:'Inter, sans-serif',
     });
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 2200);
@@ -1285,10 +1286,16 @@ export default function JournalPage() {
 
   // ─── RENDER ───────────────────────────────────────────────────────────────────
   return (
-    <div style={{ background: 'transparent', color: 'var(--text)', fontFamily: "'DM Sans', sans-serif", minHeight: '100vh', padding: '16px' }}>
+    <div style={{ background: 'transparent', color: 'var(--text)', fontFamily: "'Inter', sans-serif", minHeight: '100vh', padding: '16px' }}>
       {/* Top bar */}
       <div className="journal-topbar">
-        <div className="journal-logo">PLOS<span>.</span></div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div onClick={() => navigate('/dashboard')} style={{ width:28, height:28, borderRadius:8, background:'rgba(200,149,92,0.10)', border:'1px solid rgba(200,149,92,0.15)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:12, color:'rgba(255,255,255,0.4)', flexShrink:0 }} title="Back to Home">◈</div>
+          <div className="journal-logo" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ color: '#C8955C', fontWeight: 700, fontSize: 16 }}>Lumi</span>
+            <span style={{ opacity: 0.3 }}>.</span>
+          </div>
+        </div>
         <div className="journal-page-title">Journal</div>
       </div>
 

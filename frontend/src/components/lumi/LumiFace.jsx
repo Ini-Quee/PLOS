@@ -89,11 +89,11 @@ export default function LumiFace({
   const mc = (tint && TINT[tint]) || MOOD_COLOR[mood] || MOOD_COLOR.resting;
   const animsOn = !reduced;
 
-  // Geometry — smaller eyes, more ambient
-  const eyeScale = subtle ? 0.32 : (showOrb ? 0.36 : 0.50);
+  // Geometry — tiny, ambient, like a distant light
+  const eyeScale = subtle ? 0.22 : (showOrb ? 0.28 : 0.40);
   const eyeD = Math.round(size * eyeScale);
-  const gap = Math.round(size * 0.14);
-  const pupilD = Math.round(eyeD * 0.38);
+  const gap = Math.round(size * 0.12);
+  const pupilD = Math.round(eyeD * 0.32);
 
   const isHappy = mood === 'happy';
   const isConcern = mood === 'concerned';
@@ -104,7 +104,7 @@ export default function LumiFace({
     ? `radial-gradient(circle at 50% 45%, rgba(255,255,255,0.4), ${mc.inner} 35%, ${mc.outer} 75%)`
     : `radial-gradient(circle at 50% 45%, ${mc.inner}, ${mc.outer} 72%)`;
 
-  const glowIntensity = subtle ? 0.25 : 0.45;
+  const glowIntensity = subtle ? 0.15 : 0.30;
 
   const Eye = ({ side }) => {
     if (isHappy) {
@@ -176,12 +176,12 @@ export default function LumiFace({
   );
 
   const orbBg = subtle
-    ? 'radial-gradient(circle, rgba(40,53,38,0.6), rgba(26,36,26,0.4) 70%)'
-    : 'radial-gradient(circle, #283526, #1a241a 70%)';
+    ? 'radial-gradient(circle, rgba(40,53,38,0.35), rgba(26,36,26,0.20) 70%)'
+    : 'radial-gradient(circle, rgba(40,53,38,0.55), rgba(26,36,26,0.40) 70%)';
 
   const orbGlow = subtle
-    ? `0 0 ${size * 0.15}px rgba(${mc.glow},0.12)`
-    : `0 0 ${size * 0.25}px rgba(${mc.glow},0.18)`;
+    ? `0 0 ${size * 0.10}px rgba(${mc.glow},0.08)`
+    : `0 0 ${size * 0.18}px rgba(${mc.glow},0.12)`;
 
   const orbStyle = showOrb ? {
     width: size, height: size, borderRadius: '50%',

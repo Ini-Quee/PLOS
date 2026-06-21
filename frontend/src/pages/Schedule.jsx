@@ -654,9 +654,12 @@ export default function Schedule() {
         {/* ── Header ── */}
         <div style={{ padding:'20px 28px 0', flexShrink:0 }}>
           <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:12 }}>
-            <div>
-              <div style={{ fontSize:27, fontWeight:700, color:'#e8f0e9', letterSpacing:'-0.5px' }}>Planner</div>
-              <div style={{ fontSize:13, color:'rgba(255,255,255,0.38)', marginTop:3 }}>{dateLabel}</div>
+            <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+              <div onClick={() => navigate('/dashboard')} style={{ width:32, height:32, borderRadius:10, background:'rgba(200,149,92,0.10)', border:'1px solid rgba(200,149,92,0.15)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:14, color:'rgba(255,255,255,0.4)', flexShrink:0 }} title="Back to Home">◈</div>
+              <div>
+                <div style={{ fontSize:27, fontWeight:700, color:'#e8f0e9', letterSpacing:'-0.5px' }}>Planner</div>
+                <div style={{ fontSize:13, color:'rgba(255,255,255,0.38)', marginTop:3 }}>{dateLabel}</div>
+              </div>
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
               {pct > 0 && (

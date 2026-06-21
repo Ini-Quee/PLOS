@@ -277,11 +277,11 @@ export default function Atmosphere({ section = 'all', children }) {
 
   const ctx = useMemo(() => ({ palette: scene.palette, scene }), [scene]);
 
-  // Motion intensity: 'minimal' (default) = no particles, 'reduced' = no particles, 'full' = particles
+  // Motion intensity: 'minimal' = no particles, 'reduced' = subtle, 'full' = all effects
   const intensity = typeof window !== 'undefined'
-    ? (localStorage.getItem('plos_wallpaper_intensity') || 'minimal')
-    : 'minimal';
-  const showParticles = !reducedMotion && intensity === 'full' && scene.particles && scene.id !== 'plain';
+    ? (localStorage.getItem('plos_wallpaper_intensity') || 'full')
+    : 'full';
+  const showParticles = !reducedMotion && intensity !== 'minimal' && scene.particles && scene.id !== 'plain';
 
   return (
     <AtmosContext.Provider value={ctx}>

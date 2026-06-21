@@ -24,10 +24,10 @@ export default function OnboardingModal({ userName, onDone }) {
           <>
             <div style={{ margin:'0 auto 24px', display:'flex', justifyContent:'center' }}><LumiFace mood="resting" size={48} /></div>
             <div style={{ fontSize:28, fontWeight:800, color:'#e8f0e9' }}>
-              Welcome to IniQ, {userName?.split(' ')[0] || 'there'} 👋
+              Welcome to Lumi, {userName?.split(' ')[0] || 'there'} 👋
             </div>
             <div style={{ fontSize:14, color:'rgba(255,255,255,0.5)', lineHeight:1.7, margin:'16px 0 32px' }}>
-              IniQ is your personal life operating system. Lumi — your AI companion — will help you plan, journal, and stay on track.
+              Lumi is your personal life operating system. Lumi — your AI companion — will help you plan, journal, and stay on track.
             </div>
             <div style={{ display:'flex', gap:12, justifyContent:'center' }}>
               <button

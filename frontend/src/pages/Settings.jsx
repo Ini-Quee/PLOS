@@ -36,15 +36,6 @@ export default function Settings() {
 
   // Settings state
   const [theme, setTheme] = useState(() => localStorage.getItem('plos_theme') || 'dark');
-  const [livingBackground, setLivingBackground] = useState(() => {
-    return localStorage.getItem('plos_living_background') === 'true';
-  });
-  const [backgroundTheme, setBackgroundTheme] = useState(() => {
-    return localStorage.getItem('plos_bg_theme') || 'auto';
-  });
-  const [motionIntensity, setMotionIntensity] = useState(() => {
-    return localStorage.getItem('plos_bg_intensity') || 'full';
-  });
 
   // Lumi Voice settings
   const [voiceEnabled, setVoiceEnabled] = useState(true);
@@ -52,12 +43,6 @@ export default function Settings() {
   const [voicePitch, setVoicePitch] = useState(1.05);
   const [selectedVoice, setSelectedVoice] = useState('');
   const [availableVoices, setAvailableVoices] = useState([]);
-
-  // Journal settings
-  const [journalFont, setJournalFont] = useState('Caveat');
-  const [journalPenColor, setJournalPenColor] = useState('#1A1A1A');
-  const [journalPaperStyle, setJournalPaperStyle] = useState('linen');
-
 
   // Account
   const [displayName, setDisplayName] = useState(user?.name || '');
@@ -68,15 +53,11 @@ export default function Settings() {
   const [notifPermission, setNotifPermission] = useState(typeof Notification !== 'undefined' ? Notification.permission : 'unsupported');
   const [checkInTime, setCheckInTime] = useState('07:00');
 
-  // Cinematic Wallpaper
+  // Wallpaper
   const [showWallpaperPicker, setShowWallpaperPicker] = useState(false);
   const [currentWallpaperScene, setCurrentWallpaperScene] = useState('auto');
-
-  // Custom background photo
-  const [customPhotoInput, setCustomPhotoInput] = useState('');
-  const [customPhotoActive, setCustomPhotoActive] = useState(() => {
-    try { return !!JSON.parse(localStorage.getItem('plos_custom_scene') || 'null')?.photo; }
-    catch { return false; }
+  const [motionIntensity, setMotionIntensity] = useState(() => {
+    return localStorage.getItem('plos_wallpaper_intensity') || 'full';
   });
 
   const saveTimer = useRef(null);
@@ -107,9 +88,6 @@ export default function Settings() {
       if (s.voicePitch    !== undefined) setVoicePitch(s.voicePitch);
       if (s.selectedVoice !== undefined) setSelectedVoice(s.selectedVoice);
       if (s.checkInTime   !== undefined) setCheckInTime(s.checkInTime);
-      if (s.journalFont   !== undefined) setJournalFont(s.journalFont);
-      if (s.journalPenColor !== undefined) setJournalPenColor(s.journalPenColor);
-      if (s.journalPaperStyle !== undefined) setJournalPaperStyle(s.journalPaperStyle);
     }).catch(() => {});
 
     // Load wallpaper scene
@@ -129,38 +107,11 @@ export default function Settings() {
   }, [voiceEnabled, voiceRate, voicePitch, selectedVoice]);
 
 
-  // Persist journal style to backend (debounced)
+  // Persist motion intensity
   useEffect(() => {
-    saveToBackend({ journalFont, journalPenColor, journalPaperStyle });
-  }, [journalFont, journalPenColor, journalPaperStyle]);
-
-  // Persist Living Background settings to localStorage
-  useEffect(() => {
-    localStorage.setItem('plos_living_background', livingBackground);
-  }, [livingBackground]);
-
-  useEffect(() => {
-    localStorage.setItem('plos_bg_theme', backgroundTheme);
-  }, [backgroundTheme]);
-
-  useEffect(() => {
-    localStorage.setItem('plos_bg_intensity', motionIntensity);
+    localStorage.setItem('plos_wallpaper_intensity', motionIntensity);
+    window.dispatchEvent(new Event('atmos-scene-changed'));
   }, [motionIntensity]);
-
-  function applyCustomPhoto() {
-    const url = customPhotoInput.trim();
-    if (!url) return;
-    localStorage.setItem('plos_custom_scene', JSON.stringify({ photo: url, fallback: 'linear-gradient(180deg, #080503 0%, #140C06 100%)' }));
-    setCustomPhotoActive(true);
-    setCustomPhotoInput('');
-    window.dispatchEvent(new Event('atmos-scene-changed'));
-  }
-
-  function removeCustomPhoto() {
-    localStorage.removeItem('plos_custom_scene');
-    setCustomPhotoActive(false);
-    window.dispatchEvent(new Event('atmos-scene-changed'));
-  }
 
   async function handleLogout() {
     await logout();
@@ -186,23 +137,13 @@ export default function Settings() {
     }
   }
 
-  // Get preview gradient for selected scene
-  function getPreviewGradient(sceneKey) {
-    const scene = SCENES[sceneKey];
-    if (!scene) return 'linear-gradient(180deg, #1a0a2e 0%, #4a1942 30%, #FF6B35 70%, #FFB347 100%)';
-    return scene.fallback;
-  }
-
   // Settings sections
   const sections = [
     { id: 'voice', title: "Lumi's Voice", icon: '🎙️' },
+    { id: 'wallpaper', title: 'Wallpaper', icon: '🌍' },
     { id: 'appearance', title: 'Appearance', icon: '🎨' },
-    { id: 'journal', title: 'Journal Style', icon: '📖' },
     { id: 'account', title: 'Account', icon: '👤' },
-    { id: 'security', title: 'Security', icon: '🛡️' },
-    { id: 'email', title: 'Email', icon: '📧' },
     { id: 'notifications', title: 'Notifications', icon: '🔔' },
-    { id: 'integrations', title: 'Integrations', icon: '🔗' },
   ];
 
   return (
@@ -481,120 +422,60 @@ export default function Settings() {
             )}
           </SettingsSection>
 
-          {/* Section 2: My World (Cinematic Wallpaper) */}
-          <SettingsSection title="My World" icon="🌍">
-            <p
-              style={{
-                margin: '0 0 20px 0',
-                color: '#A89880',
-                fontSize: 14,
-                fontFamily: "'Inter', sans-serif",
-                lineHeight: 1.5
-              }}
-            >
-              Choose a cinematic background that matches your mood and moment.
+          {/* Section 2: Wallpaper */}
+          <SettingsSection title="Wallpaper" icon="🌍">
+            <p style={{ margin: '0 0 16px 0', color: '#A89880', fontSize: 14, lineHeight: 1.5 }}>
+              Your wallpaper changes automatically based on time of day and season — like Windows. Choose a scene or let Lumi pick for you.
             </p>
 
-            {/* Current scene thumbnail */}
-            <div style={{ marginBottom: 24 }}>
-              <label
-                style={{
-                  display: 'block',
-                  marginBottom: 12,
-                  color: '#A89880',
-                  fontSize: 14,
-                  fontFamily: "'Inter', sans-serif",
-                  fontWeight: 500
-                }}
-              >
-                Currently Active World
-              </label>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 16,
-                  padding: 16,
-                  backgroundColor: 'rgba(12,12,24,0.40)',
-                  borderRadius: 12,
-                  border: '1px solid #2E2E2E'
-                }}
-              >
-                <div
-                  style={{
-                    width: 80,
-                    height: 50,
-                    borderRadius: 8,
-                    backgroundImage: currentWallpaperScene === 'auto'
-                      ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                      : SCENES[currentWallpaperScene]?.photo
-                        ? `url(${SCENES[currentWallpaperScene].photo.replace('1920', '400').replace('1080', '300')})`
-                        : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    flexShrink: 0
-                  }}
-                />
+            {/* Current scene */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: 16, backgroundColor: 'rgba(12,12,24,0.40)', borderRadius: 12, border: '1px solid rgba(200,149,92,0.12)' }}>
+                <div style={{
+                  width: 80, height: 50, borderRadius: 8, flexShrink: 0,
+                  backgroundImage: currentWallpaperScene === 'auto'
+                    ? 'linear-gradient(135deg, #2C1810 0%, #C8955C 100%)'
+                    : SCENES[currentWallpaperScene]?.photo
+                      ? `url(${SCENES[currentWallpaperScene].photo.replace('1920', '400').replace('1080', '300')})`
+                      : 'linear-gradient(135deg, #2C1810 0%, #C8955C 100%)',
+                  backgroundSize: 'cover', backgroundPosition: 'center',
+                }} />
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 16, color: '#F5F0E8', fontWeight: 600, marginBottom: 4 }}>
-                    {currentWallpaperScene === 'auto' ? '🤖 Auto (Smart)' : `${SCENES[currentWallpaperScene]?.label || 'Custom'}`}
+                  <div style={{ fontSize: 15, color: '#F5F0E8', fontWeight: 600, marginBottom: 2 }}>
+                    {currentWallpaperScene === 'auto' ? 'Auto (Smart)' : SCENES[currentWallpaperScene]?.label || 'Custom'}
                   </div>
-                  <div style={{ fontSize: 12, color: '#6B5F52' }}>
+                  <div style={{ fontSize: 12, color: '#7A6450' }}>
                     {currentWallpaperScene === 'auto' ? 'Matches time & season automatically' : 'Photo wallpaper active'}
                   </div>
                 </div>
-                <button
-                  onClick={() => setShowWallpaperPicker(true)}
-                  style={{
-                    padding: '10px 20px',
-                    backgroundColor: '#C8955C',
-                    border: 'none',
-                    borderRadius: 12,
-                    color: '#0D0D0D',
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    fontFamily: "'Inter', sans-serif",
-                    transition: 'all 0.2s',
-                    flexShrink: 0
-                  }}
-                  onMouseEnter={(e) => { e.target.style.backgroundColor = '#D4A06A'; }}
-                  onMouseLeave={(e) => { e.target.style.backgroundColor = '#C8955C'; }}
-                >
-                  Change World
+                <button onClick={() => setShowWallpaperPicker(true)} style={{ padding: '10px 20px', backgroundColor: '#C8955C', border: 'none', borderRadius: 12, color: '#080503', fontSize: 14, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>
+                  Change
                 </button>
               </div>
             </div>
 
-            {/* Custom photo URL */}
-            <div style={{ marginTop: 20 }}>
-              <label style={{ display: 'block', marginBottom: 8, color: '#A89880', fontSize: 14, fontFamily: "'Inter', sans-serif" }}>
-                Custom Background Photo
+            {/* Motion intensity */}
+            <div>
+              <label style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, color: '#A89880', fontSize: 14 }}>
+                <span>Weather Effects</span>
+                <span style={{ color: '#C8955C', textTransform: 'capitalize' }}>{motionIntensity}</span>
               </label>
-              {customPhotoActive ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 12, background: 'rgba(200,149,92,0.08)', border: '1px solid rgba(200,149,92,0.25)' }}>
-                  <span style={{ fontSize: 13, color: '#EAE0D5', flex: 1 }}>Custom photo active</span>
-                  <button onClick={removeCustomPhoto} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(224,82,82,0.4)', background: 'transparent', color: '#E05252', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
-                    Remove
+              <div style={{ display: 'flex', gap: 8 }}>
+                {['minimal', 'reduced', 'full'].map(level => (
+                  <button key={level} onClick={() => setMotionIntensity(level)} style={{
+                    flex: 1, padding: '10px',
+                    backgroundColor: motionIntensity === level ? '#C8955C' : 'rgba(20,12,6,0.6)',
+                    border: 'none', borderRadius: 12,
+                    color: motionIntensity === level ? '#080503' : '#EAE0D5',
+                    fontSize: 13, cursor: 'pointer', fontWeight: motionIntensity === level ? 600 : 400,
+                    textTransform: 'capitalize', transition: 'all 0.2s',
+                  }}>
+                    {level === 'minimal' ? 'Off' : level === 'reduced' ? 'Subtle' : 'Full'}
                   </button>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <input
-                    type="url"
-                    value={customPhotoInput}
-                    onChange={e => setCustomPhotoInput(e.target.value)}
-                    placeholder="Paste any photo URL…"
-                    onKeyDown={e => { if (e.key === 'Enter') applyCustomPhoto(); }}
-                    style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(200,149,92,0.2)', background: 'rgba(20,12,6,0.6)', color: '#EAE0D5', fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
-                  />
-                  <button onClick={applyCustomPhoto} style={{ padding: '10px 18px', borderRadius: 10, border: 'none', background: '#C8955C', color: '#080503', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
-                    Set
-                  </button>
-                </div>
-              )}
-              <p style={{ margin: '6px 0 0', color: '#5E5048', fontSize: 12, fontFamily: "'Inter', sans-serif" }}>
-                Works with any image URL (Unsplash, your own photos, etc.)
+                ))}
+              </div>
+              <p style={{ margin: '6px 0 0', color: '#5E5048', fontSize: 12 }}>
+                Full = rain drops, snow, petals, embers depending on scene
               </p>
             </div>
           </SettingsSection>
@@ -602,375 +483,32 @@ export default function Settings() {
           {/* Section 3: Appearance */}
           <SettingsSection title="Appearance" icon="🎨">
             {/* Theme toggle */}
-            <div style={{ marginBottom: '24px' }}>
-              <label
-                style={{
-                  display: 'block',
-                  marginBottom: '12px',
-                  color: '#A89880',
-                  fontSize: '14px',
-                  fontFamily: "'Inter', sans-serif",
-                }}
-              >
-                Theme
-              </label>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <button
-                  onClick={() => setTheme('dark')}
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    backgroundColor: theme === 'dark' ? '#C8955C' : '#1A100A',
-                    border: 'none',
-                    borderRadius: '12px',
-                    color: theme === 'dark' ? '#080503' : '#EAE0D5',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    fontWeight: theme === 'dark' ? 600 : 400,
-                    fontFamily: "'Inter', sans-serif",
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  🌙 Dark
-                </button>
-                <button
-                  onClick={() => setTheme('coloured')}
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    backgroundColor: theme === 'coloured' ? '#D4A06A' : '#1A100A',
-                    border: 'none',
-                    borderRadius: '12px',
-                    color: theme === 'coloured' ? '#080503' : '#EAE0D5',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    fontWeight: theme === 'coloured' ? 600 : 400,
-                    fontFamily: "'Inter', sans-serif",
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  🌿 Coloured
-                </button>
-              </div>
-            </div>
-
-            {/* Living Background toggle */}
-            <div style={{ marginBottom: '24px' }}>
-              <label
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  cursor: 'pointer',
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={livingBackground}
-                  onChange={(e) => setLivingBackground(e.target.checked)}
-                  style={{ width: '20px', height: '20px', accentColor: '#C8955C' }}
-                />
-                <span
-                  style={{
-                    color: '#F5F0E8',
-                    fontSize: '14px',
-                    fontFamily: "'Inter', sans-serif",
-                  }}
-                >
-                  Living Background
-                </span>
-              </label>
-              <p
-                style={{
-                  margin: '8px 0 0 32px',
-                  color: '#6B5F52',
-                  fontSize: '13px',
-                  fontFamily: "'Inter', sans-serif",
-                }}
-              >
-                Your background auto-adjusts with time and season
-              </p>
-            </div>
-
-            {/* Living Background theme dropdown */}
-            {livingBackground && (
-              <>
-                <div style={{ marginBottom: '24px' }}>
-                  <label
-                    style={{
-                      display: 'block',
-                      marginBottom: '12px',
-                      color: '#A89880',
-                      fontSize: '14px',
-                      fontFamily: "'Inter', sans-serif",
-                    }}
-                  >
-                    Theme
-                  </label>
-                  <select
-                    value={backgroundTheme}
-                    onChange={(e) => setBackgroundTheme(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      backgroundColor: 'rgba(12,12,24,0.40)',
-                      border: '1px solid #2E2E2E',
-                      borderRadius: '12px',
-                      color: '#F5F0E8',
-                      fontSize: '14px',
-                      fontFamily: "'Inter', sans-serif",
-                      cursor: 'pointer',
-                      outline: 'none',
-                    }}
-                  >
-                    {Object.entries(SCENES).map(([key, scene]) => (
-                      <option key={key} value={key}>
-                        {scene.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Motion Intensity slider */}
-                <div style={{ marginBottom: '24px' }}>
-                  <label
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      marginBottom: '8px',
-                      color: '#A89880',
-                      fontSize: '14px',
-                      fontFamily: "'Inter', sans-serif",
-                    }}
-                  >
-                    <span>Motion Intensity</span>
-                    <span style={{ color: '#C8955C', textTransform: 'capitalize' }}>
-                      {motionIntensity}
-                    </span>
-                  </label>
-                  <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                    {['minimal', 'reduced', 'full'].map((level) => (
-                      <button
-                        key={level}
-                        onClick={() => setMotionIntensity(level)}
-                        style={{
-                          flex: 1,
-                          padding: '10px',
-                          backgroundColor: motionIntensity === level ? '#C8955C' : '#242424',
-                          border: 'none',
-                          borderRadius: '12px',
-                          color: motionIntensity === level ? '#0D0D0D' : '#F5F0E8',
-                          fontSize: '13px',
-                          cursor: 'pointer',
-                          fontWeight: motionIntensity === level ? 600 : 400,
-                          fontFamily: "'Inter', sans-serif",
-                          textTransform: 'capitalize',
-                          transition: 'all 0.2s',
-                        }}
-                      >
-                        {level}
-                      </button>
-                    ))}
-                  </div>
-                  <p
-                    style={{
-                      margin: '0',
-                      color: '#6B5F52',
-                      fontSize: '12px',
-                      fontFamily: "'Inter', sans-serif",
-                    }}
-                  >
-                    {motionIntensity === 'minimal' && 'Static gradient only — best for low-end devices'}
-                    {motionIntensity === 'reduced' && 'Fewer particles — balanced performance'}
-                    {motionIntensity === 'full' && 'All effects enabled — best visual experience'}
-                  </p>
-                </div>
-
-                {/* Preview thumbnail */}
-                <div>
-                  <label
-                    style={{
-                      display: 'block',
-                      marginBottom: '12px',
-                      color: '#A89880',
-                      fontSize: '14px',
-                      fontFamily: "'Inter', sans-serif",
-                    }}
-                  >
-                    Preview
-                  </label>
-                  <div
-                    style={{
-                      width: '100%',
-                      height: '80px',
-                      borderRadius: '12px',
-                      border: '1px solid #2E2E2E',
-                      background: getPreviewGradient(backgroundTheme),
-                      position: 'relative',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <div
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        background: 'radial-gradient(circle at 50% 40%, transparent 0%, rgba(0,0,0,0.3) 100%)',
-                        opacity: 0.4,
-                      }}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-          </SettingsSection>
-
-          {/* Section 3: Journal Style */}
-          <SettingsSection title="Journal Style" icon="📖">
-            {/* Default font */}
-            <div style={{ marginBottom: '24px' }}>
-              <label
-                style={{
-                  display: 'block',
-                  marginBottom: '12px',
-                  color: '#A89880',
-                  fontSize: '14px',
-                  fontFamily: "'Inter', sans-serif",
-                }}
-              >
-                Default Font
-              </label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {[
-                  { value: 'Caveat', label: 'Handwriting', sample: 'The quick brown fox' },
-                  { value: '"DM Serif Display"', label: 'Elegant', sample: 'The quick brown fox' },
-                  { value: '"Courier Prime"', label: 'Typewriter', sample: 'The quick brown fox' },
-                  { value: 'Inter', label: 'Clean', sample: 'The quick brown fox' },
-                ].map((font) => (
-                  <button
-                    key={font.value}
-                    onClick={() => setJournalFont(font.value)}
-                    style={{
-                      flex: '1 1 calc(50% - 4px)',
-                      padding: '12px',
-                      backgroundColor: journalFont === font.value ? '#C8955C' : '#242424',
-                      border: 'none',
-                      borderRadius: '12px',
-                      color: journalFont === font.value ? '#0D0D0D' : '#F5F0E8',
-                      fontSize: '13px',
-                      cursor: 'pointer',
-                      fontWeight: journalFont === font.value ? 600 : 400,
-                      fontFamily: font.value,
-                      transition: 'all 0.2s',
-                    }}
-                  >
-                    {font.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Default pen color */}
-            <div style={{ marginBottom: '24px' }}>
-              <label
-                style={{
-                  display: 'block',
-                  marginBottom: '12px',
-                  color: '#A89880',
-                  fontSize: '14px',
-                  fontFamily: "'Inter', sans-serif",
-                }}
-              >
-                Default Pen Color
-              </label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-                {[
-                  { value: '#1A1A1A', label: 'Black' },
-                  { value: '#1E3A5F', label: 'Navy' },
-                  { value: '#8B0000', label: 'Deep Red' },
-                  { value: '#2F4F2F', label: 'Forest Green' },
-                  { value: '#B8860B', label: 'Amber' },
-                  { value: '#4B0082', label: 'Purple' },
-                ].map((color) => (
-                  <button
-                    key={color.value}
-                    onClick={() => setJournalPenColor(color.value)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '10px 16px',
-                      backgroundColor:
-                        journalPenColor === color.value ? 'rgba(245, 166, 35, 0.2)' : '#242424',
-                      border:
-                        journalPenColor === color.value ? '1px solid #C8955C' : '1px solid #2E2E2E',
-                      borderRadius: '12px',
-                      color: '#F5F0E8',
-                      fontSize: '13px',
-                      cursor: 'pointer',
-                      fontFamily: "'Inter', sans-serif",
-                      transition: 'all 0.2s',
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: '16px',
-                        height: '16px',
-                        borderRadius: '50%',
-                        backgroundColor: color.value,
-                        border: '1px solid rgba(255,255,255,0.2)',
-                      }}
-                    />
-                    {color.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Paper style */}
             <div>
-              <label
-                style={{
-                  display: 'block',
-                  marginBottom: '12px',
-                  color: '#A89880',
-                  fontSize: '14px',
-                  fontFamily: "'Inter', sans-serif",
-                }}
-              >
-                Paper Style
-              </label>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                {[
-                  { value: 'linen', label: 'Linen' },
-                  { value: 'lined', label: 'Lined' },
-                  { value: 'plain', label: 'Plain' },
-                ].map((style) => (
-                  <button
-                    key={style.value}
-                    onClick={() => setJournalPaperStyle(style.value)}
-                    style={{
-                      flex: 1,
-                      padding: '12px',
-                      backgroundColor: journalPaperStyle === style.value ? '#C8955C' : '#242424',
-                      border: 'none',
-                      borderRadius: '12px',
-                      color: journalPaperStyle === style.value ? '#0D0D0D' : '#F5F0E8',
-                      fontSize: '14px',
-                      cursor: 'pointer',
-                      fontWeight: journalPaperStyle === style.value ? 600 : 400,
-                      fontFamily: "'Inter', sans-serif",
-                      transition: 'all 0.2s',
-                    }}
-                  >
-                    {style.label}
-                  </button>
-                ))}
+              <label style={{ display: 'block', marginBottom: 12, color: '#A89880', fontSize: 14 }}>Theme</label>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button onClick={() => setTheme('dark')} style={{
+                  flex: 1, padding: 12,
+                  backgroundColor: theme === 'dark' ? '#C8955C' : 'rgba(20,12,6,0.6)',
+                  border: 'none', borderRadius: 12,
+                  color: theme === 'dark' ? '#080503' : '#EAE0D5',
+                  fontSize: 14, cursor: 'pointer', fontWeight: theme === 'dark' ? 600 : 400, transition: 'all 0.2s',
+                }}>
+                  Dark
+                </button>
+                <button onClick={() => setTheme('coloured')} style={{
+                  flex: 1, padding: 12,
+                  backgroundColor: theme === 'coloured' ? '#D4A06A' : 'rgba(20,12,6,0.6)',
+                  border: 'none', borderRadius: 12,
+                  color: theme === 'coloured' ? '#080503' : '#EAE0D5',
+                  fontSize: 14, cursor: 'pointer', fontWeight: theme === 'coloured' ? 600 : 400, transition: 'all 0.2s',
+                }}>
+                  Coloured
+                </button>
               </div>
             </div>
           </SettingsSection>
 
-
-          {/* Section 5: Account */}
+          {/* Section: Account */}
           <SettingsSection title="Account" icon="👤">
             {/* Display name */}
             <div style={{ marginBottom: '24px' }}>
@@ -1111,156 +649,7 @@ export default function Settings() {
             </button>
           </SettingsSection>
 
-          {/* Section 6: Security */}
-          <SettingsSection title="Security" icon="🛡️">
-            {/* MFA */}
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '16px',
-                backgroundColor: 'rgba(12,12,24,0.40)',
-                borderRadius: '12px',
-                marginBottom: '16px',
-              }}
-            >
-              <div>
-                <p
-                  style={{
-                    margin: '0 0 4px 0',
-                    color: '#F5F0E8',
-                    fontSize: '14px',
-                    fontWeight: 500,
-                    fontFamily: "'Inter', sans-serif",
-                  }}
-                >
-                  Multi-Factor Authentication
-                </p>
-                <p
-                  style={{
-                    margin: 0,
-                    color: '#A89880',
-                    fontSize: '13px',
-                    fontFamily: "'Inter', sans-serif",
-                  }}
-                >
-                  {user?.mfaEnabled ? '✅ Enabled' : '❌ Not enabled'}
-                </p>
-              </div>
-              <button
-                onClick={() => navigate('/mfa-setup')}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: 'transparent',
-                  border: '1px solid #C8955C',
-                  borderRadius: '12px',
-                  color: '#C8955C',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  fontFamily: "'Inter', sans-serif",
-                  transition: 'all 0.2s',
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = 'rgba(200, 149, 92, 0.12)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = 'transparent';
-                }}
-              >
-                {user?.mfaEnabled ? 'Manage' : 'Set Up'}
-              </button>
-            </div>
-
-            {/* Active sessions */}
-            <div style={{ marginBottom: '16px' }}>
-              <p
-                style={{
-                  margin: '0 0 12px 0',
-                  color: '#A89880',
-                  fontSize: '14px',
-                  fontFamily: "'Inter', sans-serif",
-                }}
-              >
-                Active Sessions
-              </p>
-              <div
-                style={{
-                  padding: '12px',
-                  backgroundColor: 'rgba(12,12,24,0.40)',
-                  borderRadius: '12px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <div>
-                  <p
-                    style={{
-                      margin: 0,
-                      color: '#F5F0E8',
-                      fontSize: '14px',
-                      fontFamily: "'Inter', sans-serif",
-                    }}
-                  >
-                    Current Session
-                  </p>
-                  <p
-                    style={{
-                      margin: '4px 0 0 0',
-                      color: '#6B5F52',
-                      fontSize: '12px',
-                      fontFamily: "'Inter', sans-serif",
-                    }}
-                  >
-                    Started just now
-                  </p>
-                </div>
-                <span
-                  style={{
-                    padding: '4px 12px',
-                    backgroundColor: 'rgba(76, 175, 125, 0.2)',
-                    borderRadius: '8px',
-                    color: '#4CAF7D',
-                    fontSize: '12px',
-                    fontFamily: "'Inter', sans-serif",
-                  }}
-                >
-                  Active
-                </span>
-              </div>
-            </div>
-
-            {/* Recent login history */}
-            <div>
-              <p
-                style={{
-                  margin: '0 0 12px 0',
-                  color: '#A89880',
-                  fontSize: '14px',
-                  fontFamily: "'Inter', sans-serif",
-                }}
-              >
-                Recent Login History
-              </p>
-              <div
-                style={{
-                  padding: '12px',
-                  backgroundColor: 'rgba(12,12,24,0.40)',
-                  borderRadius: '12px',
-                  color: '#6B5F52',
-                  fontSize: '13px',
-                  fontFamily: "'Inter', sans-serif",
-                  textAlign: 'center',
-                }}
-              >
-                Login history available in security logs
-              </div>
-            </div>
-          </SettingsSection>
-
-          {/* Section 7: Email */}
-          {/* Section 8: Notifications */}
+          {/* Section: Notifications */}
           <SettingsSection title="Notifications" icon="🔔">
             {/* Push notifications toggle */}
             <div style={{ marginBottom: '24px' }}>
@@ -1388,10 +777,11 @@ function SettingsSection({ title, icon, children }) {
   return (
     <div
       style={{
-        backgroundColor: 'rgba(8,8,18,0.32)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)',
+        backgroundColor: 'rgba(20, 12, 6, 0.90)', backdropFilter: 'blur(22px) saturate(1.2)', WebkitBackdropFilter: 'blur(22px) saturate(1.2)',
         borderRadius: '16px',
-        border: '1px solid #2E2E2E',
+        border: '1px solid rgba(200, 149, 92, 0.12)',
         padding: '24px',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(200, 149, 92, 0.06)',
         transition: 'box-shadow 0.2s',
       }}
       onMouseEnter={(e) => {
