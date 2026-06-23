@@ -358,11 +358,10 @@ function OpenJournal({ journal, onClose }) {
   const [tab, setTab] = useState('entries');
   const [entries, setEntries] = useState([]);
   const [loadingEntries, setLoadingEntries] = useState(true);
-  if (!journal) return null;
 
   useEffect(() => {
+    if (!journal?.type) return;
     setLoadingEntries(true);
-    // Use journal/pages (new structured entries) scoped to this journal type
     api.get(`/journal/pages?journal_type=${journal.type}&limit=60`)
       .then(res => {
         const all = res.data?.entries || [];
@@ -370,7 +369,9 @@ function OpenJournal({ journal, onClose }) {
       })
       .catch(() => setEntries([]))
       .finally(() => setLoadingEntries(false));
-  }, [journal.type]);
+  }, [journal?.type]);
+
+  if (!journal) return null;
 
   const now = new Date();
   const year = now.getFullYear();
