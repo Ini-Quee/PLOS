@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iNiQ — Design Preview</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #080503;
+      color: #EAE0D5;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      padding: 40px 0;
+    }
+    .header h1 {
+      font-family: Georgia, serif;
+      font-size: 56px;
+      color: #C8955C;
+      margin-bottom: 8px;
+      letter-spacing: 4px;
+    }
+    .header p {
+      color: #9B8A7A;
+      font-size: 14px;
+    }
+    .screens {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .screen {
+      background: rgba(20, 12, 6, 0.9);
+      border: 1px solid rgba(200, 149, 92, 0.09);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .screen-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(200, 149, 92, 0.09);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .screen-header h2 {
+      font-size: 18px;
+      color: #EAE0D5;
+    }
+    .screen-header .badge {
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 12px;
+      background: rgba(200, 149, 92, 0.12);
+      color: #C8955C;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .screen-content {
+      padding: 20px;
+    }
+    .mock-phone {
+      background: #0D0A07;
+      border-radius: 12px;
+      padding: 16px;
+      min-height: 400px;
+    }
+    .greeting {
+      font-family: Georgia, serif;
+      font-size: 24px;
+      color: #EAE0D5;
+      margin-bottom: 4px;
+    }
+    .date {
+      font-size: 13px;
+      color: #9B8A7A;
+      margin-bottom: 20px;
+    }
+    .hero-card {
+      background: rgba(200, 149, 92, 0.08);
+      border-top: 3px solid #C8955C;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .hero-card h3 {
+      font-size: 16px;
+      color: #EAE0D5;
+      margin-bottom: 4px;
+    }
+    .hero-card p {
+      font-size: 12px;
+      color: #9B8A7A;
+      margin-bottom: 10px;
+    }
+    .hero-btn {
+      display: inline-block;
+      padding: 8px 16px;
+      background: #C8955C;
+      color: #080503;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .nudge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(200, 149, 92, 0.06);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 16px;
+    }
+    .nudge .eyes {
+      font-size: 24px;
+    }
+    .nudge p {
+      font-size: 12px;
+      color: #9B8A7A;
+      line-height: 1.5;
+    }
+    .glance-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .glance-card {
+      flex: 1;
+      background: rgba(20, 12, 6, 0.9);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .glance-card .label {
+      font-size: 10px;
+      color: #5E5048;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    .glance-card .value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #C8955C;
+    }
+    .glance-card .sub {
+      font-size: 10px;
+      color: #9B8A7A;
+    }
+    .journal-card {
+      background: rgba(20, 12, 6, 0.9);
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .journal-card .label {
+      font-size: 10px;
+      color: #5E5048;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .journal-card p {
+      font-size: 13px;
+      color: #EAE0D5;
+      line-height: 1.5;
+    }
+    .tab-bar {
+      display: flex;
+      justify-content: space-around;
+      background: #0D0A07;
+      padding: 12px 0;
+      border-top: 1px solid rgba(200, 149, 92, 0.09);
+      margin-top: 20px;
+    }
+    .tab {
+      text-align: center;
+      font-size: 10px;
+      color: #5E5048;
+    }
+    .tab.active {
+      color: #C8955C;
+    }
+    .tab .icon {
+      font-size: 20px;
+      margin-bottom: 4px;
+    }
+    .tab.center {
+      background: rgba(200, 149, 92, 0.15);
+      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: -20px;
+      border: 2px solid #C8955C;
+    }
+    .book-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    .book-card {
+      border-radius: 8px;
+      padding: 16px;
+      position: relative;
+      min-height: 160px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+    }
+    .book-card .spine {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 6px;
+    }
+    .book-card .emoji {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+    .book-card .title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+    .book-card .subtitle {
+      font-size: 11px;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 12px;
+    }
+    .book-card .meta {
+      font-size: 11px;
+      color: rgba(255,255,255,0.7);
+    }
+    .book-card .streak {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+    }
+    .chat-bubble {
+      max-width: 80%;
+      padding: 10px 14px;
+      border-radius: 16px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .chat-bubble.lumi {
+      background: rgba(20, 12, 6, 0.9);
+      border-bottom-left-radius: 4px;
+      align-self: flex-start;
+    }
+    .chat-bubble.user {
+      background: #C8955C;
+      color: #080503;
+      border-bottom-right-radius: 4px;
+      align-self: flex-end;
+    }
+    .voice-btn {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      border: 2px solid #C8955C;
+      background: rgba(200, 149, 92, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto;
+      font-size: 24px;
+    }
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin: 16px 0;
+    }
+    .chip {
+      padding: 8px 14px;
+      background: rgba(20, 12, 6, 0.9);
+      border-radius: 20px;
+      font-size: 12px;
+      color: #EAE0D5;
+    }
+    .progress-bar {
+      height: 8px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 12px 0;
+    }
+    .progress-fill {
+      height: 100%;
+      background: #C8955C;
+      border-radius: 4px;
+    }
+    .category-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .category-bar .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 4px;
+    }
+    .category-bar .name {
+      flex: 1;
+      font-size: 12px;
+    }
+    .category-bar .bar {
+      width: 100px;
+      height: 6px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .category-bar .fill {
+      height: 100%;
+      border-radius: 3px;
+    }
+    .category-bar .amount {
+      font-size: 11px;
+      color: #9B8A7A;
+      width: 60px;
+      text-align: right;
+    }
+    .habit-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(200, 149, 92, 0.09);
+    }
+    .habit-row:last-child { border-bottom: none; }
+    .habit-row .emoji { font-size: 20px; }
+    .habit-row .name { flex: 1; font-size: 14px; }
+    .habit-row .streak { font-size: 12px; color: #C8955C; font-weight: 600; }
+    .habit-row .check {
+      width: 24px;
+      height: 24px;
+      border-radius: 12px;
+      border: 2px solid rgba(200, 149, 92, 0.09);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .habit-row .check.done {
+      background: #C8955C;
+      border-color: #C8955C;
+    }
+    .streak-grid {
+      display: flex;
+      gap: 2px;
+    }
+    .streak-col {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .streak-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      background: rgba(255,255,255,0.06);
+    }
+    .streak-dot.filled {
+      background: #C8955C;
+    }
+    .streak-dot.today {
+      border: 1.5px solid #C8955C;
+    }
+    .toggle {
+      display: flex;
+      background: rgba(20, 12, 6, 0.9);
+      border-radius: 10px;
+      padding: 3px;
+    }
+    .toggle button {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: #9B8A7A;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .toggle button.active {
+      background: #C8955C;
+      color: #080503;
+      font-weight: 600;
+    }
+    .section-title {
+      font-size: 10px;
+      font-weight: 600;
+      color: #5E5048;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      margin-top: 20px;
+    }
+    .settings-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 0;
+      border-bottom: 1px solid rgba(200, 149, 92, 0.09);
+    }
+    .settings-row:last-child { border-bottom: none; }
+    .settings-row .info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .settings-row .icon { font-size: 20px; }
+    .settings-row .label { font-size: 14px; }
+    .settings-row .sub { font-size: 11px; color: #5E5048; }
+    .settings-row .arrow { color: #5E5048; }
+    @media (max-width: 768px) {
+      .screens { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>iNiQ</h1>
+    <p>Your daily life companion — Design Preview</p>
+  </div>
+
+  <div class="screens">
+    <!-- Home Screen -->
+    <div class="screen">
+      <div class="screen-header">
+        <h2>🏠 Home</h2>
+        <span class="badge">Command Center</span>
+      </div>
+      <div class="screen-content">
+        <div class="mock-phone">
+          <div class="greeting">Good evening, Erica</div>
+          <div class="date">Sunday, June 22 · 🌙</div>
+
+          <div class="hero-card">
+            <h3>📅 Read for 20 minutes</h3>
+            <p>7:00 PM · personal</p>
+            <span class="hero-btn">Start →</span>
+          </div>
+
+          <div class="nudge">
+            <span class="eyes">◔ ◔</span>
+            <p>3/4 habits done. Almost there.</p>
+          </div>
+
+          <div class="glance-row">
+            <div class="glance-card">
+              <div class="label">Habits</div>
+              <div class="value">3/4</div>
+              <div class="sub">today</div>
+            </div>
+            <div class="glance-card">
+              <div class="label">Next</div>
+              <div class="value">7pm</div>
+              <div class="sub">Reading</div>
+            </div>
+            <div class="glance-card">
+              <div class="label">Today</div>
+              <div class="value">₦2k</div>
+              <div class="sub">spent</div>
+            </div>
+          </div>
+
+          <div class="journal-card">
+            <div class="label">Recent reflection</div>
+            <p>Felt good after the walk today. Need to do this more often.</p>
+          </div>
+
+          <div class="tab-bar">
+            <div class="tab active">
+              <div class="icon">🏠</div>
+              <div>Home</div>
+            </div>
+            <div class="tab">
+              <div class="icon">📅</div>
+              <div>Planner</div>
+            </div>
+            <div class="tab center">
+              <div class="icon">✨</div>
+            </div>
+            <div class="tab">
+              <div class="icon">📖</div>
+              <div>Journal</div>
+            </div>
+            <div class="tab">
+              <div class="icon">💰</div>
+              <div>Budget</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Journal Bookshelf Screen -->
+    <div class="screen">
+      <div class="screen-header">
+        <h2>📖 Journal</h2>
+        <span class="badge">Books</span>
+      </div>
+      <div class="screen-content">
+        <div class="mock-phone">
+          <div class="book-grid">
+            <div class="book-card" style="background:#5a7a5a">
+              <div class="spine" style="background:#3d5c3d"></div>
+              <div class="streak" style="background:rgba(127,184,127,0.4);color:#7fb87f">🔥 5d</div>
+              <div>
+                <div class="emoji">🌿</div>
+                <div class="title">Everyday Life</div>
+                <div class="subtitle">Thoughts & moments</div>
+              </div>
+              <div class="meta">12 entries</div>
+            </div>
+
+            <div class="book-card" style="background:#7a5a3a">
+              <div class="spine" style="background:#5c3d1e"></div>
+              <div class="streak" style="background:rgba(245,166,35,0.4);color:#F5A623">🔥 12d</div>
+              <div>
+                <div class="emoji">✝️</div>
+                <div class="title">Bible & Faith</div>
+                <div class="subtitle">Scripture & reflection</div>
+              </div>
+              <div class="meta">28 entries</div>
+            </div>
+
+            <div class="book-card" style="background:#3a4a7a">
+              <div class="spine" style="background:#1e2d5c"></div>
+              <div>
+                <div class="emoji">🎯</div>
+                <div class="title">Goals & Vision</div>
+                <div class="subtitle">Dreams I am building</div>
+              </div>
+              <div class="meta">5 entries</div>
+            </div>
+
+            <div class="book-card" style="background:#7a6a3a">
+              <div class="spine" style="background:#5c4e1e"></div>
+              <div>
+                <div class="emoji">💡</div>
+                <div class="title">My Business</div>
+                <div class="subtitle">Build journal</div>
+              </div>
+              <div class="meta">8 entries</div>
+            </div>
+
+            <div class="book-card" style="background:#7a3a5a">
+              <div class="spine" style="background:#5c1e3d"></div>
+              <div>
+                <div class="emoji">🌸</div>
+                <div class="title">Mental Health</div>
+                <div class="subtitle">How I really feel</div>
+              </div>
+              <div class="meta">3 entries</div>
+            </div>
+
+            <div class="book-card" style="background:#3a7a6a">
+              <div class="spine" style="background:#1e5c4e"></div>
+              <div>
+                <div class="emoji">💰</div>
+                <div class="title">Budget Diary</div>
+                <div class="subtitle">Money & spending</div>
+              </div>
+              <div class="meta">15 entries</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Journal Book Pages Screen -->
+    <div class="screen">
+      <div class="screen-header">
+        <h2>🌿 Everyday Life</h2>
+        <span class="badge">Pages</span>
+      </div>
+      <div class="screen-content">
+        <div class="mock-phone">
+          <div style="text-align:center;margin-bottom:16px">
+            <div class="voice-btn">🎙</div>
+            <div style="font-size:10px;color:#5E5048;margin-top:6px">Hold to capture</div>
+          </div>
+
+          <div class="section-title">TODAY</div>
+          <div class="journal-card" style="margin-bottom:8px;border-left:3px solid #7fb87f">
+            <p>Took it easy today, cramps. Resting is okay sometimes.</p>
+            <div style="font-size:10px;color:#5E5048;margin-top:6px">Blank Page · 2:30 PM</div>
+          </div>
+
+          <div class="section-title">YESTERDAY</div>
+          <div class="journal-card" style="margin-bottom:8px;border-left:3px solid #7fb87f">
+            <p>Walk felt great! Need to make this a daily thing. 📷</p>
+            <div style="font-size:10px;color:#5E5048;margin-top:6px">Morning Pages · 8:15 AM</div>
+          </div>
+
+          <div class="journal-card" style="border-left:3px solid #7fb87f">
+            <p>Started the day with Bible reading. Felt centered and focused.</p>
+            <div style="font-size:10px;color:#5E5048;margin-top:6px">Reflection · 9:00 AM</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lumi Screen -->
+    <div class="screen">
+      <div class="screen-header">
+        <h2>✨ Lumi</h2>
+        <span class="badge">AI Companion</span>
+      </div>
+      <div class="screen-content">
+        <div class="mock-phone">
+          <div style="text-align:center;margin-bottom:20px">
+            <div style="font-size:48px;margin-bottom:8px">◔ ◔</div>
+            <div style="font-size:11px;color:#9B8A7A">Your AI life companion</div>
+          </div>
+
+          <div class="chat-bubble lumi">
+            Hey Erica! I'm Lumi — your life companion. Talk to me about your day, goals, or anything on your mind.
+          </div>
+
+          <div class="chip-row">
+            <div class="chip">🌅 Plan my morning</div>
+            <div class="chip">🎯 Set a goal</div>
+            <div class="chip">📖 Journal prompt</div>
+            <div class="chip">💰 Log an expense</div>
+            <div class="chip">🔥 Add a habit</div>
+          </div>
+
+          <div style="text-align:center;margin:20px 0">
+            <div class="voice-btn">🎙</div>
+            <div style="font-size:10px;color:#5E5048;margin-top:8px">Hold to talk</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Budget Screen -->
+    <div class="screen">
+      <div class="screen-header">
+        <h2>💰 Budget</h2>
+        <span class="badge">Simple ⇄ Advanced</span>
+      </div>
+      <div class="screen-content">
+        <div class="mock-phone">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div style="font-size:16px;font-weight:600">June 2026</div>
+            <div class="toggle">
+              <button class="active">Simple</button>
+              <button>Advanced</button>
+            </div>
+          </div>
+
+          <div style="margin-bottom:16px">
+            <div style="font-size:13px;color:#9B8A7A">Spent <span style="color:#EAE0D5;font-weight:700">₦48,000</span> of ₦80,000</div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width:60%"></div>
+            </div>
+          </div>
+
+          <div class="section-title">SPENDING BY CATEGORY</div>
+
+          <div class="category-bar">
+            <div class="dot" style="background:#fbbf24"></div>
+            <div class="name">Food</div>
+            <div class="bar"><div class="fill" style="width:40%;background:#fbbf24"></div></div>
+            <div class="amount">₦19,200</div>
+          </div>
+
+          <div class="category-bar">
+            <div class="dot" style="background:#2dd4bf"></div>
+            <div class="name">Transport</div>
+            <div class="bar"><div class="fill" style="width:25%;background:#2dd4bf"></div></div>
+            <div class="amount">₦12,000</div>
+          </div>
+
+          <div class="category-bar">
+            <div class="dot" style="background:#f9a8d4"></div>
+            <div class="name">Shopping</div>
+            <div class="bar"><div class="fill" style="width:20%;background:#f9a8d4"></div></div>
+            <div class="amount">₦9,600</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Habits Screen -->
+    <div class="screen">
+      <div class="screen-header">
+        <h2>🔥 Habits</h2>
+        <span class="badge">Streaks</span>
+      </div>
+      <div class="screen-content">
+        <div class="mock-phone">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div style="font-size:16px;font-weight:600">Habits</div>
+            <div style="font-size:12px;color:#C8955C;font-weight:600">3/5 ✓</div>
+          </div>
+
+          <div class="habit-row">
+            <span class="emoji">🔥</span>
+            <span class="name">Bible reading</span>
+            <span class="streak">🔥 23</span>
+            <div class="check done">✓</div>
+          </div>
+
+          <div class="habit-row">
+            <span class="emoji">💧</span>
+            <span class="name">Drink water</span>
+            <span class="streak">🔥 12</span>
+            <div class="check done">✓</div>
+          </div>
+
+          <div class="habit-row">
+            <span class="emoji">📖</span>
+            <span class="name">Read 20 min</span>
+            <span class="streak">🔥 8</span>
+            <div class="check done">✓</div>
+          </div>
+
+          <div class="habit-row">
+            <span class="emoji">💪</span>
+            <span class="name">Exercise</span>
+            <span class="streak">🔥 5</span>
+            <div class="check"></div>
+          </div>
+
+          <div class="habit-row">
+            <span class="emoji">✍️</span>
+            <span class="name">Journal</span>
+            <span class="streak">🔥 21</span>
+            <div class="check"></div>
+          </div>
+
+          <div class="section-title" style="margin-top:20px">STREAK GRID</div>
+          <div class="streak-grid">
+            <div class="streak-col">
+              <div class="streak-dot filled"></div>
+              <div class="streak-dot filled"></div>
+              <div class="streak-dot"></div>
+              <div class="streak-dot filled"></div>
+              <div class="streak-dot filled"></div>
+              <div class="streak-dot filled"></div>
+              <div class="streak-dot filled"></div>
+            </div>
+            <div class="streak-col">
+              <div class="streak-dot filled"></div>
+              <div class="streak-dot filled"></div>
+              <div class="streak-dot filled"></div>
+              <div class="streak-dot"></div>
+              <div class="streak-dot filled"></div>
+              <div class="streak-dot filled"></div>
+              <div class="streak-dot filled"></div>
+            </div>
+            <div class="streak-col">
+              <div class="streak-dot filled"></div>
+              <div class="streak-dot"></div>
+              <div class="streak-dot filled"></div>
+              <div class="streak-dot filled"></div>
+              <div class="streak-dot filled"></div>
+              <div class="streak-dot"></div>
+              <div class="streak-dot filled"></div>
+            </div>
+            <div class="streak-col">
+              <div class="streak-dot filled"></div>
+              <div class="streak-dot filled"></div>
+              <div class="streak-dot filled"></div>
+              <div class="streak-dot filled"></div>
+              <div class="streak-dot filled"></div>
+              <div class="streak-dot filled"></div>
+              <div class="streak-dot today"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div class="screen">
+      <div class="screen-header">
+        <h2>🔐 Login</h2>
+        <span class="badge">Auth</span>
+      </div>
+      <div class="screen-content">
+        <div class="mock-phone" style="display:flex;flex-direction:column;justify-content:center">
+          <div style="text-align:center;margin-bottom:40px">
+            <div style="font-family:Georgia,serif;font-size:56px;color:#C8955C;font-weight:800;letter-spacing:4px">iNiQ</div>
+            <div style="font-size:13px;color:#5E5048;margin-top:8px">Your daily life companion</div>
+          </div>
+
+          <div style="background:rgba(20,12,6,0.9);border-radius:12px;padding:16px;margin-bottom:12px">
+            <span style="color:#5E5048;font-size:13px">Email</span>
+          </div>
+
+          <div style="background:rgba(20,12,6,0.9);border-radius:12px;padding:16px;margin-bottom:20px;display:flex;justify-content:space-between">
+            <span style="color:#5E5048;font-size:13px">Password</span>
+            <span style="color:#9B8A7A">👁</span>
+          </div>
+
+          <div style="background:#C8955C;border-radius:12px;padding:16px;text-align:center;margin-bottom:20px">
+            <span style="color:#080503;font-size:15px;font-weight:700">Login</span>
+          </div>
+
+          <div style="text-align:center">
+            <span style="color:#9B8A7A;font-size:13px">Don't have an account? <span style="color:#C8955C;font-weight:600">Register</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile Screen -->
+    <div class="screen">
+      <div class="screen-header">
+        <h2>👤 Profile</h2>
+        <span class="badge">Settings</span>
+      </div>
+      <div class="screen-content">
+        <div class="mock-phone">
+          <div style="text-align:center;margin-bottom:24px">
+            <div style="font-size:48px;margin-bottom:8px">◔ ◔</div>
+            <div style="font-size:18px;font-weight:600">Erica</div>
+            <div style="font-size:12px;color:#9B8A7A">erica@example.com</div>
+          </div>
+
+          <div class="section-title">APPEARANCE</div>
+          <div style="display:flex;gap:12px;margin-bottom:16px">
+            <div style="flex:1;padding:16px;border-radius:12px;text-align:center;background:#080503;border:2px solid #C8955C">
+              <div style="font-size:14px;font-weight:600;color:#EAE0D5">Dark</div>
+              <div style="font-size:11px;color:#5E5048">Woody dark</div>
+            </div>
+            <div style="flex:1;padding:16px;border-radius:12px;text-align:center;background:#FAF8F5;color:#1A1612">
+              <div style="font-size:14px;font-weight:600">Light</div>
+              <div style="font-size:11px;opacity:0.6">Warm cream</div>
+            </div>
+          </div>
+
+          <div class="section-title">SECURITY</div>
+          <div class="settings-row">
+            <div class="info">
+              <span class="icon">🔒</span>
+              <div>
+                <div class="label">Biometric Lock</div>
+                <div class="sub">Use Face ID or fingerprint</div>
+              </div>
+            </div>
+            <span class="arrow">›</span>
+          </div>
+
+          <div class="section-title">LUMI</div>
+          <div class="settings-row">
+            <div class="info">
+              <span class="icon">✨</span>
+              <div>
+                <div class="label">Things Lumi Remembers</div>
+                <div class="sub">View what Lumi has learned</div>
+              </div>
+            </div>
+            <span class="arrow">›</span>
+          </div>
+
+          <div style="text-align:center;margin-top:20px;padding:14px;background:rgba(224,82,82,0.08);border-radius:12px">
+            <span style="color:#E05252;font-weight:500">Logout</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:center;padding:40px 0;color:#5E5048;font-size:12px">
+    <p>iNiQ — Your daily life companion</p>
+    <p style="margin-top:4px">Calm · Voice-First · Companion-Centered</p>
+  </div>
+</body>
+</html>

@@ -10,6 +10,7 @@ const { runMigrations, pool } = require('./src/db/connection');
 const { validateEnv } = require('./src/lib/validateEnv');
 const redisClient = require('./src/services/redisClient');
 const logger = require('./src/lib/logger');
+const { getSelectedProvider } = require('./src/services/aiClient');
 const { globalAuditLog } = require('./src/middleware/auditLog');
 const authRoutes = require('./src/routes/auth');
 const journalRoutes = require('./src/routes/journal');
@@ -38,6 +39,8 @@ const { router: pushRoutes } = require('./src/routes/push');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
+let httpServer = null;
+let cronWorker = null;
 
 app.disable('x-powered-by');
 if (isProduction) {
@@ -131,8 +134,7 @@ app.use('/api/push',   pushRoutes);
 app.use('/api/users',   usersRoutes);
 app.use('/api/billing', billingRoutes);
 
-app.get('/api/health', async (req, res) => {
-  // Quick DB ping to confirm database is reachable
+async function healthHandler(req, res) {
   let dbOk = false;
   try {
     await pool.query('SELECT 1');
@@ -140,25 +142,41 @@ app.get('/api/health', async (req, res) => {
   } catch {}
 
   const { isAvailable } = require('./src/services/redisClient');
+  const aiProvider = getSelectedProvider();
+  const aiConfigured = aiProvider === 'gemini'
+    ? !!process.env.GEMINI_API_KEY
+    : aiProvider === 'groq'
+      ? !!process.env.GROQ_API_KEY
+      : false;
+
   res.json({
-    status: dbOk ? 'ok' : 'degraded',
+    status: dbOk && aiConfigured ? 'ok' : 'degraded',
     db: dbOk ? 'connected' : 'unreachable',
+    ai: {
+      provider: aiProvider,
+      configured: aiConfigured,
+    },
     redis: isAvailable() ? 'connected' : 'offline (fallback active)',
     timestamp: new Date().toISOString(),
     version: '0.1.0',
     environment: process.env.NODE_ENV || 'development',
   });
-});
+}
+
+app.get('/health', healthHandler);
+app.get('/api/health', healthHandler);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });
 });
 
 app.use((err, req, res, next) => {
-  logger.error({ requestId: req.id, method: req.method, path: req.originalUrl, err: err.message }, 'unhandled error');
+  logger.error({ requestId: req.id, method: req.method, path: req.originalUrl, err: err.message, stack: err.stack }, 'unhandled error');
   res.status(500).json({
     error: 'An internal error occurred',
     requestId: req.id,
+    // In development only, surface the real error so we can diagnose it.
+    detail: process.env.NODE_ENV === 'production' ? undefined : (err && (err.stack || err.message)),
   });
 });
 
@@ -167,23 +185,23 @@ async function start() {
     validateEnv();
     await redisClient.init();
     await runMigrations();
-    app.listen(PORT, () => {
-    logger.info({ port: PORT }, 'PLOS API started');
+    httpServer = app.listen(PORT, () => {
+      logger.info({ port: PORT }, 'PLOS API started');
     });
 
     // Spawn background worker for cron jobs (idempotent, isolated from HTTP process)
     try {
       const { fork } = require('child_process');
       const path = require('path');
-      const worker = fork(path.join(__dirname, 'src/workers/cronWorker.js'), [], {
+      cronWorker = fork(path.join(__dirname, 'src/workers/cronWorker.js'), [], {
         detached: false,
         stdio: 'inherit',
       });
-      worker.on('error', (err) => logger.error({ err: err.message }, 'cron worker error'));
-      worker.on('exit', (code) => {
+      cronWorker.on('error', (err) => logger.error({ err: err.message }, 'cron worker error'));
+      cronWorker.on('exit', (code) => {
         if (code !== 0) logger.error({ code }, 'cron worker exited');
       });
-      logger.info({ pid: worker.pid }, 'cron worker started');
+      logger.info({ pid: cronWorker.pid }, 'cron worker started');
     } catch (err) {
     logger.warn({ err: err.message }, 'cron worker not started');
     }
@@ -194,3 +212,37 @@ async function start() {
 }
 
 start();
+
+async function shutdown(signal) {
+  logger.info({ event: signal }, 'shutdown requested');
+
+  if (cronWorker && !cronWorker.killed) {
+    cronWorker.kill(signal);
+  }
+
+  if (httpServer) {
+    await new Promise((resolve) => httpServer.close(resolve));
+  }
+
+  const redis = redisClient.getClient();
+  if (redis?.isOpen) {
+    await redis.quit().catch((err) => logger.warn({ err: err.message }, 'redis shutdown error'));
+  }
+
+  await pool.end().catch((err) => logger.warn({ err: err.message }, 'postgres shutdown error'));
+  process.exit(0);
+}
+
+process.on('SIGTERM', () => {
+  shutdown('SIGTERM').catch((err) => {
+    logger.error({ err: err.message }, 'shutdown failed');
+    process.exit(1);
+  });
+});
+
+process.on('SIGINT', () => {
+  shutdown('SIGINT').catch((err) => {
+    logger.error({ err: err.message }, 'shutdown failed');
+    process.exit(1);
+  });
+});

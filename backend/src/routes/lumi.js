@@ -1,6 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const { authenticate } = require('../middleware/authenticate');
+const logger = require('../lib/logger');
 const {
   routeLumiInput,
   confirmAndSave,
@@ -47,6 +48,9 @@ function requireAppAgent(req, res, next) {
 router.post('/message', rateLimiter(30, 900, 'lumi_message'), authenticate, attachTier, async (req, res) => {
   try {
     const userId = req.user.id;
+    // Create a request-scoped logger with a unique ID for tracing
+    const reqLogger = logger.child({ requestId: req.id, userId });
+
     const { text, source = 'dashboard', conversationHistory = [] } = req.body;
 
     if (!text || text.trim().length === 0) {
@@ -73,10 +77,10 @@ router.post('/message', rateLimiter(30, 900, 'lumi_message'), authenticate, atta
     }
 
     // Build rich context from the real database — shared across all Lumi instances
-    const context = await buildUserContext(userId);
+    const context = await buildUserContext(userId, reqLogger);
 
     // Route through Lumi - she will converse, analyze, then suggest
-    const result = await routeLumiInput(userId, text, context, source);
+    const result = await routeLumiInput(userId, text, context, source, reqLogger);
 
     // Save conversation for context
     await pool.query(
@@ -107,6 +111,8 @@ router.post('/message', rateLimiter(30, 900, 'lumi_message'), authenticate, atta
       pendingJournalPage: result.pendingJournalPage || null,
       needsRecurringPlan: result.needsRecurringPlan || false,
       recurringPlanText: result.recurringPlanText || null,
+      executionSummary: result.executionSummary || [],
+      refresh: result.refresh || [],
       needsEmailPreview: result.needsEmailPreview || false,
       pendingEmail: result.pendingEmail || null,
       trackerCreated: result.trackerCreated || null,
@@ -116,9 +122,10 @@ router.post('/message', rateLimiter(30, 900, 'lumi_message'), authenticate, atta
         budgetSummary: context.budgetSummary,
         journalSummary: context.journalSummary,
       },
+      timing: result.timing,
     });
   } catch (error) {
-    console.error('Lumi message error:', error);
+    logger.error({ err: error.message, stack: error.stack }, 'Lumi message error');
     res.status(500).json({
       error: 'Failed to process message',
       message: "I'm here and listening. Tell me what's on your mind."

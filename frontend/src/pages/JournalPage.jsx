@@ -116,6 +116,7 @@ export default function JournalPage() {
       const entry = res.data?.entries?.[0];
       if (entry) {
         setPageFields(entry.fields || {});
+        setItems(Array.isArray(entry.fields?._items) ? entry.fields._items : []);
         setPageEntryId(entry.id);
       } else if (journal === 'budget' && templateName === 'Daily Expenses') {
         // Pre-populate from budget_entries for today (two-way sync)
@@ -139,11 +140,13 @@ export default function JournalPage() {
         setPageEntryId(null);
       } else {
         setPageFields({});
+        setItems([]);
         setPageEntryId(null);
       }
     } catch {
       // offline / not yet created — start empty
       setPageFields({});
+      setItems([]);
       setPageEntryId(null);
     }
   }, [journal, templateName, todayISO]);
@@ -278,41 +281,51 @@ export default function JournalPage() {
     };
   };
 
-  // ─── STICKERS & STICKY NOTES ──────────────────────────────────────────────────
+  // ─── STICKERS, NOTES & PHOTOS (persisted into the page's fields._items) ─────────
+  const fileInputRef = useRef(null);
+
+  // Save placed items into the page's fields JSONB so they survive reload.
+  const persistItems = (nextItems) => {
+    setItems(nextItems);
+    api.post('/journal/pages', {
+      journal_type: journal,
+      template_name: templateName,
+      entry_date: todayISO,
+      fields: { ...pageFields, _items: nextItems },
+      source: 'user',
+    }).then(res => { if (res.data?.entry?.id) setPageEntryId(res.data.entry.id); })
+      .catch(() => {});
+  };
+
   const placeSticker = (emoji) => {
-    const x = Math.random() * 280 + 40;
-    const y = Math.random() * 200 + 100;
-    const item = { type: 'sticker', emoji, x, y, id: Date.now() };
-    setItems([...items, item]);
+    const item = { type: 'sticker', emoji, x: Math.random() * 280 + 40, y: Math.random() * 200 + 100, id: Date.now() };
+    persistItems([...items, item]);
   };
 
   const addSticky = () => {
     const colors = ['#FFF176', '#A5D6A7', '#80DEEA', '#EF9A9A', '#CE93D8', '#FFCC80'];
-    const color = colors[Math.floor(Math.random() * colors.length)];
-    const x = 50 + Math.random() * 120;
-    const y = 80 + Math.random() * 120;
-    const item = { type: 'sticky', color, x, y, text: '', id: Date.now() };
-    setItems([...items, item]);
+    const item = { type: 'sticky', color: colors[Math.floor(Math.random() * colors.length)], x: 50 + Math.random() * 120, y: 80 + Math.random() * 120, text: '', id: Date.now() };
+    persistItems([...items, item]);
   };
 
-  const addPhoto = () => {
-    const x = 100 + Math.random() * 150;
-    const y = 100 + Math.random() * 150;
-    const item = { type: 'photo', x, y, id: Date.now() };
-    setItems([...items, item]);
+  // Real photo: open the picker, read the chosen image as a data URL, place it.
+  const addPhoto = () => fileInputRef.current?.click();
+  const onPhotoSelected = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024) { alert('Please choose an image under 4 MB.'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const item = { type: 'photo', src: reader.result, x: 100 + Math.random() * 150, y: 100 + Math.random() * 150, id: Date.now() };
+      persistItems([...items, item]);
+    };
+    reader.readAsDataURL(file);
   };
 
-  const removeItem = (id) => {
-    setItems(items.filter(i => i.id !== id));
-  };
-
-  const clearStickers = () => {
-    setItems([]);
-  };
-
-  const undoLast = () => {
-    setItems(items.slice(0, -1));
-  };
+  const removeItem = (id) => persistItems(items.filter(i => i.id !== id));
+  const clearStickers = () => persistItems([]);
+  const undoLast = () => persistItems(items.slice(0, -1));
 
   // ─── FLOATING MIC HANDLERS ────────────────────────────────────────────────────
   const handleFieldFocus = (e) => {
@@ -1515,7 +1528,9 @@ export default function JournalPage() {
                       onDoubleClick={() => removeItem(item.id)}
                       ref={el => el && makeDraggable(el)}
                     >
-                      +
+                      {item.src
+                        ? <img src={item.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        : <span style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', color: '#bbb' }}>+</span>}
                     </div>
                   );
                 }
@@ -1584,6 +1599,15 @@ export default function JournalPage() {
               )}
             </div>
           </div>
+
+          {/* Hidden file picker for photos */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={onPhotoSelected}
+            style={{ display: 'none' }}
+          />
 
           {/* Action bar */}
           <div className="action-bar">

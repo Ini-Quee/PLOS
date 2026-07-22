@@ -1,42 +1,8 @@
-import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
-import { Colors } from '../../../constants/colors';
-import { Typography } from '../../../constants/typography';
+import { Redirect } from 'expo-router';
 
-export default function BudgetScreen() {
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Budget</Text>
-      </View>
-      <View style={styles.content}>
-        <Text style={styles.placeholder}>Budget tracking will appear here</Text>
-      </View>
-    </SafeAreaView>
-  );
+// The real budget screen lives at /budget (full Simple/Advanced version).
+// This tab route just forwards there so links to /(tabs)/budget keep working
+// and we don't ship the old placeholder.
+export default function BudgetTabRedirect() {
+  return <Redirect href="/budget" />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-  },
-  title: {
-    fontSize: Typography.title.fontSize,
-    fontWeight: Typography.title.fontWeight,
-    color: Colors.textPrimary,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  placeholder: {
-    fontSize: Typography.body.fontSize,
-    color: Colors.textSecondary,
-  },
-});

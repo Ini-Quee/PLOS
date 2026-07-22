@@ -57,8 +57,8 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
       >
         {/* Logo */}
-        <Text style={styles.logo}>PLOS</Text>
-        <Text style={styles.tagline}>Your life. Organized.</Text>
+        <Text style={styles.logo}>iNiQ</Text>
+        <Text style={styles.tagline}>Your daily life companion</Text>
 
         <View style={styles.spacer} />
 
@@ -144,9 +144,10 @@ const styles = StyleSheet.create({
   logo: {
     fontSize: 48,
     fontWeight: '800',
-    color: Colors.gold,
+    color: Colors.amber,
     textAlign: 'center',
     letterSpacing: 2,
+    fontFamily: 'Georgia',
   },
   tagline: {
     fontSize: Typography.caption.fontSize,
@@ -179,16 +180,16 @@ const styles = StyleSheet.create({
     height: 24,
   },
   loginButton: {
-    backgroundColor: Colors.blue,
+    backgroundColor: Colors.amber,
     borderRadius: 12,
     height: 54,
     justifyContent: 'center',
     alignItems: 'center',
   },
   loginButtonText: {
-    color: Colors.white,
+    color: '#080503',
     fontSize: Typography.body.fontSize,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   errorText: {
     color: Colors.coral,
@@ -202,7 +203,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   registerLinkBold: {
-    color: Colors.blue,
+    color: Colors.amber,
     fontWeight: '600',
   },
 });

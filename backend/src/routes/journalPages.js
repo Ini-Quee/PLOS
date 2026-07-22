@@ -147,7 +147,18 @@ router.post('/',
       res.status(201).json({ entry: result.rows[0] });
     } catch (err) {
       console.error('Journal pages POST error:', err);
-      res.status(500).json({ error: 'Failed to save journal page entry' });
+      // Also write the full error to a file so it's easy to retrieve/share.
+      try {
+        require('fs').writeFileSync(
+          require('path').join(__dirname, '..', '..', 'journal-error.txt'),
+          `time: ${new Date().toISOString()}\ncode: ${err.code || '(none)'}\nmessage: ${err.message}\nconstraint: ${err.constraint || '(none)'}\ndetail: ${err.detail || '(none)'}\n\nstack:\n${err.stack || ''}\n`
+        );
+      } catch {}
+      res.status(500).json({
+        error: 'Failed to save journal page entry',
+        // Surface the real DB error in development so we can diagnose it.
+        detail: process.env.NODE_ENV === 'production' ? undefined : `${err.code || ''} ${err.message}`.trim(),
+      });
     }
   }
 );

@@ -186,27 +186,28 @@ function TaskCard({ task, onToggleDone, onToggleLock, onSelect, onReminderChange
 function Timeline({ tasks, onToggleDone, onToggleLock, onSelect, onReminderChange }) {
   const now = new Date();
   const nowH = now.getHours(), nowM = now.getMinutes();
-  let nowInserted = false;
   const nowStr = fmtH(nowH, nowM);
+
+  // Pre-calculate which task gets the "now" marker (avoids reassignment during render)
+  const nowMarkerIndex = tasks.findIndex(t => (t.hour > nowH || (t.hour === nowH && t.min >= nowM)) && t.section !== 'Morning Routine');
+  const tasksWithNowMarker = tasks.map((t, i) => ({
+    ...t,
+    showNowMarker: i === nowMarkerIndex,
+  }));
 
   return (
     <div>
       {SECTIONS_ORDER.map(sec => {
-        const secTasks = tasks.filter(t => t.section === sec);
+        const secTasks = tasksWithNowMarker.filter(t => t.section === sec);
         if (!secTasks.length) return null;
         return (
           <div key={sec}>
             <div style={{ fontSize:10, fontWeight:700, letterSpacing:'2px', textTransform:'uppercase', color:'rgba(255,255,255,0.28)', margin:'20px 0 10px' }}>{sec}</div>
             {secTasks.map(t => {
               const isPast = t.hour < nowH || (t.hour === nowH && t.min < nowM);
-              let showNow = false;
-              if (!nowInserted && (t.hour > nowH || (t.hour === nowH && t.min >= nowM)) && sec !== 'Morning Routine') {
-                showNow = true;
-                nowInserted = true;
-              }
               return (
                 <div key={t.id}>
-                  {showNow && (
+                  {t.showNowMarker && (
                     <div style={{ display:'flex', alignItems:'center', margin:'4px 0', paddingLeft:56 }}>
                       <div style={{ flex:1, height:1.5, background:'#ef4444' }} />
                       <span style={{ fontSize:10, color:'#ef4444', background:'rgba(239,68,68,0.14)', padding:'2px 8px', borderRadius:10, marginLeft:8, whiteSpace:'nowrap' }}>Now — {nowStr}</span>

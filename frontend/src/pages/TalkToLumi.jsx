@@ -60,6 +60,65 @@ export default function TalkToLumi() {
   const textRef        = useRef(null);
   const hasGreetedRef  = useRef(false);
 
+  // ── Core speak helper (must be before greet) ─────────────────────────────────
+  async function speak(text) {
+    setLumiMessage(text);
+    setLumiState('speaking');
+    speakingRef.current = true;
+
+    if (!isMuted) {
+      await lumiVoice.speakResponse(text, {
+        onStart: () => setLumiState('speaking'),
+        onEnd:   () => { speakingRef.current = false; setLumiState('idle'); },
+        onError: () => { speakingRef.current = false; setLumiState('idle'); },
+      });
+    } else {
+      speakingRef.current = false;
+      setLumiState('idle');
+    }
+  }
+
+  // ── Context fetch (hoisted above useEffect) ──────────────────────────────────
+  async function fetchContext() {
+    try {
+      const [schedRes, journRes] = await Promise.all([
+        api.get('/schedule/today').catch(() => ({ data: { schedules: [] } })),
+        api.get('/journal/entries?limit=1').catch(() => ({ data: { entries: [] } })),
+      ]);
+      setTasks(schedRes.data?.schedules?.slice(0, 5) || []);
+      const entries = journRes.data?.entries || [];
+      if (entries.length > 0) {
+        setRecent(`Last entry on ${new Date(entries[0].recorded_at).toLocaleDateString()}`);
+      }
+    } catch {}
+  }
+
+  // ── Greeting (hoisted above useEffect) ───────────────────────────────────────
+  async function greet() {
+    if (speakingRef.current || processingRef.current) return;
+    const hour = new Date().getHours();
+    const time = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    const name = user?.name?.split(' ')[0] || 'there';
+
+    // If Lumi has memories, ask backend to generate a personalised greeting
+    try {
+      const memoriesRes = await api.get('/lumi/memories');
+      const storedMemories = memoriesRes.data?.memories || [];
+      if (storedMemories.length > 0) {
+        setMemoryCount(storedMemories.length);
+        const res = await api.post('/lumi/message', {
+          text: `Greet me warmly with "${time}, ${name}". Reference one specific thing you remember about me — a goal, fear, or pattern. Keep it short, one sentence max after the greeting. Don't list everything you know.`,
+          source: 'greeting',
+        });
+        if (res.data?.message) { await speak(res.data.message); return; }
+      }
+    } catch {}
+
+    // Fallback to generic greeting
+    const msg = `${time}, ${name}! I'm ${aiName}. I can help you plan your day, log expenses, write journal entries, and more. What's on your mind?`;
+    await speak(msg);
+  }
+
   // ── Init ─────────────────────────────────────────────────────────────────────
   useEffect(() => {
     lumiVoice.initLumiVoice();
@@ -108,65 +167,6 @@ export default function TalkToLumi() {
     try { sessionStorage.setItem('lumi_conv', JSON.stringify(history.slice(-40))); } catch {}
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [history, lumiMessage]);
-
-  // ── Context fetch ─────────────────────────────────────────────────────────────
-  async function fetchContext() {
-    try {
-      const [schedRes, journRes] = await Promise.all([
-        api.get('/schedule/today').catch(() => ({ data: { schedules: [] } })),
-        api.get('/journal/entries?limit=1').catch(() => ({ data: { entries: [] } })),
-      ]);
-      setTasks(schedRes.data?.schedules?.slice(0, 5) || []);
-      const entries = journRes.data?.entries || [];
-      if (entries.length > 0) {
-        setRecent(`Last entry on ${new Date(entries[0].recorded_at).toLocaleDateString()}`);
-      }
-    } catch {}
-  }
-
-  // ── Greeting ──────────────────────────────────────────────────────────────────
-  async function greet() {
-    if (speakingRef.current || processingRef.current) return;
-    const hour = new Date().getHours();
-    const time = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-    const name = user?.name?.split(' ')[0] || 'there';
-
-    // If Lumi has memories, ask backend to generate a personalised greeting
-    try {
-      const memoriesRes = await api.get('/lumi/memories');
-      const storedMemories = memoriesRes.data?.memories || [];
-      if (storedMemories.length > 0) {
-        setMemoryCount(storedMemories.length);
-        const res = await api.post('/lumi/message', {
-          text: `Greet me warmly with "${time}, ${name}". Reference one specific thing you remember about me — a goal, fear, or pattern. Keep it short, one sentence max after the greeting. Don't list everything you know.`,
-          source: 'greeting',
-        });
-        if (res.data?.message) { await speak(res.data.message); return; }
-      }
-    } catch {}
-
-    // Fallback to generic greeting
-    const msg = `${time}, ${name}! I'm ${aiName}. I can help you plan your day, log expenses, write journal entries, and more. What's on your mind?`;
-    await speak(msg);
-  }
-
-  // ── Core speak helper ──────────────────────────────────────────────────────────
-  async function speak(text) {
-    setLumiMessage(text);
-    setLumiState('speaking');
-    speakingRef.current = true;
-
-    if (!isMuted) {
-      await lumiVoice.speakResponse(text, {
-        onStart: () => setLumiState('speaking'),
-        onEnd:   () => { speakingRef.current = false; setLumiState('idle'); },
-        onError: () => { speakingRef.current = false; setLumiState('idle'); },
-      });
-    } else {
-      speakingRef.current = false;
-      setLumiState('idle');
-    }
-  }
 
   // ── Handle any message (voice or text) ────────────────────────────────────────
   // ── Plan interview answer handler ─────────────────────────────────────────────

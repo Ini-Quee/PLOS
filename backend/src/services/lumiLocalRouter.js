@@ -85,7 +85,11 @@ function detectTracker(text) {
   // Default: chain (open-ended)
   if (hasTrackerWord) {
     let title = text.replace(TITLE_STRIP_RE, '').replace(/\s+/g, ' ').trim();
-    if (title.length < 2) return null; // can't extract a sensible title → bail
+    if (title.length < 2) {
+      // User intent is clear, but the request is incomplete.
+      // Return a special marker instead of falling through to AI.
+      return { title: 'incomplete', type: 'chain', confidence: 1 };
+    }
     title = title.charAt(0).toUpperCase() + title.slice(1);
     return { title, type: 'chain', emoji: pickEmoji(text), confidence: 2 };
   }
@@ -128,7 +132,7 @@ const reply = (text, extra = {}) => ({
  * Main entry. userId, text, opts{ emotionalIntensity }.
  * Returns result object (handled locally) or null (fall through to AI).
  */
-async function tryLocal(userId, text, opts = {}) {
+async function tryLocal(userId, text, reqLogger = logger, opts = {}) {
   if (!enabled()) return null;
   const t = text.toLowerCase().trim();
   const intensity = opts.emotionalIntensity || 1;
@@ -140,6 +144,15 @@ async function tryLocal(userId, text, opts = {}) {
   try {
     const trackerSpec = detectTracker(text);
     if (trackerSpec && trackerSpec.confidence >= 2) {
+      if (trackerSpec && trackerSpec.title === "incomplete") {
+        return reply(
+          "I can help with that. What would you like to call the tracker? For example: 'Track my reading', 'Workout Tracker', or 'Drink Water'."
+        );
+      }
+      if (trackerSpec.title === 'incomplete') {
+        return reply("I can help with that, but what would you like to call the tracker? For example: 'track my reading'.");
+      }
+
       const { title, type, target_days = null, target_count = null, emoji = '✅' } = trackerSpec;
       const { rows } = await pool.query(
         `INSERT INTO trackers (user_id, title, type, target_days, target_count, emoji)
@@ -164,7 +177,7 @@ async function tryLocal(userId, text, opts = {}) {
         responseText = `Done — I started a **${title}** tracker. Day 1 is marked. Don't break the chain. ${emoji}`;
       }
 
-      logger.info({ userId, action: 'tracker_create', intent: 'tracker_create', trackerId: tracker.id, type, title }, 'tracker created via local router');
+      reqLogger.info({ action: 'tracker_create', intent: 'tracker_create', trackerId: tracker.id, type, title }, 'tracker created via local router');
 
       return reply(responseText, {
         intent: 'tracker_create',
@@ -179,7 +192,7 @@ async function tryLocal(userId, text, opts = {}) {
       });
     }
   } catch (trackerErr) {
-    logger.error({ userId, where: 'detectTracker', err: trackerErr.message }, 'tracker creation failed');
+    reqLogger.error({ where: 'detectTracker', err: trackerErr.message }, 'tracker creation failed');
     // Don't fall through — let AI handle it if tracker creation fails
   }
 
@@ -282,7 +295,7 @@ async function tryLocal(userId, text, opts = {}) {
 
     return null; // nothing matched confidently → AI lanes
   } catch (err) {
-    logger.error({ userId, where: 'lumiLocalRouter', err: err.message }, 'local router failed');
+    reqLogger.error({ where: 'lumiLocalRouter', err: err.message }, 'local router failed');
     return null; // on any error, fall through to AI — never break the message
   }
 }

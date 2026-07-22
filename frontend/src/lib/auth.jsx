@@ -10,7 +10,6 @@ const AuthContext = createContext(null);
 
 // localStorage keys
 const USER_KEY = 'user';
-const ENCRYPTION_PASSWORD_KEY = 'plos_encryption_password';
 
 export function AuthProvider({ children }) {
   const [user, setUserState] = useState(null);
@@ -44,19 +43,10 @@ export function AuthProvider({ children }) {
       setUserState(storedUser);
     }
     
-    const storedPassword = sessionStorage.getItem(ENCRYPTION_PASSWORD_KEY);
-    if (storedPassword) {
-      setEncryptionPasswordState(storedPassword);
-    }
   }, []);
 
-  // Helper to set encryption password (persists to localStorage)
+  // Helper to set encryption password (in-memory only for the current session)
   function setEncryptionPassword(password) {
-    if (password) {
-      sessionStorage.setItem(ENCRYPTION_PASSWORD_KEY, password);
-    } else {
-      sessionStorage.removeItem(ENCRYPTION_PASSWORD_KEY);
-    }
     setEncryptionPasswordState(password);
   }
 

@@ -1,0 +1,34 @@
+{
+  "runtime": "NODE|22-lts",
+  "startupCommand": "npm start",
+  "healthCheckPath": "/health",
+  "workingDirectory": "backend",
+  "requiredAppSettings": [
+    "NODE_ENV",
+    "PORT",
+    "DATABASE_URL",
+    "JWT_SECRET",
+    "JWT_ACCESS_EXPIRY",
+    "TOKEN_ENC_KEY",
+    "FRONTEND_URL",
+    "AI_PROVIDER",
+    "GEMINI_API_KEY"
+  ],
+  "optionalAppSettings": [
+    "REDIS_URL",
+    "GROQ_API_KEY",
+    "OPENAI_API_KEY",
+    "GOOGLE_CLIENT_ID",
+    "GOOGLE_CLIENT_SECRET",
+    "GOOGLE_REDIRECT_URI",
+    "GMAIL_USER",
+    "GMAIL_APP_PASSWORD",
+    "VAPID_PUBLIC_KEY",
+    "VAPID_PRIVATE_KEY",
+    "VAPID_EMAIL",
+    "STRIPE_SECRET_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "STRIPE_PRO_PRICE_ID",
+    "LOG_LEVEL"
+  ]
+}

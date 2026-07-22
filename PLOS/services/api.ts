@@ -2,21 +2,56 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { router } from 'expo-router';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
-// NOTE: Update IP address when your
-// network changes. Run 'ipconfig' (Windows)
-// or 'ifconfig' (Mac) to get current IP.
-const BASE_URL = Platform.select({
-  android: 'http://192.168.1.22:3000',
-  ios: 'http://localhost:3000',
-  default: 'http://localhost:3000',
-});
+const API_PORT = 3000;
+
+/**
+ * Resolve the backend URL automatically.
+ *
+ * On a physical phone running Expo Go, "localhost" points at the PHONE, not your
+ * computer — so requests die silently. Instead we read the IP of the computer
+ * running the Expo dev server (the same machine your backend runs on) straight
+ * from the Expo connection, so it works on any Wi-Fi without hardcoding an IP.
+ *
+ * Override anytime by setting EXPO_PUBLIC_API_URL (e.g. http://10.0.0.5:3000).
+ */
+function resolveBaseUrl(): string {
+  // 1. Explicit override wins.
+  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  if (envUrl) return envUrl.replace(/\/$/, '');
+
+  // 2. Web / browser preview talks to localhost directly.
+  if (Platform.OS === 'web') return `http://localhost:${API_PORT}`;
+
+  // 3. Derive the dev machine's LAN IP from the Expo host (e.g. "192.168.1.22:8081").
+  const hostUri =
+    Constants.expoConfig?.hostUri ||
+    (Constants.expoGoConfig as any)?.debuggerHost ||
+    (Constants.manifest2 as any)?.extra?.expoGo?.debuggerHost ||
+    '';
+  const host = String(hostUri).split(':')[0];
+  if (host && host !== 'localhost' && host !== '127.0.0.1') {
+    return `http://${host}:${API_PORT}`;
+  }
+
+  // 4. Last-resort fallbacks.
+  return Platform.OS === 'android'
+    ? `http://10.0.2.2:${API_PORT}` // Android emulator -> host machine
+    : `http://localhost:${API_PORT}`;
+}
+
+const BASE_URL = resolveBaseUrl();
+if (__DEV__) console.log('[api] BASE_URL =', BASE_URL);
 
 const apiClient = axios.create({
   baseURL: BASE_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
+    // Tells the backend we're a native client so it returns the refresh token
+    // in the response body (mobile can't read httpOnly cookies).
+    'X-Client-Platform': Platform.OS,
   },
 });
 
@@ -103,16 +138,31 @@ apiClient.interceptors.response.use(
         // Retry original request
         return apiClient(originalRequest);
       } catch (refreshError) {
-        // Refresh failed - clear tokens and redirect to login
         processQueue(refreshError as AxiosError, null);
         isRefreshing = false;
-        
-        await SecureStore.deleteItemAsync('access_token');
-        await SecureStore.deleteItemAsync('refresh_token');
-        
-        // Navigate to login
-        router.replace('/(auth)/login');
-        
+
+        // Only force a logout when the refresh genuinely failed auth:
+        //   - the server rejected the refresh token (401/403), or
+        //   - there is no refresh token to use at all.
+        // A transient NETWORK error (no HTTP response) must NOT log the user
+        // out — that would interrupt a testing session for a momentary blip.
+        const status = (refreshError as AxiosError)?.response?.status;
+        const noResponse = !(refreshError as AxiosError)?.response;
+        const missingToken =
+          refreshError instanceof Error &&
+          refreshError.message === 'No refresh token available';
+
+        const isAuthFailure = status === 401 || status === 403 || missingToken;
+
+        if (isAuthFailure) {
+          await SecureStore.deleteItemAsync('access_token');
+          await SecureStore.deleteItemAsync('refresh_token');
+          router.replace('/(auth)/login');
+        } else if (noResponse) {
+          // Network hiccup — keep the session; the next request can retry.
+          console.warn('[api] token refresh skipped (network); keeping session');
+        }
+
         return Promise.reject(refreshError);
       }
     }

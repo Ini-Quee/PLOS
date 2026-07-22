@@ -81,9 +81,3 @@ export async function decryptText(ciphertext, ivBase64, saltBase64, password) {
     throw new Error('Decryption failed. Wrong password or corrupted data.');
   }
 }
-
-export function generateEncryptionPassword() {
-  const array = new Uint8Array(32);
-  crypto.getRandomValues(array);
-  return btoa(String.fromCharCode(...array));
-}

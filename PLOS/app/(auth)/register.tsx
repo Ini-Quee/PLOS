@@ -71,7 +71,7 @@ export default function RegisterScreen() {
         keyboardShouldPersistTaps="handled"
       >
         {/* Logo */}
-        <Text style={styles.logo}>PLOS</Text>
+        <Text style={styles.logo}>iNiQ</Text>
         <Text style={styles.tagline}>Create your account</Text>
 
         <View style={styles.spacer} />
@@ -193,9 +193,10 @@ const styles = StyleSheet.create({
   logo: {
     fontSize: 48,
     fontWeight: '800',
-    color: Colors.gold,
+    color: Colors.amber,
     textAlign: 'center',
     letterSpacing: 2,
+    fontFamily: 'Georgia',
   },
   tagline: {
     fontSize: Typography.caption.fontSize,
@@ -228,16 +229,16 @@ const styles = StyleSheet.create({
     height: 24,
   },
   registerButton: {
-    backgroundColor: Colors.blue,
+    backgroundColor: Colors.amber,
     borderRadius: 12,
     height: 54,
     justifyContent: 'center',
     alignItems: 'center',
   },
   registerButtonText: {
-    color: Colors.white,
+    color: '#080503',
     fontSize: Typography.body.fontSize,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   errorText: {
     color: Colors.coral,
@@ -251,7 +252,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   loginLinkBold: {
-    color: Colors.blue,
+    color: Colors.amber,
     fontWeight: '600',
   },
 });

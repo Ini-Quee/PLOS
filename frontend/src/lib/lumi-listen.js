@@ -40,6 +40,25 @@ export function startListening(callbacks = {}, options = {}) {
     // Stop any existing recognition
     stopListening();
 
+    // Track accumulated transcript — declared outside try/catch so clearTimers is accessible in both
+    let finalTranscript = '';
+    let interimTranscript = '';
+    let silenceTimer = null;
+    let maxDurationTimer = null;
+    let lastSpeechTime = Date.now();
+
+    // Clear any existing timers
+    const clearTimers = () => {
+      if (silenceTimer) {
+        clearTimeout(silenceTimer);
+        silenceTimer = null;
+      }
+      if (maxDurationTimer) {
+        clearTimeout(maxDurationTimer);
+        maxDurationTimer = null;
+      }
+    };
+
     try {
       recognition = new SpeechRecognition();
 
@@ -48,25 +67,6 @@ export function startListening(callbacks = {}, options = {}) {
       recognition.interimResults = options.interimResults ?? true;
       recognition.lang = options.language ?? currentLanguage;
       recognition.maxAlternatives = options.maxAlternatives ?? 1;
-
-      // Track accumulated transcript
-      let finalTranscript = '';
-      let interimTranscript = '';
-      let silenceTimer = null;
-      let maxDurationTimer = null;
-      let lastSpeechTime = Date.now();
-
-      // Clear any existing timers
-      const clearTimers = () => {
-        if (silenceTimer) {
-          clearTimeout(silenceTimer);
-          silenceTimer = null;
-        }
-        if (maxDurationTimer) {
-          clearTimeout(maxDurationTimer);
-          maxDurationTimer = null;
-        }
-      };
 
       // Reset silence timer when speech is detected
       const resetSilenceTimer = () => {

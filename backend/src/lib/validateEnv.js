@@ -25,9 +25,16 @@ function validateEnv() {
     process.exit(1);
   }
 
+  const configuredAiProvider = String(process.env.AI_PROVIDER || '').trim().toLowerCase();
+  const selectedAiConfigured = configuredAiProvider === 'gemini'
+    ? !!process.env.GEMINI_API_KEY
+    : configuredAiProvider === 'groq'
+      ? !!process.env.GROQ_API_KEY
+      : !!(process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY);
+
   const featureFlags = {
     redisEnabled:  !!process.env.REDIS_URL,
-    lumiEnabled:   !!(process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY),
+    lumiEnabled:   selectedAiConfigured,
     emailEnabled:  !!(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD),
     pushEnabled:   !!(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY),
     oauthEnabled:  !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),

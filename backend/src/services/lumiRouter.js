@@ -341,14 +341,18 @@ async function clearConvHistory(userId) {
 }
 
 // ─── Main entry point ───────────────────────────────────────────────────────────
-async function routeLumiInput(userId, text, context = {}, source = 'dashboard') {
+async function routeLumiInput(userId, text, context = {}, source = 'dashboard', reqLogger = logger) {
+  const executionStart = process.hrtime.bigint();
+  let aiDuration = 0n;
+  let sqlDuration = 0n;
+
   try {
     const pendingData = await getPending(userId);
     if (pendingData) {
       if (pendingData._type === 'publishable_confirm') {
-        return await handlePublishableConfirm(userId, text, pendingData);
+        return await handlePublishableConfirm(userId, text, pendingData, reqLogger);
       }
-      return await handleConfirmation(userId, text, pendingData);
+      return await handleConfirmation(userId, text, pendingData, reqLogger);
     }
 
     const convHistory = await getConvHistory(userId);
@@ -368,7 +372,7 @@ async function routeLumiInput(userId, text, context = {}, source = 'dashboard') 
     // Content filter — block prompt-injection / jailbreak before the model (no AI cost).
     const inputScreen = screenInput(text);
     if (!inputScreen.allow) {
-      logger.warn({ userId, action: 'input_blocked', reason: inputScreen.reason, route: source }, 'blocked by content filter');
+      reqLogger.warn({ action: 'input_blocked', reason: inputScreen.reason, route: source }, 'blocked by content filter');
       return {
         success: true,
         lumiResponse: "I can't help with that one — but I'm here for your day. What would help most right now?",
@@ -394,14 +398,14 @@ async function routeLumiInput(userId, text, context = {}, source = 'dashboard') 
     }
 
     // LOCAL LANE — simple lookups & commands, zero AI tokens.
-    const localResult = await tryLocal(userId, text, {
+    const localResult = await tryLocal(userId, text, reqLogger, {
       emotionalIntensity: emotionalContext.intensity || 1,
     });
     if (localResult) {
       localResult.lumiResponse = applyLumiVoice(localResult.lumiResponse, emotionalContext);
-      await writeToJournalEntry(userId, text, { actions: [], lumiResponse: localResult.lumiResponse }, localResult.savedItems || []);
+      await writeToJournalEntry(userId, text, { actions: [], lumiResponse: localResult.lumiResponse }, localResult.savedItems || [], reqLogger);
       await appendConvHistory(userId, text, localResult.lumiResponse);
-      logger.info({ userId, action: 'local_handled', intent: localResult.intent, route: 'local' }, 'handled without AI');
+      reqLogger.info({ action: 'local_handled', intent: localResult.intent, route: 'local' }, 'handled without AI');
       return localResult;
     }
 
@@ -425,21 +429,27 @@ async function routeLumiInput(userId, text, context = {}, source = 'dashboard') 
     context.persistentMemories = surfacedMemories;
     context.emotionalContext = emotionalContext;
 
-    const extraction = await extractAndClassify(userId, text, context, convHistory, source);
+    const aiStart = process.hrtime.bigint();
+    const extraction = await extractAndClassify(userId, text, context, convHistory, source, reqLogger);
+    aiDuration += process.hrtime.bigint() - aiStart;
+
     if (!extraction) throw new Error('Extraction returned null');
 
-    const result = await executeExtraction(userId, text, extraction);
+    const sqlStart = process.hrtime.bigint();
+    const result = await executeExtraction(userId, text, extraction, reqLogger);
+    sqlDuration += process.hrtime.bigint() - sqlStart;
+
     result.lumiResponse = applyLumiVoice(result.lumiResponse || extraction.lumiResponse, emotionalContext);
     // Output filter — catch prompt-leakage / secret echoes before returning (no AI cost).
     const outScreen = screenOutput(result.lumiResponse);
     if (!outScreen.allow || outScreen.reason) {
-      logger.warn({ userId, action: 'output_filtered', reason: outScreen.reason, route: source }, 'output filtered');
+      reqLogger.warn({ action: 'output_filtered', reason: outScreen.reason, route: source }, 'output filtered');
     }
     result.lumiResponse = outScreen.text || result.lumiResponse;
     extraction.lumiResponse = result.lumiResponse;
 
     // Always update the daily journal entry — cross-post everything
-    await writeToJournalEntry(userId, text, extraction, result.savedItems);
+    await writeToJournalEntry(userId, text, extraction, result.savedItems, reqLogger);
 
     // Save this exchange to Redis for future context
     if (result.lumiResponse) {
@@ -453,9 +463,17 @@ async function routeLumiInput(userId, text, context = {}, source = 'dashboard') 
       }
     }
 
+    const totalDuration = process.hrtime.bigint() - executionStart;
+    result.timing = {
+      ai: Number(aiDuration / 1000000n),
+      sql: Number(sqlDuration / 1000000n),
+      total: Number(totalDuration / 1000000n),
+    };
+    reqLogger.info({ timing: result.timing }, 'Execution timing');
+
     return result;
   } catch (err) {
-    logger.error({ userId, err: err.message }, 'lumi router error');
+    reqLogger.error({ err: err.message, stack: err.stack }, 'lumi router error');
     return {
       success: true,
       lumiResponse: "I'm here. Something went wrong — could you say that again?",
@@ -465,7 +483,7 @@ async function routeLumiInput(userId, text, context = {}, source = 'dashboard') 
 }
 
 // ─── Step 1: Extract + Emotional Intelligence ───────────────────────────────────
-async function extractAndClassify(userId, text, context, convHistory = [], source = 'dashboard') {
+async function extractAndClassify(userId, text, context, convHistory = [], source = 'dashboard', reqLogger = logger) {
   const customJournals = context.customJournalTypes || [];
   const customJournalBlock = customJournals.length > 0
     ? customJournals.map(j => `  "${j.type_key}" (${j.label}): keywords → ${(j.routing_keywords||[]).join(', ')}`).join('\n')
@@ -784,9 +802,18 @@ Example: "memories_to_save": [{ "type": "goal", "content": "Wants to run a marat
 
     const cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
     const match = cleaned.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error('No JSON in response');
+    if (!match) {
+      logger.error({ userId, rawResponse: raw }, 'extraction returned malformed JSON');
+      throw new Error('No JSON in response');
+    }
 
-    const parsed = JSON.parse(match[0]);
+    let parsed;
+    try {
+      parsed = JSON.parse(match[0]);
+    } catch (parseErr) {
+      logger.error({ userId, err: parseErr.message, rawResponse: raw }, 'extraction returned invalid JSON');
+      throw parseErr;
+    }
     if (!Array.isArray(parsed.actions)) parsed.actions = [];
     return parsed;
   } catch (err) {
@@ -800,7 +827,7 @@ Example: "memories_to_save": [{ "type": "goal", "content": "Wants to run a marat
 }
 
 // ─── Step 2: Execute all actions against the real DB ───────────────────────────
-async function executeExtraction(userId, originalText, extraction) {
+async function executeExtraction(userId, originalText, extraction, reqLogger = logger) {
   const savedItems = [];
   const results = {
     pendingJournalPage: null, needsJournalPreview: false,
@@ -809,7 +836,7 @@ async function executeExtraction(userId, originalText, extraction) {
 
   // ── Sensitivity gate: never auto-write publishable-tier from a single AI turn ──
   const publishableActions = extraction.actions.filter(a =>
-    requiresConfirmEscalation(TIER.private, a.type)
+    requiresConfirmEscalation(TIER.personal, a.type)
   );
   if (publishableActions.length > 0) {
     const pendingKey = `lumi_publishable:${userId}`;
@@ -844,39 +871,20 @@ async function executeExtraction(userId, originalText, extraction) {
             extraction.lumiResponse = `How much did you spend on ${category}? I want to log the exact amount for you.`;
             break;
           }
+          const budgetSql = `INSERT INTO budget_entries (user_id, amount, currency, category, note, type, entry_date, source) VALUES ($1,$2,$3,$4,$5,$6,CURRENT_DATE,'lumi') RETURNING id, amount, currency, category, note, type`;
+          const budgetParams = [userId, amount, d.currency||'₦', normaliseCategory(d.category), d.note||'', d.entry_type==='income'?'income':'expense'];
+          reqLogger.debug({ sql: budgetSql, params: budgetParams }, 'Executing SQL for budget_entry');
           const row = await pool.query(
-            `INSERT INTO budget_entries
-               (user_id, amount, currency, category, note, type, entry_date, source)
-             VALUES ($1,$2,$3,$4,$5,$6,CURRENT_DATE,'lumi')
-             RETURNING id, amount, currency, category, note, type`,
-            [userId, amount, d.currency||'₦', normaliseCategory(d.category), d.note||'', d.entry_type==='income'?'income':'expense']
+            budgetSql,
+            budgetParams
           );
-          logger.info({ userId, action: 'budget_entry', resource: 'budget_entries' }, 'saved');
+          reqLogger.debug({ returnedRows: row.rows }, 'SQL result for budget_entry');
+          reqLogger.info({ action: 'budget_entry', resource: 'budget_entries' }, 'saved');
           savedItems.push({
             type: 'budget_entry',
             label: `${d.currency||'₦'}${amount.toLocaleString('en-NG')} — ${normaliseCategory(d.category)}${d.note?` (${d.note})`:''}`,
             destination: 'Pave / Budget + Daily Journal',
             data: row.rows[0],
-          });
-          break;
-        }
-
-        case 'workout_note': {
-          const content = d.status==='skipped'
-            ? `Workout skipped${d.reason?` — ${d.reason}`:''}`
-            : `Workout completed${d.note?` — ${d.note}`:''}`;
-          await pool.query(
-            `INSERT INTO lumi_conversations
-               (user_id, user_message, lumi_response, route, saved_data, source, needs_confirmation, created_at)
-             VALUES ($1,$2,'Workout note saved.','health',$3,'lumi',false,NOW())`,
-            [userId, content, JSON.stringify({ type:'workout_note', ...d })]
-          );
-          logger.info({ userId, action: 'workout_note', resource: 'lumi_conversations' }, 'saved');
-          savedItems.push({
-            type: 'workout_note',
-            label: content,
-            destination: 'Health log + Daily Journal',
-            data: d,
           });
           break;
         }
@@ -891,13 +899,14 @@ async function executeExtraction(userId, originalText, extraction) {
           const targetDate = isPeriodPlan
             ? new Date(Date.now()+86400000).toISOString().slice(0,10)
             : null;
+          const scheduleSql = `INSERT INTO schedules (user_id, title, description, start_time, duration_minutes, category, repeat_pattern, is_active, target_date) VALUES ($1,$2,$3,$4::time,$5,$6,'none',true,$7)`;
+          const scheduleParams = [userId, d.title, d.note||d.desc||'', timeStr, d.duration_minutes||30, d.category||'wellness', targetDate];
+          reqLogger.debug({ sql: scheduleSql, params: scheduleParams }, 'Executing SQL for schedule_item');
           await pool.query(
-            `INSERT INTO schedules
-               (user_id, title, description, start_time, duration_minutes, category, repeat_pattern, is_active, target_date)
-             VALUES ($1,$2,$3,$4::time,$5,$6,'none',true,$7)`,
-            [userId, d.title, d.note||d.desc||'', timeStr, d.duration_minutes||30, d.category||'wellness', targetDate]
-          ).catch(err => logger.error({ userId, action: 'schedule_item', err: err.message }, 'insert failed'));
-          logger.info({ userId, action: 'schedule_item', resource: 'schedules' }, 'saved');
+            scheduleSql,
+            scheduleParams
+          ).catch(err => reqLogger.error({ action: 'schedule_item', err: err.message }, 'insert failed'));
+          reqLogger.info({ action: 'schedule_item', resource: 'schedules' }, 'saved');
           savedItems.push({
             type: 'schedule_item',
             label: `"${d.title}" added to Planner${targetDate?' for tomorrow':''}`,
@@ -911,41 +920,41 @@ async function executeExtraction(userId, originalText, extraction) {
           const habitName = d.habit_name || d.habitName;
           if (!habitName) break;
           let habitId;
+          const findSql = `SELECT id FROM habits WHERE user_id=$1 AND title ILIKE $2 ESCAPE '\\' LIMIT 1`;
+          const findParams = [userId, `%${habitName.replace(/[%_\\]/g, '\\$&')}%`];
+          reqLogger.debug({ sql: findSql, params: findParams }, 'Executing SQL for habit_log (find)');
           const find = await pool.query(
-            `SELECT id FROM habits WHERE user_id=$1 AND title ILIKE $2 ESCAPE '\\' LIMIT 1`,
-            [userId, `%${habitName.replace(/[%_\\]/g, '\\$&')}%`]
-          ).catch((e)=>{ logger.error({ userId, action: 'habit_log', err: e.message }, 'habit find failed'); return {rows:[]}; });
+            findSql,
+            findParams
+          ).catch((e)=>{ reqLogger.error({ action: 'habit_log', err: e.message }, 'habit find failed'); return {rows:[]}; });
           if (find.rows.length===0) {
+            const insertSql = `INSERT INTO habits (user_id, title) VALUES ($1,$2) RETURNING id`;
+            reqLogger.debug({ sql: insertSql, params: [userId, habitName] }, 'Executing SQL for habit_log (create)');
             const ins = await pool.query(
-              `INSERT INTO habits (user_id, title) VALUES ($1,$2) RETURNING id`,
+              insertSql,
               [userId, habitName]
-            ).catch((e)=>{ logger.error({ userId, action: 'habit_log', err: e.message }, 'habit insert failed'); return null; });
+            ).catch((e)=>{ reqLogger.error({ action: 'habit_log', err: e.message }, 'habit insert failed'); return null; });
             habitId = ins?.rows[0]?.id;
           } else {
             habitId = find.rows[0].id;
           }
           if (habitId) {
-            const completed = d.completed!==false;
-            if (completed) {
+            const status = d.completed === false ? 'missed' : 'completed';
+            if (status === 'completed') {
+              const completeSql = `INSERT INTO habit_completions (habit_id, user_id, completion_date, identity_score) VALUES ($1,$2,CURRENT_DATE,$3) ON CONFLICT (habit_id, completion_date) DO UPDATE SET identity_score = EXCLUDED.identity_score RETURNING id, completion_date`;
+              reqLogger.debug({ sql: completeSql, params: [habitId, userId, d.identity_score ?? null] }, 'Executing SQL for habit_log (complete)');
               await pool.query(
-                `INSERT INTO habit_completions (habit_id, user_id, completion_date)
-                 VALUES ($1,$2,CURRENT_DATE)
-                 ON CONFLICT (habit_id, completion_date) DO NOTHING`,
-                [habitId, userId]
-              ).catch((e)=>{ logger.error({ userId, action: 'habit_log', err: e.message }, 'habit completion failed'); });
-            } else {
-              await pool.query(
-                `DELETE FROM habit_completions
-                 WHERE habit_id=$1 AND user_id=$2 AND completion_date=CURRENT_DATE`,
-                [habitId, userId]
-              ).catch((e)=>{ logger.error({ userId, action: 'habit_log', err: e.message }, 'habit uncomplete failed'); });
+                completeSql,
+                [habitId, userId, d.identity_score ?? null]
+              ).catch((e)=>{ reqLogger.error({ action: 'habit_log', err: e.message }, 'habit completion failed'); });
             }
-            logger.info({ userId, action: 'habit_log', resource: 'habits' }, 'saved');
+
+            reqLogger.info({ action: 'habit_log', resource: 'habits' }, 'saved');
             savedItems.push({
               type: 'habit_log',
-              label: `${habitName} — ${completed?'done ✓':'missed'}`,
+              label: `${habitName} — ${status === 'completed' ? 'done ✓' : 'missed'}`,
               destination: 'Habit tracker + Daily Journal',
-              data: d,
+              data: { ...d, habit_id: habitId, status },
             });
           }
           break;
@@ -954,7 +963,7 @@ async function executeExtraction(userId, originalText, extraction) {
         case 'life_note': {
           // life_note goes to the daily journal narrative only (handled in writeToJournalEntry)
           // No separate DB table — the narrative is built in writeToJournalEntry
-          logger.info({ userId, action: 'life_note', resource: 'lumi_daily_entries' }, 'saved');
+          reqLogger.info({ action: 'life_note', resource: 'lumi_daily_entries' }, 'saved');
           savedItems.push({
             type: 'life_note',
             label: (d.content||'').slice(0,80),
@@ -968,15 +977,15 @@ async function executeExtraction(userId, originalText, extraction) {
           const content = d.content || d.text || '';
           if (!content) break;
           if (extraction.needsConfirmation) break;
+          const draftSql = `INSERT INTO lumi_conversations (user_id, user_message, lumi_response, route, saved_data, source, needs_confirmation, created_at) VALUES ($1,$2,$3,$4,$5,'lumi',false,NOW())`;
           const journalType = d.journal_type || d.journalType || 'personal';
+          const draftParams = [userId, content, `Journal draft saved to ${journalType}.`, journalType, JSON.stringify({ pending_journal:true, journal_type:journalType, content, summary:d.summary||'' })];
+          reqLogger.debug({ sql: draftSql, params: draftParams }, 'Executing SQL for journal_draft');
           await pool.query(
-            `INSERT INTO lumi_conversations
-               (user_id, user_message, lumi_response, route, saved_data, source, needs_confirmation, created_at)
-             VALUES ($1,$2,$3,$4,$5,'lumi',false,NOW())`,
-            [userId, content, `Journal draft saved to ${journalType}.`, journalType,
-             JSON.stringify({ pending_journal:true, journal_type:journalType, content, summary:d.summary||'' })]
+            draftSql,
+            draftParams
           );
-          logger.info({ userId, action: 'journal_draft', resource: 'lumi_conversations' }, 'saved');
+          reqLogger.info({ action: 'journal_draft', resource: 'lumi_conversations' }, 'saved');
           savedItems.push({
             type: 'journal_draft',
             label: `Note saved to ${journalType} journal`,
@@ -994,7 +1003,23 @@ async function executeExtraction(userId, originalText, extraction) {
           const fields       = normalized.fields;
 
           if (Object.keys(fields).length === 0) {
-            logger.warn({ userId, action: 'journal_page_entry' }, 'empty fields');
+            reqLogger.warn({ action: 'journal_page_entry' }, 'empty fields');
+            break;
+          }
+
+          // If the journal page is for a factual, structured template, save it automatically.
+          // Only ask for confirmation on free-form, reflective, or sensitive entries.
+          const isFactualTemplate = ['Daily Expenses', 'Fitness Log', 'Sleep Log', 'Habit Tracker'].includes(templateName);
+          if (isFactualTemplate) {
+            const savedEntry = await confirmJournalPageWrite(userId, normalized, reqLogger);
+            if (savedEntry) {
+              savedItems.push({
+                type: 'journal_page_entry',
+                label: `${templateName} page in ${JOURNAL_LABELS[journalType] || journalType}`,
+                destination: `Journal / ${journalType}`,
+                data: savedEntry,
+              });
+            }
             break;
           }
 
@@ -1014,7 +1039,7 @@ async function executeExtraction(userId, originalText, extraction) {
           results.pendingJournalPage = pendingPage;
           results.needsJournalPreview = true;
 
-          logger.info({ userId, action: 'journal_page_entry', resource: 'journal_page_entries' }, 'pending preview');
+          reqLogger.info({ action: 'journal_page_entry', resource: 'journal_page_entries' }, 'pending preview');
           break;
         }
 
@@ -1023,7 +1048,7 @@ async function executeExtraction(userId, originalText, extraction) {
           const journalLabel = d.journal_label || d.journalLabel;
           const newTemplate  = d.new_template || d.newTemplate;
           if (!journalLabel || !newTemplate?.name) {
-            logger.warn({ userId, action: 'update_journal_type' }, 'missing label or template name');
+            reqLogger.warn({ action: 'update_journal_type' }, 'missing label or template name');
             break;
           }
 
@@ -1035,7 +1060,7 @@ async function executeExtraction(userId, originalText, extraction) {
           ).catch(() => ({ rows: [] }));
 
           if (found.rows.length === 0) {
-            logger.warn({ userId, action: 'update_journal_type' }, 'no journal found');
+            reqLogger.warn({ action: 'update_journal_type' }, 'no journal found');
             break;
           }
 
@@ -1048,7 +1073,7 @@ async function executeExtraction(userId, originalText, extraction) {
             [JSON.stringify(merged), existing.id]
           );
 
-          logger.info({ userId, action: 'update_journal_type', resource: 'user_journal_types' }, 'saved');
+          reqLogger.info({ action: 'update_journal_type', resource: 'user_journal_types' }, 'saved');
           savedItems.push({
             type: 'update_journal_type',
             label: `Added "${newTemplate.name}" section to ${journalLabel} journal`,
@@ -1064,7 +1089,7 @@ async function executeExtraction(userId, originalText, extraction) {
           const content      = d.content || '';
           const scheduledFor = d.scheduled_for || d.scheduledFor;
           if (!content || !scheduledFor) {
-            logger.warn({ userId, action: 'content_post' }, 'missing content or scheduled_for');
+            reqLogger.warn({ action: 'content_post' }, 'missing content or scheduled_for');
             break;
           }
           await pool.query(
@@ -1072,9 +1097,9 @@ async function executeExtraction(userId, originalText, extraction) {
                (user_id, platform, content, title, category, scheduled_for, source)
              VALUES ($1,$2,$3,$4,$5,$6,'lumi')`,
             [userId, platform, content, d.title || null, d.category || null, scheduledFor]
-          ).catch(err => logger.error({ userId, action: 'content_post', err: err.message }, 'insert failed'));
+          ).catch(err => reqLogger.error({ action: 'content_post', err: err.message }, 'insert failed'));
 
-          logger.info({ userId, action: 'content_post', resource: 'scheduled_posts' }, 'saved');
+          reqLogger.info({ action: 'content_post', resource: 'scheduled_posts' }, 'saved');
           savedItems.push({
             type: 'content_post',
             label: `${platform.charAt(0).toUpperCase() + platform.slice(1)} post — ${d.title || 'Scheduled content'}`,
@@ -1090,7 +1115,7 @@ async function executeExtraction(userId, originalText, extraction) {
           const subject = d.subject;
           const body    = d.body || d.content || '';
           if (!to || !body) {
-            logger.warn({ userId, action: 'send_email' }, 'missing to or body');
+            reqLogger.warn({ action: 'send_email' }, 'missing to or body');
             break;
           }
 
@@ -1101,7 +1126,7 @@ async function executeExtraction(userId, originalText, extraction) {
               // Multiple matches — ask user to disambiguate
               const names = candidates.map(c => `${c.name} (${c.email})`).join(', ');
               extraction.lumiResponse = `I found a few contacts matching "${to}": ${names}. Which one did you mean?`;
-              logger.info({ userId, action: 'entity_resolve', resource: 'contact', count: candidates.length }, 'disambiguation');
+              reqLogger.info({ action: 'entity_resolve', resource: 'contact', count: candidates.length }, 'disambiguation');
               break;
             }
             if (resolved) {
@@ -1112,7 +1137,7 @@ async function executeExtraction(userId, originalText, extraction) {
           // Same preview-first pattern as journal_page_entry
           results.pendingEmail = { to, subject: subject || 'Message from IniQ', body, schedule_for: d.schedule_for || null };
           results.needsEmailPreview = true;
-          logger.info({ userId, action: 'send_email', resource: 'email' }, 'preview pending');
+          reqLogger.info({ action: 'send_email', resource: 'email' }, 'preview pending');
           break;
         }
 
@@ -1121,7 +1146,7 @@ async function executeExtraction(userId, originalText, extraction) {
           const title = d.title;
           const eventDate = d.date || d.event_date;
           if (!title || !eventDate) {
-            logger.warn({ userId, action: 'calendar_event' }, 'missing title or date');
+            reqLogger.warn({ action: 'calendar_event' }, 'missing title or date');
             break;
           }
 
@@ -1133,7 +1158,7 @@ async function executeExtraction(userId, originalText, extraction) {
              VALUES ($1,$2,$3,'09:00:00',60,'personal','none',true,$4)
              ON CONFLICT DO NOTHING`,
             [userId, title, d.note || '', eventDate]
-          ).catch(err => logger.error({ userId, action: 'calendar_event', err: err.message }, 'insert failed'));
+          ).catch(err => reqLogger.error({ action: 'calendar_event', err: err.message }, 'insert failed'));
 
           // If a reminder is requested, create a second entry N days before
           if (d.reminder_days_before && parseInt(d.reminder_days_before) > 0) {
@@ -1151,7 +1176,7 @@ async function executeExtraction(userId, originalText, extraction) {
             ).catch(() => {});
           }
 
-          logger.info({ userId, action: 'calendar_event', resource: 'schedules' }, 'saved');
+          reqLogger.info({ action: 'calendar_event', resource: 'schedules' }, 'saved');
           savedItems.push({
             type: 'calendar_event',
             label: `"${title}" on ${eventDate}${d.reminder_days_before ? ` (reminder ${d.reminder_days_before} days before)` : ''}`,
@@ -1162,9 +1187,51 @@ async function executeExtraction(userId, originalText, extraction) {
         }
       }
     } catch (err) {
-      logger.error({ userId, action: action.type, err: err.message }, 'action failed');
+      reqLogger.error({ action: action.type, err: err.message, stack: err.stack }, 'action failed');
     }
   }
+
+  // Build execution summary and refresh list
+  const executionSummary = [];
+  const refresh = new Set();
+
+  for (const item of savedItems) {
+    const moduleMap = {
+      budget_entry: 'Budget',
+      habit_log: 'Habits',
+      journal_page_entry: 'Journal',
+      schedule_item: 'Planner',
+      calendar_event: 'Planner',
+      life_note: 'Journal',
+      journal_draft: 'Journal',
+      create_memory: 'Memory',
+      content_post: 'Content',
+    };
+
+    const statusMap = {
+      budget_entry: 'saved',
+      habit_log: item.data.status || 'completed',
+      default: 'updated',
+    };
+
+    executionSummary.push({
+      module: moduleMap[item.type] || 'General',
+      status: statusMap[item.type] || statusMap.default,
+      message: item.label,
+      timestamp: new Date().toISOString(),
+    });
+
+    switch (item.type) {
+      case 'budget_entry': refresh.add('budget').add('journal').add('dashboard'); break;
+      case 'habit_log': refresh.add('habits').add('journal').add('dashboard'); break;
+      case 'schedule_item': refresh.add('schedule').add('journal').add('dashboard'); break;
+      case 'journal_page_entry': refresh.add('journal').add('dashboard'); break;
+      case 'create_memory': refresh.add('memories').add('dashboard'); break;
+      default: refresh.add('dashboard'); break;
+    }
+  }
+
+  reqLogger.debug({ savedItems, executionSummary, refresh: Array.from(refresh) }, 'Final API response payload');
 
   if (extraction.needsConfirmation && extraction.pendingJournalContent) {
     const jAction = extraction.actions?.find(a=>a.type==='journal_draft');
@@ -1214,10 +1281,11 @@ async function executeExtraction(userId, originalText, extraction) {
     lumiResponse: finalResponse,
     saved: savedItems.length>0,
     savedItems,
+    executionSummary,
+    refresh: Array.from(refresh),
     savedData: savedItems[0]?.data || null,
     route: budgetItems.length>0 ? 'budget'
          : savedItems[0]?.type==='schedule_item' ? 'schedule'
-         : savedItems[0]?.type==='workout_note' ? 'health'
          : savedItems[0]?.type==='habit_log' ? 'habits'
          : savedItems[0]?.type==='journal_draft' ? (savedItems[0]?.data?.journal_type||'personal')
          : results.needsJournalPreview ? (results.pendingJournalPage.journal_type || 'journal')
@@ -1238,11 +1306,11 @@ async function executeExtraction(userId, originalText, extraction) {
 }
 
 // ─── Confirm and save a journal page entry ────────────────────────────────────
-async function confirmJournalPageWrite(userId, pendingData) {
+async function confirmJournalPageWrite(userId, pendingData, reqLogger = logger) {
   if (Array.isArray(pendingData.entries) && pendingData.entries.length > 0) {
     const entries = [];
     for (const entry of pendingData.entries) {
-      const result = await confirmJournalPageWrite(userId, entry);
+      const result = await confirmJournalPageWrite(userId, entry, reqLogger);
       if (!result.success) return result;
       entries.push(result.entry);
     }
@@ -1252,33 +1320,26 @@ async function confirmJournalPageWrite(userId, pendingData) {
   const { journal_type, template_name, fields, entry_date, source } = pendingData;
   const normalized = normalizeJournalPagePayload({ journal_type, template_name, fields, entry_date, source });
   try {
-    const legacyResult = await pool.query(
-      `INSERT INTO journal_page_entries
-         (user_id, journal_type, template_name, entry_date, fields, source)
-       VALUES ($1,$2,$3,$4::date,$5::jsonb,$6)
-       ON CONFLICT (user_id, journal_type, template_name, entry_date)
-       DO UPDATE SET
-         fields     = journal_page_entries.fields || $5::jsonb,
-         source     = $6,
-         updated_at = NOW()
-       RETURNING id, journal_type, template_name, entry_date, source`,
-      [
-        userId,
-        normalized.journal_type,
-        normalized.template_name,
-        normalized.entry_date,
-        JSON.stringify(normalized.fields),
-        normalized.source,
-      ]
-    );
-    const dailyEntry = await saveJournalPageToDailyEntries(userId, normalized).catch((err) => {
-      logger.error({ userId, err: err.message }, 'daily_entries mirror save error');
+    const sql = `INSERT INTO journal_page_entries (user_id, journal_type, template_name, entry_date, fields, source) VALUES ($1,$2,$3,$4::date,$5::jsonb,$6) ON CONFLICT (user_id, journal_type, template_name, entry_date) DO UPDATE SET fields = journal_page_entries.fields || $5::jsonb, source = $6, updated_at = NOW() RETURNING id, journal_type, template_name, entry_date, source`;
+    const params = [
+      userId,
+      normalized.journal_type,
+      normalized.template_name,
+      normalized.entry_date,
+      JSON.stringify(normalized.fields),
+      normalized.source,
+    ];
+    reqLogger.debug({ sql, params }, 'Executing SQL for confirmJournalPageWrite');
+    const legacyResult = await pool.query(sql, params);
+
+    const dailyEntry = await saveJournalPageToDailyEntries(userId, normalized, reqLogger).catch((err) => {
+      reqLogger.error({ err: err.message }, 'daily_entries mirror save error');
       return null;
     });
-    logger.info({ userId, action: 'journal_page_entry', resource: 'journal_page_entries' }, 'saved');
+    reqLogger.info({ action: 'journal_page_entry', resource: 'journal_page_entries' }, 'saved');
     return { success: true, entry: { ...legacyResult.rows[0], daily_entry_id: dailyEntry?.id || null } };
   } catch (err) {
-    logger.error({ userId, err: err.message }, 'confirmJournalPageWrite error');
+    reqLogger.error({ err: err.message, stack: err.stack }, 'confirmJournalPageWrite error');
     return { success: false, error: err.message };
   }
 }
@@ -1290,7 +1351,7 @@ async function confirmJournalPageWrite(userId, pendingData) {
  * human-readable daily narrative stored in lumi_daily_entries.
  * When the user opens Journal → Daily Life they see their whole day in one place.
  */
-async function writeToJournalEntry(userId, originalText, extraction, savedItems) {
+async function writeToJournalEntry(userId, originalText, extraction, savedItems, reqLogger = logger) {
   try {
     const actions = extraction.actions || [];
 
@@ -1315,11 +1376,8 @@ async function writeToJournalEntry(userId, originalText, extraction, savedItems)
             type: d.entry_type || 'expense',
           });
           break;
-        case 'workout_note':
-          newSections.workouts.push({ status: d.status, reason: d.reason||null, request: d.request||null });
-          break;
         case 'habit_log':
-          newSections.habits.push({ name: d.habit_name||d.habitName, completed: d.completed!==false });
+          newSections.habits.push({ name: d.habit_name||d.habitName, completed: d.completed!==false, status: d.completed === false ? 'missed' : 'completed' });
           break;
         case 'life_note':
           if (d.content) newSections.life_notes.push(d.content);
@@ -1343,18 +1401,9 @@ async function writeToJournalEntry(userId, originalText, extraction, savedItems)
         .join(', ');
       parts.push(`${now} — Spent ${expenseLines}.`);
     }
-    if (newSections.workouts.length > 0) {
-      newSections.workouts.forEach(w => {
-        if (w.status==='skipped') {
-          parts.push(`Workout skipped${w.reason?` due to ${w.reason}`:''}.${w.request?' Requested alternative plan.':''}`);
-        } else {
-          parts.push(`Workout completed.`);
-        }
-      });
-    }
     if (newSections.habits.length > 0) {
       newSections.habits.forEach(h => {
-        parts.push(`Habit "${h.name}": ${h.completed?'completed ✓':'missed today'}.`);
+        parts.push(`Habit "${h.name}": ${h.status}.`);
       });
     }
     newSections.life_notes.forEach(n => parts.push(n));
@@ -1382,17 +1431,17 @@ async function writeToJournalEntry(userId, originalText, extraction, savedItems)
          mood       = COALESCE($4, lumi_daily_entries.mood),
          updated_at = NOW()`,
       [userId, newNarrativeLine, JSON.stringify(newSections), extraction.emotion || null]
-    ).catch((err) => { logger.error({ userId, err: err.message }, 'daily_entries upsert failed'); });
+    ).catch((err) => { reqLogger.error({ err: err.message }, 'daily_entries upsert failed'); });
 
-    logger.info({ userId, action: 'daily_journal', resource: 'lumi_daily_entries' }, 'updated');
+    reqLogger.info({ action: 'daily_journal', resource: 'lumi_daily_entries' }, 'updated');
   } catch (err) {
-    logger.error({ userId, err: err.message }, 'writeToJournalEntry error');
+    reqLogger.error({ err: err.message, stack: err.stack }, 'writeToJournalEntry error');
     // Non-fatal — don't break the main response
   }
 }
 
 // ─── Confirmation handler for publishable-tier escalation ─────────────────────
-async function handlePublishableConfirm(userId, userResponse, pendingData) {
+async function handlePublishableConfirm(userId, userResponse, pendingData, reqLogger = logger) {
   const lower = userResponse.toLowerCase().trim();
   const yes = ['yes','yeah','sure','ok','okay','go ahead','do it','yep','please','confirm','post it','send it'].some(w=>lower.includes(w));
   const no  = ['no',"don't",'skip','nope','cancel','dont','never mind','stop'].some(w=>lower.includes(w));
@@ -1423,7 +1472,7 @@ async function handlePublishableConfirm(userId, userResponse, pendingData) {
                VALUES ($1,$2,$3,$4,$5,$6,'lumi')`,
               [userId, platform, content, d.title || null, d.category || null, scheduledFor]
             );
-            logger.info({ userId, action: 'content_post', resource: 'scheduled_posts' }, 'confirmed');
+          reqLogger.info({ action: 'content_post', resource: 'scheduled_posts' }, 'confirmed');
             savedItems.push({
               type: 'content_post',
               label: `${platform.charAt(0).toUpperCase() + platform.slice(1)} post — ${d.title || 'Scheduled content'}`,
@@ -1443,13 +1492,13 @@ async function handlePublishableConfirm(userId, userResponse, pendingData) {
           }
         }
       } catch (err) {
-        logger.error({ userId, action: action.type, err: err.message }, 'publishable action failed');
+        reqLogger.error({ action: action.type, err: err.message }, 'publishable action failed');
       }
     }
     return {
       success: true,
       lumiResponse: savedItems.length > 0
-        ? `Done — ${savedItems.map(s => s.label).join('; ')}.`
+        ? `Done! ${savedItems.map(s => s.label).join('; ')}.`
         : "All set. What's next?",
       saved: savedItems.length > 0,
       savedItems,
@@ -1468,7 +1517,7 @@ async function handlePublishableConfirm(userId, userResponse, pendingData) {
 }
 
 // ─── Confirmation handler ───────────────────────────────────────────────────────
-async function handleConfirmation(userId, userResponse, pendingData) {
+async function handleConfirmation(userId, userResponse, pendingData, reqLogger = logger) {
   const lower = userResponse.toLowerCase().trim();
   const yes = ['yes','yeah','sure','ok','okay','save','go ahead','do it','yep','please','correct'].some(w=>lower.includes(w));
   const no  = ['no',"don't",'skip','nope','cancel','dont','never mind'].some(w=>lower.includes(w));
@@ -1496,7 +1545,7 @@ async function handleConfirmation(userId, userResponse, pendingData) {
       [userId, narrative]
     ).catch(()=>{});
 
-    logger.info({ userId, action: 'journal_draft', resource: 'lumi_conversations' }, 'confirmed');
+    reqLogger.info({ action: 'journal_draft', resource: 'lumi_conversations' }, 'confirmed');
     return {
       success: true,
       lumiResponse: `Saved to your ${journalType} journal ✓. It's there whenever you want to reflect on it.`,
@@ -1540,12 +1589,12 @@ async function confirmAndSave(userId, journalType, content, summary='') {
 }
 
 // ─── Shared context builder ─────────────────────────────────────────────────────
-async function buildUserContext(userId) {
+async function buildUserContext(userId, reqLogger = logger) {
   try {
     const lifeContext = await getUserLifeContext(userId, '30days');
     return formatLegacyContext(lifeContext);
   } catch (err) {
-    logger.error({ userId, err: err.message }, 'context engine fallback');
+    reqLogger.error({ err: err.message }, 'context engine fallback');
   }
 
   const ctx = {
@@ -1632,7 +1681,7 @@ async function buildUserContext(userId) {
     ctx.persistentMemories = await getUserMemories(userId);
 
   } catch (err) {
-    logger.error({ userId, err: err.message }, 'buildUserContext error');
+    reqLogger.error({ err: err.message, stack: err.stack }, 'buildUserContext error');
   }
   return ctx;
 }
@@ -1679,7 +1728,7 @@ async function updateHabit(userId, data) {
       `INSERT INTO habit_completions (habit_id, user_id, completion_date)
        VALUES ($1,$2,CURRENT_DATE) ON CONFLICT (habit_id, completion_date) DO NOTHING`,
       [habitId, userId]
-    ).catch((e)=>{ logger.error({ userId, action: 'updateHabit', err: e.message }, 'completion failed'); });
+    ).catch((e)=>{ reqLogger.error({ action: 'updateHabit', err: e.message }, 'completion failed'); });
   }
   return { habit_name:data.habitName, completed:true };
 }

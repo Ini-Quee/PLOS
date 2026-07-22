@@ -17,9 +17,16 @@ setInterval(() => {
 }, 60_000);
 
 function rateLimiter(maxAttempts, windowSeconds, keyPrefix = 'rl') {
+  // Production stays strict. In development we raise the ceiling so testing on a
+  // phone (repeated logins, hot reloads) doesn't lock you out — and so an
+  // already-overflowed counter immediately falls back under the limit.
+  const isProd = process.env.NODE_ENV === 'production';
+  const effectiveMax = isProd ? maxAttempts : Math.max(maxAttempts, 1000);
+
   return async (req, res, next) => {
     const identifier = req.ip;
     const key = `${keyPrefix}:${identifier}`;
+    maxAttempts = effectiveMax;
 
     try {
       if (redisClient.isAvailable()) {
@@ -76,9 +83,26 @@ function rateLimiter(maxAttempts, windowSeconds, keyPrefix = 'rl') {
   };
 }
 
+/**
+ * Clear a rate-limit counter. Call this after a SUCCESSFUL login so a legitimate
+ * user who finally types the right password is immediately un-throttled, instead
+ * of being stuck behind the failed-attempt counter for the whole window.
+ */
+async function resetRateLimit(req, keyPrefix = 'rl') {
+  const key = `${keyPrefix}:${req.ip}`;
+  try {
+    if (redisClient.isAvailable()) {
+      await redisClient.getClient().del(key);
+    }
+    memStore.delete(key);
+  } catch (err) {
+    console.error('[RateLimit] reset error:', err.message);
+  }
+}
+
 // Keep legacy export for any files that import getRedisClient directly
 function getRedisClient() {
   return redisClient.isAvailable() ? redisClient.getClient() : null;
 }
 
-module.exports = { rateLimiter, getRedisClient };
+module.exports = { rateLimiter, resetRateLimit, getRedisClient };

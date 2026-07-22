@@ -27,8 +27,46 @@ const base = pino
       error: (o, m) => console.error(JSON.stringify({ level: 'error', ...redact(o), msg: m })),
     };
 
-module.exports = {
-  info:  (fields, msg) => base.info(redact(fields), msg),
-  warn:  (fields, msg) => base.warn(redact(fields), msg),
-  error: (fields, msg) => base.error(redact(fields), msg),
+const logger = {
+  info(fields = {}, msg) {
+    base.info(redact(fields), msg);
+  },
+
+  warn(fields = {}, msg) {
+    base.warn(redact(fields), msg);
+  },
+
+  error(fields = {}, msg) {
+    base.error(redact(fields), msg);
+  },
+
+  child(bindings = {}) {
+    const childBase =
+      typeof base.child === 'function'
+        ? base.child(redact(bindings))
+        : base;
+
+    return {
+      info(fields = {}, msg) {
+        childBase.info(redact(fields), msg);
+      },
+
+      warn(fields = {}, msg) {
+        childBase.warn(redact(fields), msg);
+      },
+
+      error(fields = {}, msg) {
+        childBase.error(redact(fields), msg);
+      },
+
+      child(extra = {}) {
+        return logger.child({
+          ...bindings,
+          ...extra,
+        });
+      },
+    };
+  },
 };
+
+module.exports = logger;

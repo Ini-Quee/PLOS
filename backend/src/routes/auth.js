@@ -8,8 +8,17 @@ const { z } = require('zod');
 const { pool } = require('../db/connection');
 const logger = require('../lib/logger');
 const { validateInput } = require('../middleware/validateInput');
-const { rateLimiter } = require('../middleware/rateLimiter');
+const { rateLimiter, resetRateLimit } = require('../middleware/rateLimiter');
 const { pool: _auditPool } = require('../db/connection');
+
+// Access-token lifetime. Production stays short (refresh keeps users signed in
+// silently). In development we use a long-lived token so testing on a device is
+// never interrupted by a mid-session logout.
+const ACCESS_EXPIRY =
+  process.env.NODE_ENV === 'production'
+    ? process.env.JWT_ACCESS_EXPIRY || '15m'
+    : '30d';
+
 async function writeAudit(req, action, status) {
   try {
     await _auditPool.query(
@@ -48,7 +57,7 @@ const verifyMfaSchema = z.object({
 
 router.post(
   '/register',
-  rateLimiter(5, 900, 'register'),
+  rateLimiter(10, 300, 'register'),
   auditLog('register', 'auth'),
   validateInput(registerSchema),
   async (req, res) => {
@@ -82,7 +91,7 @@ router.post(
       const accessToken = jwt.sign(
         { sub: user.id, email: user.email },
         process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_ACCESS_EXPIRY }
+        { expiresIn: ACCESS_EXPIRY }
       );
 
       const refreshToken = crypto.randomBytes(64).toString('hex');
@@ -109,9 +118,15 @@ router.post(
         path: '/api/auth/refresh',
       });
 
+      // Native mobile clients can't read httpOnly cookies, so for them we also
+      // return the refresh token in the body. Web clients (no X-Client-Platform
+      // header) keep getting the cookie ONLY — unchanged, still XSS-safe.
+      const mobileClient = ['ios', 'android'].includes(req.headers['x-client-platform']);
+
       res.status(201).json({
         message: 'Account created successfully. Please set up MFA.',
         accessToken,
+        ...(mobileClient ? { refreshToken } : {}),
         user: {
           id: user.id,
           email: user.email,
@@ -130,7 +145,7 @@ router.post(
 
 router.post(
   '/login',
-  rateLimiter(5, 900, 'login'),
+  rateLimiter(10, 300, 'login'),
   auditLog('login', 'auth'),
   validateInput(loginSchema),
   async (req, res) => {
@@ -215,7 +230,7 @@ router.post(
       const accessToken = jwt.sign(
         { sub: user.id, email: user.email },
         process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_ACCESS_EXPIRY }
+        { expiresIn: ACCESS_EXPIRY }
       );
 
       const refreshToken = crypto.randomBytes(64).toString('hex');
@@ -244,6 +259,10 @@ router.post(
 
       await writeAudit(req, 'login_success', 'success');
 
+      // Correct password → clear the failed-attempt counter immediately so a
+      // legitimate user is never stuck behind the lockout window.
+      await resetRateLimit(req, 'login');
+
       // Fetch subscription tier separately (not in the login query above)
       const tierRow = await pool.query(
         `SELECT subscription_tier, subscription_expires_at FROM users WHERE id = $1`,
@@ -251,8 +270,14 @@ router.post(
       );
       const tier = tierRow.rows[0]?.subscription_tier || 'free';
 
+      // Native mobile clients can't read httpOnly cookies, so for them we also
+      // return the refresh token in the body. Web clients (no X-Client-Platform
+      // header) keep getting the cookie ONLY — unchanged, still XSS-safe.
+      const mobileClient = ['ios', 'android'].includes(req.headers['x-client-platform']);
+
       res.json({
         accessToken,
+        ...(mobileClient ? { refreshToken } : {}),
         user: {
           id: user.id,
           email: user.email,
@@ -275,9 +300,12 @@ router.post(
   auditLog('token_refresh', 'auth'),
   async (req, res) => {
     try {
-      const refreshToken = req.cookies
-        ? req.cookies.refreshToken
-        : undefined;
+      // Web sends the refresh token as an httpOnly cookie; native mobile sends
+      // it in the request body (no cookie support). Accept either — cookie wins.
+      const refreshToken =
+        (req.cookies && req.cookies.refreshToken) ||
+        (req.body && req.body.refreshToken) ||
+        undefined;
 
       if (!refreshToken) {
         return res.status(401).json({
@@ -335,7 +363,7 @@ router.post(
           email: storedToken.email,
         },
         process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_ACCESS_EXPIRY }
+        { expiresIn: ACCESS_EXPIRY }
       );
 
       const newRefreshToken = crypto.randomBytes(64).toString('hex');
@@ -370,6 +398,55 @@ router.post(
       res.status(500).json({
         error: 'An error occurred during token refresh',
       });
+    }
+  }
+);
+
+router.post(
+  '/verify-password',
+  authenticate,
+  rateLimiter(10, 300, 'verify-password'),
+  auditLog('verify_password', 'auth'),
+  validateInput(z.object({ password: z.string().min(1) })),
+  async (req, res) => {
+    try {
+      const { password } = req.body;
+      const userId = req.user.id;
+
+      const result = await pool.query(
+        'SELECT id, password_hash, failed_login_attempts, locked_until FROM users WHERE id = $1',
+        [userId]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const user = result.rows[0];
+
+      if (user.locked_until && new Date(user.locked_until) > new Date()) {
+        return res.status(423).json({ error: 'Account is temporarily locked.' });
+      }
+
+      const validPassword = await bcrypt.compare(password, user.password_hash);
+
+      if (!validPassword) {
+        const newAttempts = user.failed_login_attempts + 1;
+        const lockUntil = newAttempts >= 10 ? new Date(Date.now() + 30 * 60 * 1000) : null;
+        await pool.query('UPDATE users SET failed_login_attempts = $1, locked_until = $2 WHERE id = $3', [newAttempts, lockUntil, user.id]);
+        if (lockUntil) await writeAudit(req, 'account_locked_from_vault', 'failure');
+        return res.status(401).json({ error: 'Invalid password' });
+      }
+
+      // On success, reset failed attempts
+      if (user.failed_login_attempts > 0) {
+        await pool.query('UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE id = $1', [user.id]);
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      logger.error({ action: 'verify-password', err: error.message }, 'password verification failed');
+      res.status(500).json({ error: 'An error occurred during password verification' });
     }
   }
 );

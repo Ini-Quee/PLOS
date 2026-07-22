@@ -2,6 +2,7 @@ export const Typography = {
   hero: {
     fontSize: 36,
     fontWeight: '700' as const,
+    fontFamily: 'Georgia',
   },
   title: {
     fontSize: 24,
@@ -22,5 +23,10 @@ export const Typography = {
   micro: {
     fontSize: 11,
     fontWeight: '500' as const,
+  },
+  label: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    letterSpacing: 1,
   },
 };

@@ -1,3 +1,4 @@
+/* global clients */
 // PLOS Service Worker — PWA push notifications
 const CACHE = 'plos-v1';
 const STATIC = ['/', '/index.html'];

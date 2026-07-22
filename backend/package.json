@@ -2,6 +2,10 @@
   "name": "plos-backend",
   "version": "1.0.0",
   "main": "server.js",
+  "engines": {
+    "node": ">=22 <25",
+    "npm": ">=10"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",

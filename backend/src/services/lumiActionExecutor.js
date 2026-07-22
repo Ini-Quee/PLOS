@@ -1,10 +1,11 @@
 const { pool } = require('../db/connection');
+const logger = require('../lib/logger');
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
-async function executeAction(userId, action, actionLogId = null) {
+async function executeAction(userId, action, actionLogId = null, reqLogger = logger) {
   const p = action.payload || {};
   const t = action.target || {};
   switch (action.type) {

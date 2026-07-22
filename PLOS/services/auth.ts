@@ -65,14 +65,22 @@ export async function login(email: string, password: string): Promise<User> {
       password,
     });
 
-    // Extract tokens and user from response (Pattern A: camelCase)
-    const { accessToken, refreshToken, user } = response.data;
+    // Extract tokens and user from response.
+    // NOTE: the backend returns accessToken + user in the body, and sets the
+    // refresh token as an httpOnly cookie (not in the body). So refreshToken is
+    // usually undefined here — guard the SecureStore writes, because
+    // SecureStore.setItemAsync THROWS if handed undefined (which used to make a
+    // successful 200 login appear to "fail" right after the request).
+    const { accessToken, refreshToken, user } = response.data as any;
 
-    // Save access token to SecureStore
+    if (!accessToken) {
+      throw new Error('Login response did not include an access token.');
+    }
+
     await SecureStore.setItemAsync('access_token', accessToken);
-
-    // Save refresh token to SecureStore
-    await SecureStore.setItemAsync('refresh_token', refreshToken);
+    if (typeof refreshToken === 'string' && refreshToken.length > 0) {
+      await SecureStore.setItemAsync('refresh_token', refreshToken);
+    }
 
     // Save user to AsyncStorage
     await saveLocal('user_profile', user);
