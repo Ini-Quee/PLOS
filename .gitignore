@@ -16,6 +16,9 @@ yarn-error.log*
 dist/
 build/
 *.tgz
+*.zip
+backend-deploy/
+backend-deploy.zip
 
 # OS files
 .DS_Store
