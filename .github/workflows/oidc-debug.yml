@@ -74,6 +74,8 @@ jobs:
             "ref_type",
             "workflow",
             "job_workflow_ref",
+            "workflow_ref",
+            "actor",
             "event_name",
           ];
 

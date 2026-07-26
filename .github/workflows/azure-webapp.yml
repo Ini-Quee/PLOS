@@ -42,6 +42,10 @@ jobs:
         working-directory: ${{ env.APP_PACKAGE_PATH }}
         run: npm test --if-present
 
+      - name: Remove node_modules before deployment
+        working-directory: ${{ env.APP_PACKAGE_PATH }}
+        run: rm -rf node_modules
+
       - name: Azure Login
         uses: azure/login@v2
         with:
