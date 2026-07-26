@@ -46,6 +46,26 @@ jobs:
         working-directory: ${{ env.APP_PACKAGE_PATH }}
         run: rm -rf node_modules
 
+      - name: Print backend directory contents
+        working-directory: ${{ env.APP_PACKAGE_PATH }}
+        run: |
+          pwd
+          ls -lah
+          find . -maxdepth 2 -type f | sort
+          du -sh .
+
+      - name: Create deployment archive
+        run: |
+          cd backend
+          zip -r ../backend-package.zip .
+          ls -lh ../backend-package.zip
+
+      - name: Upload backend package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-package
+          path: backend-package.zip
+
       - name: Azure Login
         uses: azure/login@v2
         with:
