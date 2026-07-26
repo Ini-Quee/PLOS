@@ -1,0 +1,86 @@
+name: OIDC Debug
+
+# Run this workflow manually only. It is intentionally separate from the
+# deployment workflow so Azure App Service deploy behavior is not changed.
+on:
+  workflow_dispatch:
+
+# id-token: write is required to request a GitHub OIDC token.
+# contents: read is required by actions/checkout.
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  inspect-oidc-claims:
+    name: Inspect GitHub OIDC claims for Azure
+    runs-on: ubuntu-latest
+
+    steps:
+      # Check out the repository so the run context matches a normal workflow
+      # job in this repository and branch.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # GitHub's OIDC docs recommend the github/actions-oidc-debugger action for
+      # visualizing claims, but that repository is archived. This step uses the
+      # documented fallback method: request a token through the runner-provided
+      # ACTIONS_ID_TOKEN_REQUEST_URL and ACTIONS_ID_TOKEN_REQUEST_TOKEN values,
+      # then print only selected decoded claims. The raw JWT is never printed.
+      - name: Request and print selected OIDC claims
+        env:
+          # Azure Login and Azure federated credentials commonly use this
+          # audience for GitHub Actions OIDC token exchange.
+          AZURE_OIDC_AUDIENCE: api://AzureADTokenExchange
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          token_response="$(
+            curl --fail --silent --show-error \
+              --header "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${AZURE_OIDC_AUDIENCE}"
+          )"
+
+          TOKEN_RESPONSE="${token_response}" node <<'NODE'
+          const response = JSON.parse(process.env.TOKEN_RESPONSE);
+          const token = response.value;
+
+          if (!token || typeof token !== "string") {
+            throw new Error("GitHub OIDC response did not include an id token.");
+          }
+
+          // Mask the token defensively even though it is never printed.
+          console.log(`::add-mask::${token}`);
+
+          const [, payload] = token.split(".");
+          if (!payload) {
+            throw new Error("OIDC token did not contain a JWT payload.");
+          }
+
+          const claims = JSON.parse(
+            Buffer.from(payload, "base64url").toString("utf8")
+          );
+
+          const claimNames = [
+            "iss",
+            "aud",
+            "sub",
+            "repository",
+            "repository_id",
+            "repository_owner",
+            "repository_owner_id",
+            "ref",
+            "ref_type",
+            "workflow",
+            "job_workflow_ref",
+            "event_name",
+          ];
+
+          const selectedClaims = Object.fromEntries(
+            claimNames.map((name) => [name, claims[name] ?? null])
+          );
+
+          console.log("Selected GitHub OIDC token claims for Azure:");
+          console.log(JSON.stringify(selectedClaims, null, 2));
+          NODE
