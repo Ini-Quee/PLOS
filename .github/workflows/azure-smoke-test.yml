@@ -1,0 +1,72 @@
+name: Deploy Azure smoke test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AZURE_WEBAPP_NAME: iniq-test
+  AZURE_RESOURCE_GROUP: plos-rg
+  NODE_VERSION: "22.x"
+  APP_PACKAGE_PATH: azure-smoke-test
+  ZIP_PATH: azure-smoke-test.zip
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        working-directory: ${{ env.APP_PACKAGE_PATH }}
+        run: npm install --omit=dev
+
+      - name: Validate server syntax
+        working-directory: ${{ env.APP_PACKAGE_PATH }}
+        run: node --check server.js
+
+      - name: Create deployment archive
+        run: |
+          cd "${APP_PACKAGE_PATH}"
+          zip "../${ZIP_PATH}" package.json server.js
+
+      - name: Verify deployment archive
+        run: |
+          set -euo pipefail
+          unzip -Z1 "${ZIP_PATH}" | sort > zip-contents.txt
+          printf "package.json\nserver.js\n" > expected-contents.txt
+          diff -u expected-contents.txt zip-contents.txt
+
+      - name: Upload smoke test package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: azure-smoke-test-package
+          path: ${{ env.ZIP_PATH }}
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy with Azure CLI
+        run: |
+          az webapp deploy \
+            --resource-group "${AZURE_RESOURCE_GROUP}" \
+            --name "${AZURE_WEBAPP_NAME}" \
+            --src-path "${ZIP_PATH}" \
+            --type zip \
+            --clean true \
+            --restart true \
+            --enriched-errors true
